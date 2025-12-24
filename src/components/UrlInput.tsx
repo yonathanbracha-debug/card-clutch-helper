@@ -51,12 +51,13 @@ export function UrlInput({ onSubmit, isDisabled, defaultUrl }: UrlInputProps) {
           type="text"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="e.g., amazon.com/cart or target.com/checkout"
-          className="w-full h-14 pl-12 pr-40 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+          placeholder="e.g., amazon.com or target.com"
+          className="w-full h-14 pl-12 pr-4 md:pr-40 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
           disabled={isDisabled}
         />
         
-        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+        {/* Desktop: inline button */}
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden md:block">
           <Button 
             type="submit" 
             variant="hero"
@@ -69,6 +70,20 @@ export function UrlInput({ onSubmit, isDisabled, defaultUrl }: UrlInputProps) {
         </div>
       </div>
 
+      {/* Mobile: full-width button below input */}
+      <div className="mt-3 md:hidden">
+        <Button 
+          type="submit" 
+          variant="hero"
+          size="lg"
+          className="w-full h-12"
+          disabled={isDisabled || !url.trim()}
+        >
+          <Sparkles className="w-4 h-4 mr-2" />
+          Get Recommendation
+        </Button>
+      </div>
+
       {/* Quick examples */}
       <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
         <span className="text-xs text-muted-foreground">Try:</span>
@@ -77,7 +92,7 @@ export function UrlInput({ onSubmit, isDisabled, defaultUrl }: UrlInputProps) {
             key={example}
             type="button"
             onClick={() => setUrl(example)}
-            className="text-xs px-3 py-1.5 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+            className="text-xs px-3 py-1.5 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors active:scale-95"
           >
             {example}
           </button>

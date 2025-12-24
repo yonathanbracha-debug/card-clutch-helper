@@ -181,6 +181,49 @@ export const creditCards: CreditCard[] = [
     ],
   },
   {
+    id: 'chase-freedom-flex',
+    name: 'Freedom Flex',
+    issuer: 'Chase',
+    color: 'from-blue-600 to-indigo-700',
+    annualFee: 0,
+    rewards: [
+      {
+        category: 'rotating',
+        multiplier: 5,
+        description: '5% cash back on rotating categories (quarterly)',
+      },
+      {
+        category: 'dining',
+        multiplier: 3,
+        description: '3% cash back on dining',
+      },
+      {
+        category: 'drugstores',
+        multiplier: 3,
+        description: '3% cash back at drugstores',
+      },
+      {
+        category: 'general',
+        multiplier: 1,
+        description: '1% cash back on all other purchases',
+      },
+    ],
+  },
+  {
+    id: 'capital-one-venture',
+    name: 'Venture',
+    issuer: 'Capital One',
+    color: 'from-slate-700 to-slate-900',
+    annualFee: 95,
+    rewards: [
+      {
+        category: 'general',
+        multiplier: 2,
+        description: '2X miles on every purchase',
+      },
+    ],
+  },
+  {
     id: 'amex-platinum',
     name: 'Platinum Card',
     issuer: 'American Express',
@@ -342,7 +385,7 @@ export const merchantMappings: MerchantMapping[] = [
   { domain: 'tmobile.com', name: 'T-Mobile', category: 'general', isApplePartner: true },
   { domain: 'nike.com', name: 'Nike', category: 'apparel', isApplePartner: true },
   
-  // Travel
+  // Travel - Airlines
   { domain: 'airbnb.com', name: 'Airbnb', category: 'travel' },
   { domain: 'booking.com', name: 'Booking.com', category: 'travel' },
   { domain: 'expedia.com', name: 'Expedia', category: 'travel' },
@@ -351,6 +394,19 @@ export const merchantMappings: MerchantMapping[] = [
   { domain: 'delta.com', name: 'Delta Airlines', category: 'travel' },
   { domain: 'southwest.com', name: 'Southwest Airlines', category: 'travel' },
   { domain: 'aa.com', name: 'American Airlines', category: 'travel' },
+  { domain: 'jetblue.com', name: 'JetBlue', category: 'travel' },
+  { domain: 'spirit.com', name: 'Spirit Airlines', category: 'travel' },
+  { domain: 'alaskaair.com', name: 'Alaska Airlines', category: 'travel' },
+  
+  // Travel - Hotels
+  { domain: 'marriott.com', name: 'Marriott', category: 'hotels' },
+  { domain: 'hilton.com', name: 'Hilton', category: 'hotels' },
+  { domain: 'hyatt.com', name: 'Hyatt', category: 'hotels' },
+  { domain: 'ihg.com', name: 'IHG', category: 'hotels' },
+  { domain: 'wyndhamhotels.com', name: 'Wyndham', category: 'hotels' },
+  
+  // Travel - Rideshare
+  { domain: 'lyft.com', name: 'Lyft', category: 'travel' },
   
   // Drugstores
   { domain: 'cvs.com', name: 'CVS', category: 'drugstores' },

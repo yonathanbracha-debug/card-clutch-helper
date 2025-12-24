@@ -8,10 +8,12 @@ import { Roadmap } from '@/components/Roadmap';
 import { Footer } from '@/components/Footer';
 import { getRecommendation, Recommendation } from '@/lib/recommendationEngine';
 import { usePersistedCards } from '@/hooks/usePersistedCards';
+import { useRecentSearches } from '@/hooks/useRecentSearches';
 import { useTheme } from '@/hooks/useTheme';
 
 const Index = () => {
   const { selectedCards, toggleCard, lastUrl, setLastUrl } = usePersistedCards();
+  const { recentSearches, addSearch, clearSearches } = useRecentSearches();
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const { theme, toggleTheme } = useTheme();
 
@@ -24,6 +26,20 @@ const Index = () => {
     setLastUrl(url);
     const result = getRecommendation(url, selectedCards);
     setRecommendation(result);
+    
+    // Add to recent searches if we got a result
+    if (result) {
+      addSearch({
+        url,
+        merchantName: result.merchant?.name || 'Unknown Merchant',
+        category: result.category,
+        categoryLabel: result.categoryLabel,
+        cardId: result.card.id,
+        cardName: result.card.name,
+        cardIssuer: result.card.issuer,
+      });
+    }
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -37,6 +53,8 @@ const Index = () => {
           recommendation={recommendation}
           hasSelectedCards={selectedCards.length > 0}
           lastUrl={lastUrl}
+          recentSearches={recentSearches}
+          onClearSearches={clearSearches}
         />
         
         <CardLibrary 

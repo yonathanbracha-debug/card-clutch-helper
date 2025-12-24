@@ -1,6 +1,8 @@
 import { UrlInput } from './UrlInput';
 import { Recommendation } from '@/lib/recommendationEngine';
 import { RecommendationResult } from './RecommendationResult';
+import { RecentSearches } from './RecentSearches';
+import { RecentSearch } from '@/hooks/useRecentSearches';
 import { CreditCard, ArrowDown, Zap } from 'lucide-react';
 
 interface HeroProps {
@@ -8,9 +10,18 @@ interface HeroProps {
   recommendation: Recommendation | null;
   hasSelectedCards: boolean;
   lastUrl?: string;
+  recentSearches: RecentSearch[];
+  onClearSearches: () => void;
 }
 
-export function Hero({ onUrlSubmit, recommendation, hasSelectedCards, lastUrl }: HeroProps) {
+export function Hero({ 
+  onUrlSubmit, 
+  recommendation, 
+  hasSelectedCards, 
+  lastUrl,
+  recentSearches,
+  onClearSearches 
+}: HeroProps) {
   return (
     <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-4 py-20 overflow-hidden">
       {/* Background glow effect */}
@@ -24,7 +35,7 @@ export function Hero({ onUrlSubmit, recommendation, hasSelectedCards, lastUrl }:
         <CreditCard className="w-24 h-24 text-primary rotate-12" />
       </div>
 
-      <div className="relative z-10 text-center max-w-4xl mx-auto">
+      <div className="relative z-10 text-center max-w-4xl mx-auto w-full">
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary border border-border mb-8 animate-fade-in">
           <Zap className="w-4 h-4 text-primary" />
@@ -69,6 +80,15 @@ export function Hero({ onUrlSubmit, recommendation, hasSelectedCards, lastUrl }:
           <div className="mt-12">
             <RecommendationResult recommendation={recommendation} />
           </div>
+        )}
+
+        {/* Recent Searches - only show when no active recommendation and has selected cards */}
+        {!recommendation && hasSelectedCards && recentSearches.length > 0 && (
+          <RecentSearches 
+            searches={recentSearches} 
+            onSelect={onUrlSubmit}
+            onClear={onClearSearches}
+          />
         )}
       </div>
     </section>
