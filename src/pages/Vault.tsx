@@ -1,10 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CardImage } from '@/components/CardImage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { OnboardingModal } from '@/components/OnboardingModal';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
+import { useWalletCards } from '@/hooks/useWalletCards';
+import { useCreditCards } from '@/hooks/useCreditCards';
 import { 
   Search, 
   Plus, 
@@ -12,11 +17,11 @@ import {
   X, 
   Wallet, 
   AlertCircle,
-  ChevronDown 
+  ChevronDown,
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { creditCards, CreditCard } from '@/lib/cardData';
-import { usePersistedCards } from '@/hooks/usePersistedCards';
 import {
   Select,
   SelectContent,
@@ -31,74 +36,94 @@ import {
 } from "@/components/ui/collapsible";
 import { Link } from 'react-router-dom';
 
-type UtilizationLevel = 'low' | 'medium' | 'high';
-
-interface WalletCard {
-  cardId: string;
-  utilization: UtilizationLevel;
-  doNotRecommend: boolean;
-  nickname?: string;
-}
-
 const Vault = () => {
-  const { selectedCards, toggleCard } = usePersistedCards();
+  const { user } = useAuth();
+  const { preferences, loading: prefsLoading, refetch: refetchPrefs } = useUserPreferences();
+  const { cards, loading: cardsLoading } = useCreditCards();
+  const { 
+    walletCards, 
+    loading: walletLoading, 
+    toggleCard, 
+    updateCard,
+    selectedCardIds 
+  } = useWalletCards();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [issuerFilter, setIssuerFilter] = useState<string>('all');
-  const [walletCards, setWalletCards] = useState<WalletCard[]>(() => {
-    const stored = localStorage.getItem('cardclutch-wallet');
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Get unique issuers
+  // Show onboarding if not completed
+  useEffect(() => {
+    if (!prefsLoading && preferences && !preferences.onboarding_completed) {
+      setShowOnboarding(true);
+    }
+  }, [preferences, prefsLoading]);
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    refetchPrefs();
+  };
+
+  // Get unique issuers from DB cards
   const issuers = useMemo(() => {
-    const unique = [...new Set(creditCards.map(c => c.issuer))];
+    const unique = [...new Set(cards.map(c => c.issuer_name))];
     return unique.sort();
-  }, []);
+  }, [cards]);
 
   // Filter cards
   const filteredCards = useMemo(() => {
-    return creditCards.filter(card => {
+    return cards.filter(card => {
       const matchesSearch = 
         card.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        card.issuer.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesIssuer = issuerFilter === 'all' || card.issuer === issuerFilter;
+        card.issuer_name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesIssuer = issuerFilter === 'all' || card.issuer_name === issuerFilter;
       return matchesSearch && matchesIssuer;
     });
-  }, [searchQuery, issuerFilter]);
+  }, [cards, searchQuery, issuerFilter]);
 
   // Group by issuer
   const groupedCards = useMemo(() => {
-    const groups: Record<string, CreditCard[]> = {};
+    const groups: Record<string, typeof filteredCards> = {};
     filteredCards.forEach(card => {
-      if (!groups[card.issuer]) groups[card.issuer] = [];
-      groups[card.issuer].push(card);
+      if (!groups[card.issuer_name]) groups[card.issuer_name] = [];
+      groups[card.issuer_name].push(card);
     });
     return groups;
   }, [filteredCards]);
 
   // Get selected card details
   const selectedCardDetails = useMemo(() => {
-    return selectedCards.map(id => creditCards.find(c => c.id === id)).filter(Boolean) as CreditCard[];
-  }, [selectedCards]);
+    return selectedCardIds
+      .map(id => cards.find(c => c.id === id))
+      .filter(Boolean) as typeof cards;
+  }, [selectedCardIds, cards]);
 
-  const updateWalletCard = (cardId: string, updates: Partial<WalletCard>) => {
-    setWalletCards(prev => {
-      const existing = prev.find(w => w.cardId === cardId);
-      const updated: WalletCard[] = existing 
-        ? prev.map(w => w.cardId === cardId ? { ...w, ...updates } : w)
-        : [...prev, { cardId, utilization: 'low' as UtilizationLevel, doNotRecommend: false, ...updates }];
-      localStorage.setItem('cardclutch-wallet', JSON.stringify(updated));
-      return updated;
-    });
+  const getWalletCard = (cardId: string) => {
+    return walletCards.find(w => w.card_id === cardId);
   };
 
-  const getWalletCard = (cardId: string): WalletCard | undefined => {
-    return walletCards.find(w => w.cardId === cardId);
-  };
+  const isLoading = cardsLoading || walletLoading || prefsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-20 pb-12 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      
+      <OnboardingModal 
+        open={showOnboarding} 
+        onComplete={handleOnboardingComplete}
+      />
       
       <main className="pt-20 pb-12">
         <div className="container max-w-6xl mx-auto px-4">
@@ -138,21 +163,21 @@ const Vault = () => {
 
               {/* Cards List */}
               <div className="space-y-4">
-                {Object.entries(groupedCards).map(([issuer, cards]) => (
+                {Object.entries(groupedCards).map(([issuer, issuerCards]) => (
                   <Collapsible key={issuer} defaultOpen>
                     <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors group">
                       <span className="font-medium">{issuer}</span>
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="text-xs">
-                          {cards.length} cards
+                          {issuerCards.length} cards
                         </Badge>
                         <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
                       </div>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="pt-2">
                       <div className="space-y-2">
-                        {cards.map(card => {
-                          const isSelected = selectedCards.includes(card.id);
+                        {issuerCards.map(card => {
+                          const isSelected = selectedCardIds.includes(card.id);
                           return (
                             <div
                               key={card.id}
@@ -165,21 +190,31 @@ const Vault = () => {
                               onClick={() => toggleCard(card.id)}
                             >
                               <CardImage 
-                                issuer={card.issuer} 
+                                issuer={card.issuer_name} 
                                 cardName={card.name} 
-                                network={card.network}
+                                network={card.network as any}
                                 size="sm"
                               />
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium truncate">{card.name}</p>
                                 <p className="text-xs text-muted-foreground truncate">
-                                  {card.rewardSummary}
+                                  {card.reward_summary}
                                 </p>
                               </div>
                               <div className="flex items-center gap-3">
                                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                  ${card.annualFee}/yr
+                                  ${card.annual_fee_cents / 100}/yr
                                 </span>
+                                <a
+                                  href={card.source_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1 rounded hover:bg-muted-foreground/20 transition-colors"
+                                  title="View official terms"
+                                >
+                                  <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                                </a>
                                 <div className={cn(
                                   "w-6 h-6 rounded-full flex items-center justify-center transition-colors",
                                   isSelected 
@@ -196,6 +231,12 @@ const Vault = () => {
                     </CollapsibleContent>
                   </Collapsible>
                 ))}
+
+                {Object.keys(groupedCards).length === 0 && (
+                  <div className="py-12 text-center text-muted-foreground">
+                    No cards found matching your search.
+                  </div>
+                )}
               </div>
             </div>
 
@@ -207,7 +248,7 @@ const Vault = () => {
                     <Wallet className="w-5 h-5 text-primary" />
                     <h2 className="font-semibold">My Wallet</h2>
                     <Badge variant="secondary" className="ml-auto">
-                      {selectedCards.length}
+                      {selectedCardIds.length}
                     </Badge>
                   </div>
 
@@ -229,14 +270,14 @@ const Vault = () => {
                           <div key={card.id} className="p-3 rounded-lg bg-muted/50 space-y-3">
                             <div className="flex items-center gap-3">
                               <CardImage 
-                                issuer={card.issuer} 
+                                issuer={card.issuer_name} 
                                 cardName={card.name} 
-                                network={card.network}
+                                network={card.network as any}
                                 size="sm"
                               />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">{card.name}</p>
-                                <p className="text-xs text-muted-foreground">{card.issuer}</p>
+                                <p className="text-xs text-muted-foreground">{card.issuer_name}</p>
                               </div>
                               <button
                                 onClick={(e) => {
@@ -256,11 +297,11 @@ const Vault = () => {
                                     key={level}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      updateWalletCard(card.id, { utilization: level });
+                                      updateCard(card.id, { utilization_status: level });
                                     }}
                                     className={cn(
                                       "px-2 py-0.5 rounded text-xs capitalize transition-colors",
-                                      walletCard?.utilization === level || (!walletCard && level === 'low')
+                                      walletCard?.utilization_status === level || (!walletCard && level === 'low')
                                         ? level === 'low' 
                                           ? 'bg-emerald-500/20 text-emerald-600'
                                           : level === 'medium'
@@ -281,7 +322,7 @@ const Vault = () => {
                   )}
                 </div>
 
-                {selectedCards.length > 0 && (
+                {selectedCardIds.length > 0 && (
                   <Link to="/recommend">
                     <Button className="w-full gap-2">
                       Get Recommendation

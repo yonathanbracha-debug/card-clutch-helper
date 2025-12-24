@@ -15,19 +15,14 @@ import {
   ChevronDown,
   ExternalLink,
   Clock,
-  Info,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { creditCards } from '@/lib/cardData';
 import { getRecommendation, Recommendation } from '@/lib/recommendationEngine';
-import { usePersistedCards } from '@/hooks/usePersistedCards';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { useWalletCards } from '@/hooks/useWalletCards';
+import { useCreditCards } from '@/hooks/useCreditCards';
 import {
   Collapsible,
   CollapsibleContent,
@@ -36,7 +31,20 @@ import {
 import { Link } from 'react-router-dom';
 
 const Recommend = () => {
-  const { selectedCards } = usePersistedCards();
+  const { selectedCardIds, loading: walletLoading } = useWalletCards();
+  const { cards: dbCards, loading: cardsLoading } = useCreditCards();
+  
+  // Map DB card IDs to local cardData IDs for recommendation engine
+  // For now, use local cardData until we migrate the engine to use DB
+  const selectedCards = selectedCardIds.length > 0 
+    ? creditCards.filter(c => {
+        // Try matching by name pattern
+        return dbCards.some(db => 
+          db.name.toLowerCase() === c.name.toLowerCase() && 
+          selectedCardIds.includes(db.id)
+        );
+      }).map(c => c.id)
+    : [];
   const [url, setUrl] = useState('');
   const [pageTitle, setPageTitle] = useState('');
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
