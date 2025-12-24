@@ -43,14 +43,22 @@ export function RecommendationResult({ recommendation }: RecommendationResultPro
   return (
     <div className="animate-fade-in">
       {/* Detection summary */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div>
-          <div className="text-xs text-muted-foreground mb-1">Detected merchant</div>
+      <div className="flex items-center gap-3 mb-5 pb-4 border-b border-border">
+        <div className="flex-1">
+          <div className="text-xs text-muted-foreground mb-0.5">Merchant</div>
           <div className="text-sm font-medium">{merchant?.name || 'Unknown'}</div>
         </div>
-        <div>
-          <div className="text-xs text-muted-foreground mb-1">Category</div>
+        <div className="w-px h-8 bg-border" />
+        <div className="flex-1">
+          <div className="text-xs text-muted-foreground mb-0.5">Category</div>
           <div className="text-sm font-medium">{categoryLabel}</div>
+        </div>
+        <div className="w-px h-8 bg-border" />
+        <div className="flex-1">
+          <div className="flex items-center gap-1">
+            <ConfidenceIcon className={cn("w-3 h-3", config.color)} />
+            <span className={cn("text-xs", config.color)}>{config.label}</span>
+          </div>
         </div>
       </div>
 
@@ -58,33 +66,20 @@ export function RecommendationResult({ recommendation }: RecommendationResultPro
       <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="text-xs text-muted-foreground mb-1">Use this card</div>
+            <div className="text-xs text-muted-foreground mb-1">Recommended</div>
             <div className="font-semibold text-lg">
               {card.issuer} {card.name}
             </div>
-            <div className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
               {reason}
-            </div>
-            {card.annualFee !== null && card.annualFee > 0 && (
-              <div className="text-xs text-muted-foreground mt-2">
-                ${card.annualFee}/yr annual fee
-              </div>
-            )}
+            </p>
           </div>
           <div className="text-right flex-shrink-0">
             <div className="text-2xl font-mono font-bold text-primary">
               {formatMultiplier(multiplier)}
             </div>
-            <div className="text-xs text-muted-foreground">rewards</div>
+            <div className="text-xs text-muted-foreground">return</div>
           </div>
-        </div>
-        
-        {/* Confidence indicator */}
-        <div className="flex items-center gap-1.5 mt-4 pt-4 border-t border-primary/10">
-          <ConfidenceIcon className={cn("w-3.5 h-3.5", config.color)} />
-          <span className={cn("text-xs", config.color)}>
-            {config.label}
-          </span>
         </div>
       </div>
 
@@ -126,32 +121,30 @@ export function RecommendationResult({ recommendation }: RecommendationResultPro
 function AlternativeCard({ analysis }: { analysis: CardAnalysis }) {
   const { card, effectiveMultiplier, excluded, exclusionReason, reason } = analysis;
 
+  // Format why this card wasn't chosen
+  const displayReason = excluded 
+    ? exclusionReason 
+    : `${effectiveMultiplier}X here — lower than recommended card`;
+
   return (
     <div className={cn(
-      "p-3 rounded-lg border text-sm",
+      "flex items-center justify-between gap-3 py-2 px-3 rounded text-sm",
       excluded 
-        ? "bg-destructive/5 border-destructive/20" 
-        : "bg-muted/30 border-border"
+        ? "bg-destructive/5 border border-destructive/10" 
+        : "bg-muted/30"
     )}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="font-medium text-foreground">
-            {card.issuer} {card.name}
-          </div>
-          <div className={cn(
-            "text-xs mt-0.5",
-            excluded ? "text-destructive" : "text-muted-foreground"
-          )}>
-            {excluded ? exclusionReason : reason}
-          </div>
-        </div>
-        <div className={cn(
-          "font-mono text-sm font-medium flex-shrink-0",
-          excluded ? "text-muted-foreground line-through" : "text-muted-foreground"
-        )}>
-          {effectiveMultiplier}X
-        </div>
+      <div className="flex-1 min-w-0">
+        <span className="font-medium">{card.issuer} {card.name}</span>
+        <span className="text-muted-foreground ml-2 text-xs">
+          {displayReason}
+        </span>
       </div>
+      <span className={cn(
+        "font-mono text-xs flex-shrink-0",
+        excluded ? "text-muted-foreground line-through" : "text-muted-foreground"
+      )}>
+        {effectiveMultiplier}X
+      </span>
     </div>
   );
 }

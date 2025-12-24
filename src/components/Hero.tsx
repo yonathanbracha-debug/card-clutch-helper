@@ -39,20 +39,13 @@ export function Hero({
           </p>
         </div>
 
-        {/* Value bullets - concise, no fluff */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10 text-center text-sm">
-          <div className="p-3">
-            <div className="font-medium text-foreground mb-1">Prevent mistakes</div>
-            <div className="text-muted-foreground">Before they happen</div>
-          </div>
-          <div className="p-3">
-            <div className="font-medium text-foreground mb-1">Avoid exclusions</div>
-            <div className="text-muted-foreground">Know the fine print</div>
-          </div>
-          <div className="p-3">
-            <div className="font-medium text-foreground mb-1">Maximize rewards</div>
-            <div className="text-muted-foreground">Without risk or gaming</div>
-          </div>
+        {/* Value bullets - sharp, professional */}
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-10 text-sm text-muted-foreground">
+          <span>Category exclusions</span>
+          <span className="hidden md:inline">·</span>
+          <span>Reward optimization</span>
+          <span className="hidden md:inline">·</span>
+          <span>Real-time guidance</span>
         </div>
 
         {/* Decision Engine */}

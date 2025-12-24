@@ -110,11 +110,12 @@ export function CardSelector({ selectedCards, onToggleCard }: CardSelectorProps)
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate">
-                        {card.name}
+                        {card.issuer} {card.name}
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {card.issuer}
-                        {card.annualFee > 0 && ` • $${card.annualFee}/yr`}
+                      <div className="text-xs text-muted-foreground truncate">
+                        {card.annualFee === 0 || card.annualFee === null 
+                          ? 'No annual fee' 
+                          : `$${card.annualFee}/year`}
                       </div>
                     </div>
                     <CardRewardBadge card={card} />
@@ -151,21 +152,18 @@ export function CardSelector({ selectedCards, onToggleCard }: CardSelectorProps)
 }
 
 function CardRewardBadge({ card }: { card: CreditCard }) {
-  const topReward = card.rewards
-    .filter((r) => r.multiplier > 1)
-    .sort((a, b) => b.multiplier - a.multiplier)[0];
-
-  if (!topReward) {
+  // Show annual fee badge instead of vague multipliers
+  if (card.annualFee === 0 || card.annualFee === null) {
     return (
-      <span className="text-xs text-muted-foreground font-mono">
-        {card.rewards[0]?.multiplier || 1}x
+      <span className="text-xs text-muted-foreground">
+        No fee
       </span>
     );
   }
 
   return (
-    <span className="text-xs text-primary font-mono font-medium">
-      {topReward.multiplier}x
+    <span className="text-xs text-muted-foreground">
+      ${card.annualFee}/yr
     </span>
   );
 }

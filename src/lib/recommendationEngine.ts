@@ -153,11 +153,17 @@ function analyzeCard(
   const { multiplier, excluded, exclusionReason } = getCardMultiplier(card, category, merchant);
   
   let reason: string;
+  const cardName = `${card.issuer} ${card.name}`;
+  
   if (excluded && exclusionReason) {
     reason = exclusionReason;
   } else {
     const reward = card.rewards.find(r => r.category === category);
-    reason = reward?.description || `${multiplier}X on this purchase`;
+    if (reward && multiplier > 1) {
+      reason = `${multiplier}X on ${categoryLabels[category].toLowerCase()}`;
+    } else {
+      reason = `${multiplier}X base rate`;
+    }
   }
 
   return {
@@ -165,7 +171,7 @@ function analyzeCard(
     effectiveMultiplier: multiplier,
     reason,
     excluded,
-    exclusionReason,
+    exclusionReason: excluded ? `${merchant?.name || 'This merchant'} excluded from ${categoryLabels[category].toLowerCase()} bonus. Falls to ${multiplier}X.` : undefined,
   };
 }
 
@@ -228,16 +234,20 @@ export function getRecommendation(
   const bestCard = analyses[0];
   const alternatives = analyses.slice(1);
 
-  // Generate reason
+  // Generate reason with explicit why
   let reason: string;
+  const cardName = `${bestCard.card.issuer} ${bestCard.card.name}`;
+  
   if (bestCard.excluded) {
-    reason = `Safe fallback: ${bestCard.exclusionReason}. Using ${bestCard.effectiveMultiplier}X base rate.`;
+    reason = `Other cards have exclusions for ${merchantName}. ${cardName} provides a consistent ${bestCard.effectiveMultiplier}% return here.`;
   } else if (bestCard.effectiveMultiplier >= 3) {
-    reason = `Best rate for ${categoryLabels[category].toLowerCase()}: ${bestCard.effectiveMultiplier}X.`;
+    const reward = bestCard.card.rewards.find(r => r.category === category);
+    const qualifier = reward?.cap ? ` (${reward.cap.toLowerCase()})` : '';
+    reason = `${cardName} earns ${bestCard.effectiveMultiplier}X on ${categoryLabels[category].toLowerCase()}${qualifier}. This is your highest available rate.`;
   } else if (bestCard.effectiveMultiplier >= 1.5) {
-    reason = `${bestCard.effectiveMultiplier}X is your best available rate for this merchant.`;
+    reason = `${cardName} earns ${bestCard.effectiveMultiplier}% on all purchases. No card in your wallet has a category bonus here.`;
   } else {
-    reason = `No category bonus applies. Using ${bestCard.effectiveMultiplier}X base rate.`;
+    reason = `No category bonus applies at ${merchantName}. ${cardName} provides ${bestCard.effectiveMultiplier}% on general purchases.`;
   }
 
   return {
