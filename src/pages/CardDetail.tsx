@@ -155,20 +155,20 @@ const CardDetail = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {card.rewards.map((reward, i) => (
+                {card.rewards.map((reward, i) => (
                     <TableRow key={i}>
-                      <TableCell className="font-medium">{reward.categoryLabel}</TableCell>
+                      <TableCell className="font-medium capitalize">{reward.category}</TableCell>
                       <TableCell>
                         <span className="px-2 py-1 rounded-full bg-primary/10 text-primary font-medium text-sm">
                           {reward.multiplier}x
                         </span>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {reward.spendCap ? `$${reward.spendCap.toLocaleString()}/${reward.capPeriod}` : 'Uncapped'}
+                        {reward.cap || 'Uncapped'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {reward.requiresEnrollment && (
-                          <span className="text-amber-500 text-sm">Enrollment required</span>
+                        {reward.conditions && (
+                          <span className="text-amber-500 text-sm">{reward.conditions}</span>
                         )}
                       </TableCell>
                     </TableRow>
@@ -178,27 +178,31 @@ const CardDetail = () => {
             </div>
           </div>
 
-          {/* Exclusions */}
-          {card.exclusions && card.exclusions.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-amber-500" />
-                Known Exclusions
-              </h2>
-              <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5">
-                <p className="text-sm text-muted-foreground mb-3">
-                  These merchants or categories do not earn bonus rewards on this card:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {card.exclusions.map((exclusion, i) => (
-                    <Badge key={i} variant="outline" className="border-amber-500/50 text-amber-500">
-                      {exclusion}
-                    </Badge>
-                  ))}
+          {/* Exclusions - aggregated from all rewards */}
+          {(() => {
+            const allExclusions = card.rewards.flatMap(r => r.exclusions || []);
+            const uniqueExclusions = [...new Set(allExclusions)];
+            return uniqueExclusions.length > 0 ? (
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  Known Exclusions
+                </h2>
+                <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    These merchants or categories do not earn bonus rewards on this card:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {uniqueExclusions.map((exclusion, i) => (
+                      <Badge key={i} variant="outline" className="border-amber-500/50 text-amber-500">
+                        {exclusion}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            ) : null;
+          })()}
 
           {/* Notes */}
           {card.notes && (

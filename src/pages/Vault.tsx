@@ -84,9 +84,9 @@ const Vault = () => {
   const updateWalletCard = (cardId: string, updates: Partial<WalletCard>) => {
     setWalletCards(prev => {
       const existing = prev.find(w => w.cardId === cardId);
-      const updated = existing 
+      const updated: WalletCard[] = existing 
         ? prev.map(w => w.cardId === cardId ? { ...w, ...updates } : w)
-        : [...prev, { cardId, utilization: 'low', doNotRecommend: false, ...updates }];
+        : [...prev, { cardId, utilization: 'low' as UtilizationLevel, doNotRecommend: false, ...updates }];
       localStorage.setItem('cardclutch-wallet', JSON.stringify(updated));
       return updated;
     });

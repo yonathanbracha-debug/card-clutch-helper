@@ -213,7 +213,7 @@ const Recommend = () => {
                       <p className="text-muted-foreground">{recommendation.card.issuer}</p>
                     </div>
 
-                    <ConfidenceMeter confidence={recommendation.confidence} />
+                    <ConfidenceMeter confidence={Number(recommendation.confidence)} />
 
                     <div className="grid grid-cols-2 gap-4 pt-2">
                       <div className="p-3 rounded-lg bg-muted/50">
@@ -237,68 +237,10 @@ const Recommend = () => {
                       <p className="text-sm text-muted-foreground mt-1">
                         {recommendation.reason}
                       </p>
-                      {recommendation.hasCapWarning && (
-                        <p className="text-sm text-amber-500 mt-2 flex items-center gap-1">
-                          <AlertTriangle className="w-4 h-4" />
-                          Note: This card has a spending cap on this category.
-                        </p>
-                      )}
                     </div>
                   </div>
                 </div>
-
-                {/* Exclusion warning */}
-                {recommendation.exclusionTriggered && (
-                  <div className="mt-4 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
-                      <div>
-                        <p className="font-medium text-amber-500">Exclusion Warning</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {recommendation.exclusionReason}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
-
-              {/* Why not other cards */}
-              {recommendation.comparisonCards && recommendation.comparisonCards.length > 0 && (
-                <Accordion type="single" collapsible className="border border-border rounded-xl overflow-hidden">
-                  <AccordionItem value="comparison" className="border-0">
-                    <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50">
-                      <span className="flex items-center gap-2">
-                        <Info className="w-4 h-4" />
-                        Why not other cards?
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-6 pb-4">
-                      <div className="space-y-3">
-                        {recommendation.comparisonCards.map(comp => (
-                          <div key={comp.cardId} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                            <div className="flex items-center gap-3">
-                              <CardImage 
-                                issuer={comp.issuer}
-                                cardName={comp.cardName}
-                                network={comp.network}
-                                size="sm"
-                              />
-                              <div>
-                                <p className="font-medium text-sm">{comp.cardName}</p>
-                                <p className="text-xs text-muted-foreground">{comp.multiplier}x {recommendation.categoryLabel}</p>
-                              </div>
-                            </div>
-                            <p className="text-sm text-muted-foreground max-w-xs text-right">
-                              {comp.whyNot}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              )}
 
               {/* Sources */}
               <div className="p-4 rounded-xl border border-border bg-card/50">
