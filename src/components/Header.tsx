@@ -14,11 +14,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const navLinks = [
-  { href: '/vault', label: 'My Wallet', icon: Wallet },
-  { href: '/recommend', label: 'Recommend', icon: Search },
-  { href: '/cards', label: 'Card Library', icon: Library },
+  { href: '/analyze', label: 'Analyze', icon: Search },
+  { href: '/wallet', label: 'My Wallet', icon: Wallet },
+  { href: '/cards', label: 'Cards', icon: Library },
   { href: '/about', label: 'About', icon: Info },
-  { href: '/roadmap', label: 'Roadmap', icon: Map },
 ];
 
 export function Header() {
