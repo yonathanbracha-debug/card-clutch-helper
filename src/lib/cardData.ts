@@ -180,6 +180,68 @@ export const creditCards: CreditCard[] = [
       },
     ],
   },
+  {
+    id: 'amex-platinum',
+    name: 'Platinum Card',
+    issuer: 'American Express',
+    color: 'from-slate-400 to-slate-600',
+    annualFee: 695,
+    rewards: [
+      {
+        category: 'travel',
+        multiplier: 5,
+        description: '5X points on flights booked directly with airlines or Amex Travel',
+      },
+      {
+        category: 'hotels',
+        multiplier: 5,
+        description: '5X points on prepaid hotels booked on Amex Travel',
+      },
+      {
+        category: 'general',
+        multiplier: 1,
+        description: '1X points on other purchases',
+      },
+    ],
+  },
+  {
+    id: 'wells-fargo-active-cash',
+    name: 'Active Cash',
+    issuer: 'Wells Fargo',
+    color: 'from-red-600 to-red-800',
+    annualFee: 0,
+    rewards: [
+      {
+        category: 'general',
+        multiplier: 2,
+        description: '2% cash rewards on all purchases',
+      },
+    ],
+  },
+  {
+    id: 'bofa-customized-cash',
+    name: 'Customized Cash Rewards',
+    issuer: 'Bank of America',
+    color: 'from-red-500 to-blue-700',
+    annualFee: 0,
+    rewards: [
+      {
+        category: 'choice',
+        multiplier: 3,
+        description: '3% cash back in category of your choice',
+      },
+      {
+        category: 'groceries',
+        multiplier: 2,
+        description: '2% cash back at grocery stores and wholesale clubs',
+      },
+      {
+        category: 'general',
+        multiplier: 1,
+        description: '1% cash back on all other purchases',
+      },
+    ],
+  },
 ];
 export type MerchantCategory = 
   | 'dining'
@@ -192,7 +254,9 @@ export type MerchantCategory =
   | 'gas'
   | 'drugstores'
   | 'streaming'
-  | 'apple';
+  | 'apple'
+  | 'hotels'
+  | 'choice';
 
 export interface MerchantMapping {
   domain: string;
@@ -311,4 +375,6 @@ export const categoryLabels: Record<MerchantCategory, string> = {
   gas: 'Gas Station',
   drugstores: 'Pharmacy & Drugstore',
   apple: 'Apple & Partners',
+  hotels: 'Hotels & Lodging',
+  choice: 'Customizable Category',
 };

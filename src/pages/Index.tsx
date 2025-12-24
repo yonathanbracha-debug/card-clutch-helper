@@ -8,10 +8,12 @@ import { Roadmap } from '@/components/Roadmap';
 import { Footer } from '@/components/Footer';
 import { getRecommendation, Recommendation } from '@/lib/recommendationEngine';
 import { usePersistedCards } from '@/hooks/usePersistedCards';
+import { useTheme } from '@/hooks/useTheme';
 
 const Index = () => {
   const { selectedCards, toggleCard, lastUrl, setLastUrl } = usePersistedCards();
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
+  const { theme, toggleTheme } = useTheme();
 
   const handleToggleCard = (cardId: string) => {
     toggleCard(cardId);
@@ -26,8 +28,8 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="min-h-screen bg-background transition-colors duration-300">
+      <Header theme={theme} onThemeToggle={toggleTheme} />
       
       <main className="pt-16">
         <Hero 
