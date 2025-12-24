@@ -42,6 +42,35 @@ export const creditCards: CreditCard[] = [
     ],
   },
   {
+    id: 'chase-sapphire-preferred',
+    name: 'Sapphire Preferred',
+    issuer: 'Chase',
+    color: 'from-indigo-600 to-blue-800',
+    annualFee: 95,
+    rewards: [
+      {
+        category: 'travel',
+        multiplier: 5,
+        description: '5X points on travel via Chase Travel',
+      },
+      {
+        category: 'dining',
+        multiplier: 3,
+        description: '3X points on dining',
+      },
+      {
+        category: 'streaming',
+        multiplier: 3,
+        description: '3X points on select streaming services',
+      },
+      {
+        category: 'general',
+        multiplier: 1,
+        description: '1X points on other purchases',
+      },
+    ],
+  },
+  {
     id: 'capital-one-savor',
     name: 'SavorOne',
     issuer: 'Capital One',
@@ -67,6 +96,44 @@ export const creditCards: CreditCard[] = [
         category: 'general',
         multiplier: 1,
         description: '1% cash back on other purchases',
+      },
+    ],
+  },
+  {
+    id: 'citi-double-cash',
+    name: 'Double Cash',
+    issuer: 'Citi',
+    color: 'from-sky-400 to-blue-600',
+    annualFee: 0,
+    rewards: [
+      {
+        category: 'general',
+        multiplier: 2,
+        description: '2% cash back on all purchases (1% when you buy + 1% when you pay)',
+      },
+    ],
+  },
+  {
+    id: 'apple-card',
+    name: 'Apple Card',
+    issuer: 'Apple',
+    color: 'from-zinc-200 to-zinc-400',
+    annualFee: 0,
+    rewards: [
+      {
+        category: 'apple',
+        multiplier: 3,
+        description: '3% Daily Cash at Apple and select partners',
+      },
+      {
+        category: 'applepay',
+        multiplier: 2,
+        description: '2% Daily Cash with Apple Pay',
+      },
+      {
+        category: 'general',
+        multiplier: 1,
+        description: '1% Daily Cash on other purchases',
       },
     ],
   },
@@ -114,7 +181,6 @@ export const creditCards: CreditCard[] = [
     ],
   },
 ];
-
 export type MerchantCategory = 
   | 'dining'
   | 'groceries'
@@ -124,13 +190,16 @@ export type MerchantCategory =
   | 'entertainment'
   | 'travel'
   | 'gas'
-  | 'drugstores';
+  | 'drugstores'
+  | 'streaming'
+  | 'apple';
 
 export interface MerchantMapping {
   domain: string;
   name: string;
   category: MerchantCategory;
   isWarehouse?: boolean;
+  isApplePartner?: boolean;
 }
 
 export const merchantMappings: MerchantMapping[] = [
@@ -191,13 +260,23 @@ export const merchantMappings: MerchantMapping[] = [
   { domain: 'wayfair.com', name: 'Wayfair', category: 'general' },
   { domain: 'ikea.com', name: 'IKEA', category: 'general' },
   
-  // Entertainment
-  { domain: 'netflix.com', name: 'Netflix', category: 'entertainment' },
-  { domain: 'spotify.com', name: 'Spotify', category: 'entertainment' },
-  { domain: 'hulu.com', name: 'Hulu', category: 'entertainment' },
-  { domain: 'disneyplus.com', name: 'Disney+', category: 'entertainment' },
-  { domain: 'hbomax.com', name: 'Max', category: 'entertainment' },
-  { domain: 'max.com', name: 'Max', category: 'entertainment' },
+  // Entertainment / Streaming
+  { domain: 'netflix.com', name: 'Netflix', category: 'streaming' },
+  { domain: 'spotify.com', name: 'Spotify', category: 'streaming' },
+  { domain: 'hulu.com', name: 'Hulu', category: 'streaming' },
+  { domain: 'disneyplus.com', name: 'Disney+', category: 'streaming' },
+  { domain: 'hbomax.com', name: 'Max', category: 'streaming' },
+  { domain: 'max.com', name: 'Max', category: 'streaming' },
+  { domain: 'peacocktv.com', name: 'Peacock', category: 'streaming' },
+  { domain: 'paramountplus.com', name: 'Paramount+', category: 'streaming' },
+  
+  // Apple ecosystem
+  { domain: 'apple.com', name: 'Apple', category: 'apple', isApplePartner: true },
+  { domain: 'uber.com', name: 'Uber', category: 'travel', isApplePartner: true },
+  { domain: 'exxonmobil.com', name: 'Exxon Mobil', category: 'gas', isApplePartner: true },
+  { domain: 'walgreens.com', name: 'Walgreens', category: 'drugstores', isApplePartner: true },
+  { domain: 'tmobile.com', name: 'T-Mobile', category: 'general', isApplePartner: true },
+  { domain: 'nike.com', name: 'Nike', category: 'apparel', isApplePartner: true },
   
   // Travel
   { domain: 'airbnb.com', name: 'Airbnb', category: 'travel' },
@@ -227,7 +306,9 @@ export const categoryLabels: Record<MerchantCategory, string> = {
   apparel: 'Apparel & Fashion',
   general: 'General Purchase',
   entertainment: 'Entertainment',
+  streaming: 'Streaming Services',
   travel: 'Travel',
   gas: 'Gas Station',
   drugstores: 'Pharmacy & Drugstore',
+  apple: 'Apple & Partners',
 };
