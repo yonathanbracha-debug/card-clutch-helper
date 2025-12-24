@@ -2,14 +2,16 @@ import { useState, useMemo, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CardImage } from '@/components/CardImage';
+import { CardInfoDrawer } from '@/components/CardInfoDrawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useWalletCards } from '@/hooks/useWalletCards';
-import { useCreditCards } from '@/hooks/useCreditCards';
+import { useCreditCards, CreditCardDB } from '@/hooks/useCreditCards';
 import { 
   Search, 
   Plus, 
@@ -18,7 +20,7 @@ import {
   Wallet, 
   AlertCircle,
   ChevronDown,
-  ExternalLink,
+  Info,
   Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,6 +38,23 @@ import {
 } from "@/components/ui/collapsible";
 import { Link } from 'react-router-dom';
 
+// Data integrity check for Amex Gold
+function checkDataIntegrity(cards: CreditCardDB[]): { stale: boolean; message: string } {
+  const amexGold = cards.find(c => 
+    c.name.toLowerCase().includes('gold') && 
+    c.issuer_name.toLowerCase().includes('american express')
+  );
+  
+  if (amexGold && amexGold.annual_fee_cents === 25000) {
+    return { 
+      stale: true, 
+      message: 'Catalog stale: Amex Gold shows $250 but should be $325' 
+    };
+  }
+  
+  return { stale: false, message: '' };
+}
+
 const Vault = () => {
   const { user } = useAuth();
   const { preferences, loading: prefsLoading, refetch: refetchPrefs } = useUserPreferences();
@@ -51,6 +70,11 @@ const Vault = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [issuerFilter, setIssuerFilter] = useState<string>('all');
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [selectedCardForDrawer, setSelectedCardForDrawer] = useState<CreditCardDB | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Data integrity check
+  const dataIntegrity = useMemo(() => checkDataIntegrity(cards), [cards]);
 
   // Show onboarding if not completed
   useEffect(() => {
@@ -64,6 +88,12 @@ const Vault = () => {
     refetchPrefs();
   };
 
+  const handleOpenDrawer = (card: CreditCardDB, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedCardForDrawer(card);
+    setDrawerOpen(true);
+  };
+
   // Get unique issuers from DB cards
   const issuers = useMemo(() => {
     const unique = [...new Set(cards.map(c => c.issuer_name))];
@@ -75,7 +105,8 @@ const Vault = () => {
     return cards.filter(card => {
       const matchesSearch = 
         card.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        card.issuer_name.toLowerCase().includes(searchQuery.toLowerCase());
+        card.issuer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        card.reward_summary.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesIssuer = issuerFilter === 'all' || card.issuer_name === issuerFilter;
       return matchesSearch && matchesIssuer;
     });
@@ -108,8 +139,24 @@ const Vault = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="pt-20 pb-12 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <main className="pt-20 pb-12">
+          <div className="container max-w-6xl mx-auto px-4">
+            <div className="mb-8">
+              <Skeleton className="h-9 w-48 mb-2" />
+              <Skeleton className="h-5 w-96" />
+            </div>
+            <div className="grid lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-4">
+                <Skeleton className="h-12 w-full" />
+                {[1, 2, 3].map(i => (
+                  <Skeleton key={i} className="h-24 w-full" />
+                ))}
+              </div>
+              <div>
+                <Skeleton className="h-64 w-full" />
+              </div>
+            </div>
+          </div>
         </main>
         <Footer />
       </div>
@@ -124,13 +171,26 @@ const Vault = () => {
         open={showOnboarding} 
         onComplete={handleOnboardingComplete}
       />
+
+      <CardInfoDrawer 
+        card={selectedCardForDrawer}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+      />
       
       <main className="pt-20 pb-12">
         <div className="container max-w-6xl mx-auto px-4">
+          {/* Data Integrity Warning (dev) */}
+          {dataIntegrity.stale && (
+            <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/50 text-red-500 text-sm">
+              ⚠️ {dataIntegrity.message}
+            </div>
+          )}
+
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">My Wallet</h1>
             <p className="text-muted-foreground">
-              Select the credit cards you own to get personalized recommendations.
+              Right card. Right moment. Select your cards to get personalized recommendations.
             </p>
           </div>
 
@@ -178,6 +238,7 @@ const Vault = () => {
                       <div className="space-y-2">
                         {issuerCards.map(card => {
                           const isSelected = selectedCardIds.includes(card.id);
+                          const annualFee = card.annual_fee_cents / 100;
                           return (
                             <div
                               key={card.id}
@@ -201,20 +262,17 @@ const Vault = () => {
                                   {card.reward_summary}
                                 </p>
                               </div>
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
                                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                  ${card.annual_fee_cents / 100}/yr
+                                  {annualFee === 0 ? 'Free' : `$${annualFee}/yr`}
                                 </span>
-                                <a
-                                  href={card.source_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="p-1 rounded hover:bg-muted-foreground/20 transition-colors"
-                                  title="View official terms"
+                                <button
+                                  onClick={(e) => handleOpenDrawer(card, e)}
+                                  className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                                  title="View card details"
                                 >
-                                  <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                                </a>
+                                  <Info className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                                </button>
                                 <div className={cn(
                                   "w-6 h-6 rounded-full flex items-center justify-center transition-colors",
                                   isSelected 
@@ -233,8 +291,12 @@ const Vault = () => {
                 ))}
 
                 {Object.keys(groupedCards).length === 0 && (
-                  <div className="py-12 text-center text-muted-foreground">
-                    No cards found matching your search.
+                  <div className="py-12 text-center">
+                    <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">No cards found.</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Try adjusting your search or filters.
+                    </p>
                   </div>
                 )}
               </div>
@@ -254,18 +316,19 @@ const Vault = () => {
 
                   {selectedCardDetails.length === 0 ? (
                     <div className="py-8 text-center">
-                      <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                      <Wallet className="w-8 h-8 text-muted-foreground/50 mx-auto mb-3" />
                       <p className="text-sm text-muted-foreground">
-                        No cards selected yet.
+                        Your wallet is empty.
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Select cards from the list to add them to your wallet.
+                        Select cards to get personalized recommendations.
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {selectedCardDetails.map(card => {
                         const walletCard = getWalletCard(card.id);
+                        const annualFee = card.annual_fee_cents / 100;
                         return (
                           <div key={card.id} className="p-3 rounded-lg bg-muted/50 space-y-3">
                             <div className="flex items-center gap-3">
@@ -277,7 +340,9 @@ const Vault = () => {
                               />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">{card.name}</p>
-                                <p className="text-xs text-muted-foreground">{card.issuer_name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {annualFee === 0 ? 'No fee' : `$${annualFee}/yr`}
+                                </p>
                               </div>
                               <button
                                 onClick={(e) => {
@@ -303,10 +368,10 @@ const Vault = () => {
                                       "px-2 py-0.5 rounded text-xs capitalize transition-colors",
                                       walletCard?.utilization_status === level || (!walletCard && level === 'low')
                                         ? level === 'low' 
-                                          ? 'bg-emerald-500/20 text-emerald-600'
+                                          ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
                                           : level === 'medium'
-                                            ? 'bg-amber-500/20 text-amber-600'
-                                            : 'bg-red-500/20 text-red-600'
+                                            ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
+                                            : 'bg-red-500/20 text-red-600 dark:text-red-400'
                                         : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
                                     )}
                                   >
