@@ -19,9 +19,11 @@ import {
   Link as LinkIcon,
   Info,
   Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getRecommendationFromDB, Recommendation } from '@/lib/recommendationEngineV2';
+import { validateUrl, getDisplayDomain } from '@/lib/urlSafety';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { useAllCardRewardRules } from '@/hooks/useCardRewardRules';
 import { useAllMerchantExclusions } from '@/hooks/useMerchantExclusions';
@@ -48,22 +50,35 @@ const Analyze = () => {
   const { exclusions: allExclusions, loading: exclusionsLoading } = useAllMerchantExclusions();
   
   const [url, setUrl] = useState('');
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showDecisionTrace, setShowDecisionTrace] = useState(false);
   const [showSavePrompt, setShowSavePrompt] = useState(false);
 
-  const extractDomain = (url: string): string => {
-    try {
-      const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
-      return urlObj.hostname.replace('www.', '');
-    } catch {
-      return url;
+  const handleUrlChange = (value: string) => {
+    setUrl(value);
+    // Clear error when user starts typing
+    if (urlError) {
+      setUrlError(null);
     }
   };
 
   const handleAnalyze = async () => {
-    if (!url.trim()) return;
+    if (!url.trim()) {
+      setUrlError('Please enter a URL');
+      return;
+    }
+    
+    // Validate URL before processing
+    const validation = validateUrl(url);
+    if (!validation.ok) {
+      setUrlError(validation.error || 'Invalid URL');
+      return;
+    }
+    
+    // Clear any previous error
+    setUrlError(null);
     
     // Use demo if no cards selected
     if (!hasCards) {
@@ -132,8 +147,8 @@ const Analyze = () => {
                 <Input
                   placeholder="Paste any shopping URL (e.g., amazon.com, target.com)..."
                   value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  className="pl-10 h-12"
+                  onChange={(e) => handleUrlChange(e.target.value)}
+                  className={cn("pl-10 h-12", urlError && "border-destructive")}
                   onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
                 />
               </div>
@@ -147,6 +162,14 @@ const Analyze = () => {
                 <Search className="w-4 h-4" />
               </Button>
             </div>
+            
+            {/* URL validation error */}
+            {urlError && (
+              <div className="flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="w-4 h-4" />
+                <span>{urlError}</span>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-2 pt-2">
               <span className="text-xs text-muted-foreground">Try:</span>
@@ -229,7 +252,7 @@ const Analyze = () => {
                     <div className="p-4 rounded-lg bg-muted/50 space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Merchant</span>
-                        <span>{recommendation.merchant?.name || extractDomain(url)}</span>
+                        <span>{recommendation.merchant?.name || getDisplayDomain(url)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Category</span>

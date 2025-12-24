@@ -5,8 +5,9 @@
 import { CreditCardDB } from '@/hooks/useCreditCards';
 import { CardRewardRule } from '@/hooks/useCardRewardRules';
 import { MerchantExclusion } from '@/hooks/useMerchantExclusions';
+import { validateUrl, extractDomainSafe } from '@/lib/urlSafety';
 
-export type MerchantCategory = 
+export type MerchantCategory =
   | 'dining'
   | 'groceries'
   | 'travel'
@@ -130,24 +131,16 @@ export interface Recommendation {
   alternatives: CardAnalysis[];
 }
 
-function extractDomain(url: string): string {
-  try {
-    let cleanUrl = url.trim().toLowerCase();
-    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-      cleanUrl = 'https://' + cleanUrl;
-    }
-    const urlObj = new URL(cleanUrl);
-    let hostname = urlObj.hostname;
-    if (hostname.startsWith('www.')) {
-      hostname = hostname.substring(4);
-    }
-    return hostname;
-  } catch {
-    let domain = url.trim().toLowerCase();
-    domain = domain.replace(/^(https?:\/\/)?(www\.)?/, '');
-    domain = domain.split('/')[0];
-    return domain;
+/**
+ * Safely extracts domain from URL using validation utilities
+ * Returns null if URL is invalid or dangerous
+ */
+function extractDomain(url: string): string | null {
+  const validation = validateUrl(url);
+  if (!validation.ok || !validation.domain) {
+    return null;
   }
+  return validation.domain;
 }
 
 function inferCategoryFromDomain(domain: string): { category: MerchantCategory; merchantName: string } {
@@ -271,6 +264,12 @@ export function getRecommendationFromDB(
   }
 
   const domain = extractDomain(url);
+  
+  // Return null if URL validation failed (invalid scheme, etc.)
+  if (!domain) {
+    return null;
+  }
+  
   const knownMerchant = merchantMappings.find(
     m => domain.includes(m.domain) || m.domain.includes(domain)
   );
