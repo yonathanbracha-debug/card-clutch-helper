@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface CreditCardDB {
@@ -13,6 +13,7 @@ export interface CreditCardDB {
   verification_status: string;
   issuer_name: string;
   issuer_id: string | null;
+  is_active: boolean;
 }
 
 export function useCreditCards() {
@@ -20,54 +21,57 @@ export function useCreditCards() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    async function fetchCards() {
-      try {
-        const { data, error } = await supabase
-          .from('credit_cards')
-          .select(`
-            id,
-            name,
-            network,
-            annual_fee_cents,
-            reward_summary,
-            image_url,
-            source_url,
-            last_verified_at,
-            verification_status,
-            issuer_id,
-            issuers!inner(id, name)
-          `)
-          .eq('is_active', true)
-          .order('name');
+  const fetchCards = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('credit_cards')
+        .select(`
+          id,
+          name,
+          network,
+          annual_fee_cents,
+          reward_summary,
+          image_url,
+          source_url,
+          last_verified_at,
+          verification_status,
+          issuer_id,
+          is_active,
+          issuers!inner(id, name)
+        `)
+        .eq('is_active', true)
+        .order('name');
 
-        if (error) throw error;
-        
-        const transformed = (data || []).map(card => ({
-          id: card.id,
-          name: card.name,
-          network: card.network,
-          annual_fee_cents: card.annual_fee_cents,
-          reward_summary: card.reward_summary,
-          image_url: card.image_url,
-          source_url: card.source_url,
-          last_verified_at: card.last_verified_at,
-          verification_status: card.verification_status,
-          issuer_id: card.issuer_id,
-          issuer_name: (card.issuers as any)?.name || 'Unknown'
-        }));
-        
-        setCards(transformed);
-      } catch (err) {
-        console.error('Failed to fetch cards:', err);
-        setError(err instanceof Error ? err : new Error('Failed to fetch cards'));
-      } finally {
-        setLoading(false);
-      }
+      if (error) throw error;
+      
+      const transformed = (data || []).map(card => ({
+        id: card.id,
+        name: card.name,
+        network: card.network,
+        annual_fee_cents: card.annual_fee_cents,
+        reward_summary: card.reward_summary,
+        image_url: card.image_url,
+        source_url: card.source_url,
+        last_verified_at: card.last_verified_at,
+        verification_status: card.verification_status,
+        issuer_id: card.issuer_id,
+        issuer_name: (card.issuers as any)?.name || 'Unknown',
+        is_active: card.is_active
+      }));
+      
+      setCards(transformed);
+    } catch (err) {
+      console.error('Failed to fetch cards:', err);
+      setError(err instanceof Error ? err : new Error('Failed to fetch cards'));
+    } finally {
+      setLoading(false);
     }
-
-    fetchCards();
   }, []);
 
-  return { cards, loading, error };
+  useEffect(() => {
+    fetchCards();
+  }, [fetchCards]);
+
+  return { cards, loading, error, refetch: fetchCards };
 }
