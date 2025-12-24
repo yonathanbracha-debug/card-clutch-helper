@@ -29,14 +29,30 @@ export function Hero({
   return (
     <section className="px-4 py-16 md:py-24">
       <div className="container max-w-2xl mx-auto">
-        {/* Headline - authority first */}
+        {/* Headline - sharp, preventative language */}
         <div className="text-center mb-12">
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold mb-4 text-balance animate-fade-in">
-            Credit decisions should happen before damage is done.
+            Make the right credit move before you swipe.
           </h1>
           <p className="text-muted-foreground text-lg md:text-xl max-w-xl mx-auto animate-fade-in">
-            CardClutch tells you which card to use at the moment of purchase—not after.
+            CardClutch helps you choose the best card at the moment of purchase—so you protect your credit and maximize rewards in real time.
           </p>
+        </div>
+
+        {/* Value bullets - concise, no fluff */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10 text-center text-sm">
+          <div className="p-3">
+            <div className="font-medium text-foreground mb-1">Prevent mistakes</div>
+            <div className="text-muted-foreground">Before they happen</div>
+          </div>
+          <div className="p-3">
+            <div className="font-medium text-foreground mb-1">Avoid exclusions</div>
+            <div className="text-muted-foreground">Know the fine print</div>
+          </div>
+          <div className="p-3">
+            <div className="font-medium text-foreground mb-1">Maximize rewards</div>
+            <div className="text-muted-foreground">Without risk or gaming</div>
+          </div>
         </div>
 
         {/* Decision Engine */}
@@ -89,7 +105,7 @@ export function Hero({
           </div>
         )}
 
-        {/* Why statement */}
+        {/* Privacy statement */}
         <div className="mt-12 text-center">
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
             No accounts. No tracking. All logic runs locally in your browser.

@@ -7,6 +7,14 @@ import {
   categoryLabels 
 } from './cardData';
 
+export interface CardAnalysis {
+  card: CreditCard;
+  effectiveMultiplier: number;
+  reason: string;
+  excluded: boolean;
+  exclusionReason?: string;
+}
+
 export interface Recommendation {
   card: CreditCard;
   merchant: MerchantMapping | null;
@@ -15,14 +23,13 @@ export interface Recommendation {
   multiplier: number;
   reason: string;
   confidence: 'high' | 'medium' | 'low';
+  alternatives: CardAnalysis[];
 }
 
 function extractDomain(url: string): string {
   try {
-    // Clean up the input
     let cleanUrl = url.trim().toLowerCase();
     
-    // Add protocol if missing
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
       cleanUrl = 'https://' + cleanUrl;
     }
@@ -30,14 +37,12 @@ function extractDomain(url: string): string {
     const urlObj = new URL(cleanUrl);
     let hostname = urlObj.hostname;
     
-    // Remove www. prefix
     if (hostname.startsWith('www.')) {
       hostname = hostname.substring(4);
     }
     
     return hostname;
   } catch {
-    // If URL parsing fails, try to extract domain manually
     let domain = url.trim().toLowerCase();
     domain = domain.replace(/^(https?:\/\/)?(www\.)?/, '');
     domain = domain.split('/')[0];
@@ -46,66 +51,122 @@ function extractDomain(url: string): string {
 }
 
 function inferCategoryFromDomain(domain: string): { category: MerchantCategory; merchantName: string } {
-  // Common domain patterns for category inference
   const patterns: { pattern: RegExp; category: MerchantCategory }[] = [
-    { pattern: /food|eat|dine|restaurant|pizza|burger|sushi|taco|thai|chinese|indian|mexican/i, category: 'dining' },
-    { pattern: /grocery|market|fresh|organic|foods/i, category: 'groceries' },
-    { pattern: /fashion|cloth|wear|style|apparel|shoes|sneaker/i, category: 'apparel' },
-    { pattern: /stream|movie|music|game|play|entertainment/i, category: 'entertainment' },
-    { pattern: /travel|hotel|flight|air|vacation|trip/i, category: 'travel' },
+    { pattern: /food|eat|dine|restaurant|pizza|burger|sushi|taco|thai|chinese|indian|mexican|cafe|coffee/i, category: 'dining' },
+    { pattern: /grocery|market|fresh|organic|foods|supermarket/i, category: 'groceries' },
+    { pattern: /fashion|cloth|wear|style|apparel|shoes|sneaker|boutique/i, category: 'apparel' },
+    { pattern: /stream|movie|music|game|play|entertainment/i, category: 'streaming' },
+    { pattern: /travel|hotel|flight|air|vacation|trip|booking/i, category: 'travel' },
     { pattern: /pharmacy|drug|health|med|rx/i, category: 'drugstores' },
-    { pattern: /gas|fuel|petro/i, category: 'gas' },
+    { pattern: /gas|fuel|petro|station/i, category: 'gas' },
   ];
 
   for (const { pattern, category } of patterns) {
     if (pattern.test(domain)) {
-      // Create a readable merchant name from domain
       const baseName = domain.split('.')[0];
       const merchantName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
       return { category, merchantName };
     }
   }
 
-  // Default to general
   const baseName = domain.split('.')[0];
   const merchantName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
   return { category: 'general', merchantName };
 }
 
-function getCardMultiplier(card: CreditCard, category: MerchantCategory, isWarehouse: boolean, isApplePartner: boolean): number {
-  // Special handling for Amex Gold - no grocery bonus at warehouse/big box
-  if (card.id === 'amex-gold' && category === 'groceries' && isWarehouse) {
-    return 1; // Falls back to base rate
-  }
+function getCardMultiplier(
+  card: CreditCard, 
+  category: MerchantCategory, 
+  merchant: MerchantMapping | null
+): { multiplier: number; excluded: boolean; exclusionReason?: string } {
   
-  // Special handling for Apple Card - 3% at Apple partners
-  if (card.id === 'apple-card') {
-    if (category === 'apple' || isApplePartner) {
-      return 3;
-    }
-    // Note: Apple Pay 2% would apply but we can't detect that here
-    // Conservative: assume physical card usage at 1%
-    const generalReward = card.rewards.find(r => r.category === 'general');
-    return generalReward?.multiplier || 1;
-  }
-  
-  // Find the reward for this category
-  const reward = card.rewards.find(r => r.category === category);
-  if (reward) {
-    return reward.multiplier;
-  }
-  
-  // For streaming, check if card has entertainment bonus as fallback
-  if (category === 'streaming') {
-    const entertainmentReward = card.rewards.find(r => r.category === 'entertainment');
-    if (entertainmentReward) {
-      return entertainmentReward.multiplier;
+  // Check for warehouse/grocery exclusions
+  if (merchant?.excludedFromGrocery && category === 'groceries') {
+    // Check if this card has grocery exclusions that apply
+    const groceryReward = card.rewards.find(r => r.category === 'groceries');
+    if (groceryReward?.exclusions) {
+      const isExcluded = groceryReward.exclusions.some(
+        ex => merchant.name.toLowerCase().includes(ex.toLowerCase()) ||
+              ex.toLowerCase().includes(merchant.name.toLowerCase())
+      );
+      if (isExcluded) {
+        const generalReward = card.rewards.find(r => r.category === 'general');
+        return {
+          multiplier: generalReward?.multiplier || 1,
+          excluded: true,
+          exclusionReason: `${merchant.name} is excluded from grocery bonus`,
+        };
+      }
     }
   }
-  
+
+  // Check if warehouse clubs are excluded from grocery
+  if (merchant?.isWarehouse) {
+    const groceryReward = card.rewards.find(r => r.category === 'groceries');
+    if (groceryReward?.exclusions?.some(ex => 
+      ['costco', 'sam\'s club', 'bj\'s', 'warehouse'].some(w => ex.toLowerCase().includes(w))
+    )) {
+      const generalReward = card.rewards.find(r => r.category === 'general');
+      return {
+        multiplier: generalReward?.multiplier || 1,
+        excluded: true,
+        exclusionReason: 'Warehouse clubs excluded from grocery bonus',
+      };
+    }
+  }
+
+  // Direct category match
+  const directReward = card.rewards.find(r => r.category === category);
+  if (directReward) {
+    return { multiplier: directReward.multiplier, excluded: false };
+  }
+
+  // Category fallbacks
+  const fallbacks: Record<string, string[]> = {
+    flights: ['travel'],
+    hotels: ['travel'],
+    transit: ['travel'],
+    streaming: ['entertainment'],
+    online: ['general'],
+    warehouse: ['groceries', 'general'],
+    apparel: ['general'],
+  };
+
+  const categoryFallbacks = fallbacks[category] || [];
+  for (const fallback of categoryFallbacks) {
+    const fallbackReward = card.rewards.find(r => r.category === fallback);
+    if (fallbackReward) {
+      return { multiplier: fallbackReward.multiplier, excluded: false };
+    }
+  }
+
   // Fall back to general rate
   const generalReward = card.rewards.find(r => r.category === 'general');
-  return generalReward?.multiplier || 1;
+  return { multiplier: generalReward?.multiplier || 1, excluded: false };
+}
+
+function analyzeCard(
+  card: CreditCard, 
+  category: MerchantCategory, 
+  merchant: MerchantMapping | null
+): CardAnalysis {
+  const { multiplier, excluded, exclusionReason } = getCardMultiplier(card, category, merchant);
+  
+  let reason: string;
+  if (excluded && exclusionReason) {
+    reason = exclusionReason;
+  } else {
+    const reward = card.rewards.find(r => r.category === category);
+    reason = reward?.description || `${multiplier}X on this purchase`;
+  }
+
+  return {
+    card,
+    effectiveMultiplier: multiplier,
+    reason,
+    excluded,
+    exclusionReason,
+  };
 }
 
 export function getRecommendation(
@@ -117,24 +178,19 @@ export function getRecommendation(
   }
 
   const domain = extractDomain(url);
-  
-  // Find known merchant
-  const knownMerchant = merchantMappings.find(m => domain.includes(m.domain) || m.domain.includes(domain));
+  const knownMerchant = merchantMappings.find(
+    m => domain.includes(m.domain) || m.domain.includes(domain)
+  );
   
   let category: MerchantCategory;
   let merchantName: string;
   let confidence: 'high' | 'medium' | 'low';
-  let isWarehouse = false;
-  let isApplePartner = false;
 
   if (knownMerchant) {
     category = knownMerchant.category;
     merchantName = knownMerchant.name;
-    isWarehouse = knownMerchant.isWarehouse || false;
-    isApplePartner = knownMerchant.isApplePartner || false;
     confidence = 'high';
   } else {
-    // Infer category from domain
     const inferred = inferCategoryFromDomain(domain);
     category = inferred.category;
     merchantName = inferred.merchantName;
@@ -148,64 +204,50 @@ export function getRecommendation(
     return null;
   }
 
-  // Calculate best card
-  let bestCard = availableCards[0];
-  let bestMultiplier = getCardMultiplier(bestCard, category, isWarehouse, isApplePartner);
+  // Analyze all cards
+  const analyses: CardAnalysis[] = availableCards.map(card => 
+    analyzeCard(card, category, knownMerchant || null)
+  );
 
-  for (const card of availableCards) {
-    const multiplier = getCardMultiplier(card, category, isWarehouse, isApplePartner);
-    if (multiplier > bestMultiplier) {
-      bestMultiplier = multiplier;
-      bestCard = card;
+  // Sort by multiplier (highest first), preferring non-excluded cards
+  analyses.sort((a, b) => {
+    // Non-excluded cards first
+    if (a.excluded !== b.excluded) {
+      return a.excluded ? 1 : -1;
     }
-  }
+    // Then by multiplier
+    if (b.effectiveMultiplier !== a.effectiveMultiplier) {
+      return b.effectiveMultiplier - a.effectiveMultiplier;
+    }
+    // Prefer lower annual fee cards as tiebreaker
+    const aFee = a.card.annualFee || 0;
+    const bFee = b.card.annualFee || 0;
+    return aFee - bFee;
+  });
 
-  // If all cards have the same multiplier, prefer higher flat-rate cards
-  // Citi Double Cash (2%) > Chase Freedom Unlimited (1.5%) for general purchases
-  const citiDouble = availableCards.find(c => c.id === 'citi-double-cash');
-  const cfu = availableCards.find(c => c.id === 'chase-freedom-unlimited');
-  
-  if (citiDouble && bestMultiplier <= 2) {
-    const citiMultiplier = getCardMultiplier(citiDouble, category, isWarehouse, isApplePartner);
-    if (citiMultiplier >= bestMultiplier) {
-      bestCard = citiDouble;
-      bestMultiplier = citiMultiplier;
-    }
-  } else if (cfu && bestMultiplier <= 1.5) {
-    const cfuMultiplier = getCardMultiplier(cfu, category, isWarehouse, isApplePartner);
-    if (cfuMultiplier >= bestMultiplier) {
-      bestCard = cfu;
-      bestMultiplier = cfuMultiplier;
-    }
-  }
+  const bestCard = analyses[0];
+  const alternatives = analyses.slice(1);
 
   // Generate reason
   let reason: string;
-  
-  if (bestMultiplier >= 3) {
-    reason = `Earn ${bestMultiplier}X on ${categoryLabels[category].toLowerCase()} purchases at ${merchantName}.`;
-  } else if (bestMultiplier >= 1.5) {
-    reason = `Earn ${bestMultiplier}X on this purchase. This is your best rate for ${merchantName}.`;
+  if (bestCard.excluded) {
+    reason = `Safe fallback: ${bestCard.exclusionReason}. Using ${bestCard.effectiveMultiplier}X base rate.`;
+  } else if (bestCard.effectiveMultiplier >= 3) {
+    reason = `Best rate for ${categoryLabels[category].toLowerCase()}: ${bestCard.effectiveMultiplier}X.`;
+  } else if (bestCard.effectiveMultiplier >= 1.5) {
+    reason = `${bestCard.effectiveMultiplier}X is your best available rate for this merchant.`;
   } else {
-    reason = `Earn ${bestMultiplier}X base rate. No category bonus applies to this merchant.`;
-  }
-
-  // Add warehouse exclusion note if applicable
-  if (isWarehouse && bestCard.id !== 'amex-gold') {
-    // Check if Amex Gold was in the selection
-    const hasAmexGold = selectedCardIds.includes('amex-gold');
-    if (hasAmexGold && category !== 'warehouse') {
-      reason += ` Note: Amex Gold grocery bonus doesn't apply at ${merchantName}.`;
-    }
+    reason = `No category bonus applies. Using ${bestCard.effectiveMultiplier}X base rate.`;
   }
 
   return {
-    card: bestCard,
-    merchant: knownMerchant || null,
+    card: bestCard.card,
+    merchant: knownMerchant || { domain, name: merchantName, category },
     category,
     categoryLabel: categoryLabels[category],
-    multiplier: bestMultiplier,
+    multiplier: bestCard.effectiveMultiplier,
     reason,
     confidence,
+    alternatives,
   };
 }
