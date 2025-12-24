@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -7,17 +7,60 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Mail, Lock, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+type AuthMode = 'login' | 'signup' | 'magic-link' | 'magic-link-sent';
 
 const Auth = () => {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const location = useLocation();
+  const { user } = useAuth();
+  const [mode, setMode] = useState<AuthMode>('magic-link');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      const from = (location.state as any)?.from?.pathname || '/vault';
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, location]);
+
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/vault`,
+        },
+      });
+
+      if (error) throw error;
+
+      setMode('magic-link-sent');
+      toast({
+        title: 'Check your email',
+        description: 'We sent you a magic link to sign in.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send magic link.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
@@ -27,7 +70,7 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/vault`,
           },
         });
 
@@ -35,7 +78,7 @@ const Auth = () => {
           if (error.message.includes('already registered')) {
             toast({
               title: 'Account exists',
-              description: 'This email is already registered. Try signing in instead.',
+              description: 'This email is already registered. Try signing in.',
               variant: 'destructive',
             });
           } else {
@@ -43,10 +86,17 @@ const Auth = () => {
           }
         } else {
           toast({
-            title: 'Account created',
-            description: 'Check your email to confirm your account, or sign in directly.',
+            title: 'Account created!',
+            description: 'You can now sign in.',
           });
-          setMode('login');
+          // Auto-login after signup (auto-confirm is enabled)
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (!signInError) {
+            navigate('/vault');
+          }
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -65,23 +115,42 @@ const Auth = () => {
             throw error;
           }
         } else {
-          toast({
-            title: 'Welcome back!',
-            description: 'You have been signed in successfully.',
-          });
           navigate('/vault');
         }
       }
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Something went wrong. Please try again.',
+        description: error.message || 'Something went wrong.',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
   };
+
+  if (mode === 'magic-link-sent') {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-20 pb-12">
+          <div className="container max-w-md mx-auto px-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+              <Mail className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">Check your email</h1>
+            <p className="text-muted-foreground mb-6">
+              We sent a magic link to <strong>{email}</strong>. Click the link to sign in.
+            </p>
+            <Button variant="outline" onClick={() => setMode('magic-link')}>
+              Try a different email
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -91,95 +160,158 @@ const Auth = () => {
         <div className="container max-w-md mx-auto px-4">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-2">
-              {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+              {mode === 'magic-link' ? 'Sign In' : mode === 'login' ? 'Welcome Back' : 'Create Account'}
             </h1>
             <p className="text-muted-foreground">
-              {mode === 'login' 
-                ? 'Sign in to access your saved wallet and preferences.'
-                : 'Create an account to save your wallet across devices.'
+              {mode === 'magic-link' 
+                ? 'Get a magic link sent to your email.'
+                : mode === 'login' 
+                  ? 'Sign in to access your wallet.'
+                  : 'Create an account to save your wallet.'
               }
             </p>
           </div>
 
-          {/* Mode Toggle */}
-          <div className="flex p-1 rounded-lg bg-muted mb-8">
-            <button
-              onClick={() => setMode('login')}
-              className={cn(
-                "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors",
-                mode === 'login' 
-                  ? 'bg-background shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => setMode('signup')}
-              className={cn(
-                "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors",
-                mode === 'signup' 
-                  ? 'bg-background shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Sign Up
-            </button>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
+          {/* Magic Link Form */}
+          {mode === 'magic-link' && (
+            <form onSubmit={handleMagicLink} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                    autoFocus
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder={mode === 'signup' ? 'Create a password' : 'Enter your password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  minLength={6}
-                  required
-                />
+              <Button type="submit" className="w-full gap-2" disabled={loading}>
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Send Magic Link
+                  </>
+                )}
+              </Button>
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">or</span>
+                </div>
               </div>
-              {mode === 'signup' && (
-                <p className="text-xs text-muted-foreground">
-                  Password must be at least 6 characters.
-                </p>
-              )}
-            </div>
 
-            <Button type="submit" className="w-full gap-2" disabled={loading}>
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  {mode === 'login' ? 'Sign In' : 'Create Account'}
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </Button>
-          </form>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => setMode('login')}
+              >
+                Sign in with password
+              </Button>
+            </form>
+          )}
 
-          {/* Note */}
+          {/* Password Form */}
+          {(mode === 'login' || mode === 'signup') && (
+            <>
+              {/* Mode Toggle */}
+              <div className="flex p-1 rounded-lg bg-muted mb-6">
+                <button
+                  onClick={() => setMode('login')}
+                  className={cn(
+                    "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors",
+                    mode === 'login' 
+                      ? 'bg-background shadow-sm' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => setMode('signup')}
+                  className={cn(
+                    "flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors",
+                    mode === 'signup' 
+                      ? 'bg-background shadow-sm' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Sign Up
+                </button>
+              </div>
+
+              <form onSubmit={handlePasswordAuth} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder={mode === 'signup' ? 'Create a password' : 'Enter password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10"
+                      minLength={6}
+                      required
+                    />
+                  </div>
+                  {mode === 'signup' && (
+                    <p className="text-xs text-muted-foreground">
+                      Password must be at least 6 characters.
+                    </p>
+                  )}
+                </div>
+
+                <Button type="submit" className="w-full gap-2" disabled={loading}>
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      {mode === 'login' ? 'Sign In' : 'Create Account'}
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              <button
+                onClick={() => setMode('magic-link')}
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground mt-4"
+              >
+                ← Back to magic link
+              </button>
+            </>
+          )}
+
           <p className="text-center text-xs text-muted-foreground mt-8">
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>

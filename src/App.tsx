@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Vault from "./pages/Vault";
 import Recommend from "./pages/Recommend";
@@ -26,14 +27,26 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* Public Routes */}
               <Route path="/" element={<Index />} />
-              <Route path="/vault" element={<Vault />} />
-              <Route path="/recommend" element={<Recommend />} />
               <Route path="/cards" element={<Cards />} />
               <Route path="/cards/:id" element={<CardDetail />} />
               <Route path="/about" element={<About />} />
               <Route path="/roadmap" element={<RoadmapPage />} />
               <Route path="/auth" element={<Auth />} />
+              
+              {/* Protected Routes */}
+              <Route path="/vault" element={
+                <ProtectedRoute>
+                  <Vault />
+                </ProtectedRoute>
+              } />
+              <Route path="/recommend" element={
+                <ProtectedRoute>
+                  <Recommend />
+                </ProtectedRoute>
+              } />
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

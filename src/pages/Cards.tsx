@@ -5,9 +5,9 @@ import { CardImage } from '@/components/CardImage';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, ChevronRight, Filter, X } from 'lucide-react';
+import { Search, ChevronRight, Filter, X, Loader2, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { creditCards } from '@/lib/cardData';
+import { useCreditCards } from '@/hooks/useCreditCards';
 import { Link } from 'react-router-dom';
 import {
   Select,
@@ -18,32 +18,34 @@ import {
 } from "@/components/ui/select";
 
 const Cards = () => {
+  const { cards, loading } = useCreditCards();
   const [searchQuery, setSearchQuery] = useState('');
   const [issuerFilter, setIssuerFilter] = useState<string>('all');
   const [networkFilter, setNetworkFilter] = useState<string>('all');
   const [feeFilter, setFeeFilter] = useState<string>('all');
 
-  const issuers = useMemo(() => [...new Set(creditCards.map(c => c.issuer))].sort(), []);
-  const networks = useMemo(() => [...new Set(creditCards.map(c => c.network))].sort(), []);
+  const issuers = useMemo(() => [...new Set(cards.map(c => c.issuer_name))].sort(), [cards]);
+  const networks = useMemo(() => [...new Set(cards.map(c => c.network))].sort(), [cards]);
 
   const filteredCards = useMemo(() => {
-    return creditCards.filter(card => {
+    return cards.filter(card => {
       const matchesSearch = 
         card.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        card.issuer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        card.rewardSummary.toLowerCase().includes(searchQuery.toLowerCase());
+        card.issuer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        card.reward_summary.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const matchesIssuer = issuerFilter === 'all' || card.issuer === issuerFilter;
+      const matchesIssuer = issuerFilter === 'all' || card.issuer_name === issuerFilter;
       const matchesNetwork = networkFilter === 'all' || card.network.toLowerCase() === networkFilter;
       
+      const annualFee = card.annual_fee_cents / 100;
       let matchesFee = true;
-      if (feeFilter === 'free') matchesFee = card.annualFee === 0;
-      else if (feeFilter === 'under100') matchesFee = card.annualFee < 100;
-      else if (feeFilter === 'over100') matchesFee = card.annualFee >= 100;
+      if (feeFilter === 'free') matchesFee = annualFee === 0;
+      else if (feeFilter === 'under100') matchesFee = annualFee < 100;
+      else if (feeFilter === 'over100') matchesFee = annualFee >= 100;
       
       return matchesSearch && matchesIssuer && matchesNetwork && matchesFee;
     });
-  }, [searchQuery, issuerFilter, networkFilter, feeFilter]);
+  }, [cards, searchQuery, issuerFilter, networkFilter, feeFilter]);
 
   const hasActiveFilters = issuerFilter !== 'all' || networkFilter !== 'all' || feeFilter !== 'all';
 
@@ -54,6 +56,18 @@ const Cards = () => {
     setSearchQuery('');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-20 pb-12 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -63,7 +77,7 @@ const Cards = () => {
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Card Library</h1>
             <p className="text-muted-foreground">
-              Browse {creditCards.length} credit cards with verified reward details.
+              Browse {cards.length} credit cards with verified reward details.
             </p>
           </div>
 
@@ -122,7 +136,7 @@ const Cards = () => {
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  Showing {filteredCards.length} of {creditCards.length} cards
+                  Showing {filteredCards.length} of {cards.length} cards
                 </span>
                 <button
                   onClick={clearFilters}
@@ -145,21 +159,24 @@ const Cards = () => {
               >
                 <div className="flex items-start gap-4">
                   <CardImage 
-                    issuer={card.issuer}
+                    issuer={card.issuer_name}
                     cardName={card.name}
-                    network={card.network}
+                    network={card.network as any}
                     size="md"
                   />
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
                       {card.name}
                     </h3>
-                    <p className="text-sm text-muted-foreground">{card.issuer}</p>
+                    <p className="text-sm text-muted-foreground">{card.issuer_name}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <Badge variant="outline" className="text-xs">
                         {card.network.toUpperCase()}
                       </Badge>
-                      <VerificationBadge status="unverified" className="scale-90" />
+                      <VerificationBadge 
+                        status={card.verification_status === 'verified' ? 'verified' : 'unverified'} 
+                        className="scale-90" 
+                      />
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -169,24 +186,29 @@ const Cards = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Annual Fee</span>
                     <span className="font-medium">
-                      {card.annualFee === 0 ? 'Free' : `$${card.annualFee}`}
+                      {card.annual_fee_cents === 0 ? 'Free' : `$${card.annual_fee_cents / 100}`}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground line-clamp-2">
-                    {card.rewardSummary}
+                    {card.reward_summary}
                   </p>
                 </div>
 
-                {/* Top categories */}
-                <div className="mt-3 flex flex-wrap gap-1">
-                  {card.rewards.slice(0, 3).map((reward, i) => (
-                    <span
-                      key={i}
-                      className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary"
-                    >
-                      {reward.multiplier}x {reward.category}
-                    </span>
-                  ))}
+                {/* Source link */}
+                <div className="mt-3 flex items-center gap-2">
+                  <a
+                    href={card.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    View terms
+                  </a>
+                  <span className="text-xs text-muted-foreground">
+                    · Verified {new Date(card.last_verified_at).toLocaleDateString()}
+                  </span>
                 </div>
               </Link>
             ))}
