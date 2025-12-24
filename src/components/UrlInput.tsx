@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Search, Sparkles } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface UrlInputProps {
   onSubmit: (url: string) => void;
@@ -10,6 +10,7 @@ interface UrlInputProps {
 
 export function UrlInput({ onSubmit, isDisabled, defaultUrl }: UrlInputProps) {
   const [url, setUrl] = useState(defaultUrl || '');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (defaultUrl && !url) {
@@ -17,87 +18,70 @@ export function UrlInput({ onSubmit, isDisabled, defaultUrl }: UrlInputProps) {
     }
   }, [defaultUrl]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (url.trim()) {
-      onSubmit(url.trim());
-    }
+    if (!url.trim() || isDisabled) return;
+    
+    setIsLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    onSubmit(url.trim());
+    setIsLoading(false);
   };
 
-  const placeholderExamples = [
-    'amazon.com',
-    'doordash.com',
-    'costco.com',
-    'nike.com',
-  ];
+  const examples = ['amazon.com', 'doordash.com', 'costco.com', 'nike.com'];
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-xl mx-auto">
-      <div className="mb-2">
-        <label className="block text-sm font-medium text-foreground mb-1">
-          Paste a checkout or product page URL
-        </label>
-        <p className="text-xs text-muted-foreground">
-          CardClutch automatically detects the merchant and purchase category.
-        </p>
-      </div>
-      
-      <div className="relative mt-3">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-          <Search className="w-5 h-5" />
-        </div>
-        
-        <input
-          type="text"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="e.g., amazon.com or target.com"
-          className="w-full h-14 pl-12 pr-4 md:pr-40 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-          disabled={isDisabled}
-        />
-        
-        {/* Desktop: inline button */}
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden md:block">
-          <Button 
-            type="submit" 
-            variant="hero"
-            size="default"
-            disabled={isDisabled || !url.trim()}
+    <div className="w-full">
+      <form onSubmit={handleSubmit}>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="Paste any checkout URL..."
+            disabled={isDisabled}
+            className={cn(
+              "flex-1 px-4 py-3 rounded-lg border bg-background text-sm transition-colors",
+              "border-border focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+              "placeholder:text-muted-foreground",
+              "disabled:opacity-50 disabled:cursor-not-allowed"
+            )}
+          />
+          <button
+            type="submit"
+            disabled={!url.trim() || isDisabled || isLoading}
+            className={cn(
+              "px-4 py-3 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap",
+              "bg-primary text-primary-foreground hover:opacity-90",
+              "disabled:opacity-50 disabled:cursor-not-allowed"
+            )}
           >
-            <Sparkles className="w-4 h-4 mr-1" />
-            Get Recommendation
-          </Button>
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                Analyze
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
         </div>
-      </div>
-
-      {/* Mobile: full-width button below input */}
-      <div className="mt-3 md:hidden">
-        <Button 
-          type="submit" 
-          variant="hero"
-          size="lg"
-          className="w-full h-12"
-          disabled={isDisabled || !url.trim()}
-        >
-          <Sparkles className="w-4 h-4 mr-2" />
-          Get Recommendation
-        </Button>
-      </div>
-
+      </form>
+      
       {/* Quick examples */}
-      <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+      <div className="flex flex-wrap items-center gap-2 mt-3">
         <span className="text-xs text-muted-foreground">Try:</span>
-        {placeholderExamples.map((example) => (
+        {examples.map((example) => (
           <button
             key={example}
             type="button"
             onClick={() => setUrl(example)}
-            className="text-xs px-3 py-1.5 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors active:scale-95"
+            className="text-xs px-2.5 py-1 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
           >
             {example}
           </button>
         ))}
       </div>
-    </form>
+    </div>
   );
 }

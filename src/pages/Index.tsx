@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { Hero } from '@/components/Hero';
-import { CardLibrary } from '@/components/CardLibrary';
 import { HowItWorks } from '@/components/HowItWorks';
 import { PrivacyPromise } from '@/components/PrivacyPromise';
-import { Roadmap } from '@/components/Roadmap';
 import { Footer } from '@/components/Footer';
 import { getRecommendation, Recommendation } from '@/lib/recommendationEngine';
 import { usePersistedCards } from '@/hooks/usePersistedCards';
@@ -27,7 +25,6 @@ const Index = () => {
     const result = getRecommendation(url, selectedCards);
     setRecommendation(result);
     
-    // Add to recent searches if we got a result
     if (result) {
       addSearch({
         url,
@@ -44,7 +41,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background transition-colors duration-300">
+    <div className="min-h-screen bg-background">
       <Header theme={theme} onThemeToggle={toggleTheme} />
       
       <main className="pt-16">
@@ -55,18 +52,13 @@ const Index = () => {
           lastUrl={lastUrl}
           recentSearches={recentSearches}
           onClearSearches={clearSearches}
-        />
-        
-        <CardLibrary 
-          selectedCards={selectedCards} 
-          onToggleCard={handleToggleCard} 
+          selectedCards={selectedCards}
+          onToggleCard={handleToggleCard}
         />
         
         <HowItWorks />
         
         <PrivacyPromise />
-        
-        <Roadmap />
       </main>
 
       <Footer />

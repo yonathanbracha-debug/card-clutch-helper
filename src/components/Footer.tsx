@@ -1,39 +1,24 @@
-import { CreditCard, Heart } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function Footer() {
   return (
-    <footer className="py-12 px-4 border-t border-border">
-      <div className="container max-w-6xl mx-auto">
-        {/* Positioning statement */}
-        <div className="text-center mb-10 pb-10 border-b border-border">
-          <p className="text-sm text-muted-foreground max-w-lg mx-auto">
-            CardClutch is the intelligence layer behind a future browser extension and credit guidance platform.
-          </p>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          {/* Logo */}
-          <a href="/" className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
-              <CreditCard className="w-3 h-3 text-primary-foreground" />
-            </div>
-            <span className="font-display text-lg font-bold">
-              Card<span className="gradient-text">Clutch</span>
+    <footer className="py-8 px-4 border-t border-border">
+      <div className="container max-w-5xl mx-auto">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-6">
+            <Link to="/" className="font-medium text-foreground hover:text-foreground/80 transition-colors">
+              CardClutch
+            </Link>
+            <span className="hidden md:inline">
+              Decision intelligence for credit card usage
             </span>
-          </a>
+          </div>
 
-          {/* Made with love */}
-          <p className="flex items-center gap-1 text-sm text-muted-foreground">
-            Made with <Heart className="w-4 h-4 text-destructive fill-destructive" /> for smarter spending
-          </p>
-
-          {/* Links */}
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#privacy" className="hover:text-foreground transition-colors">
+          <div className="flex items-center gap-6">
+            <Link to="/trust" className="hover:text-foreground transition-colors">
               Privacy
-            </a>
-            <span className="text-border">•</span>
-            <span>© 2024 CardClutch</span>
+            </Link>
+            <span>© 2024</span>
           </div>
         </div>
       </div>

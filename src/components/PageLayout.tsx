@@ -11,9 +11,9 @@ export function PageLayout({ children }: PageLayoutProps) {
   const { theme, toggleTheme } = useTheme();
   
   return (
-    <div className="min-h-screen bg-background transition-colors duration-300">
+    <div className="min-h-screen bg-background">
       <Header theme={theme} onThemeToggle={toggleTheme} />
-      <main className="pt-16">
+      <main className="pt-14">
         {children}
       </main>
       <Footer />
