@@ -7,26 +7,21 @@ import { PrivacyPromise } from '@/components/PrivacyPromise';
 import { Roadmap } from '@/components/Roadmap';
 import { Footer } from '@/components/Footer';
 import { getRecommendation, Recommendation } from '@/lib/recommendationEngine';
+import { usePersistedCards } from '@/hooks/usePersistedCards';
 
 const Index = () => {
-  const [selectedCards, setSelectedCards] = useState<string[]>([]);
+  const { selectedCards, toggleCard, lastUrl, setLastUrl } = usePersistedCards();
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
 
   const handleToggleCard = (cardId: string) => {
-    setSelectedCards((prev) =>
-      prev.includes(cardId)
-        ? prev.filter((id) => id !== cardId)
-        : [...prev, cardId]
-    );
-    // Clear recommendation when cards change
+    toggleCard(cardId);
     setRecommendation(null);
   };
 
   const handleUrlSubmit = (url: string) => {
+    setLastUrl(url);
     const result = getRecommendation(url, selectedCards);
     setRecommendation(result);
-    
-    // Scroll to top to see result
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -39,6 +34,7 @@ const Index = () => {
           onUrlSubmit={handleUrlSubmit} 
           recommendation={recommendation}
           hasSelectedCards={selectedCards.length > 0}
+          lastUrl={lastUrl}
         />
         
         <CardLibrary 
