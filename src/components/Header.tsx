@@ -1,63 +1,100 @@
-import { Menu, X } from 'lucide-react';
+import { Menu, X, CreditCard, Wallet, Search, Library, Info, Map, LogIn, LogOut, User } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-
-interface HeaderProps {
-  theme: 'dark' | 'light';
-  onThemeToggle: () => void;
-}
+import { useThemeContext } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navLinks = [
-  { href: '/mission', label: 'Mission' },
-  { href: '/product', label: 'Product' },
-  { href: '/founders', label: 'Founders' },
-  { href: '/roadmap', label: 'Roadmap' },
-  { href: '/trust', label: 'Trust' },
+  { href: '/vault', label: 'My Wallet', icon: Wallet },
+  { href: '/recommend', label: 'Recommend', icon: Search },
+  { href: '/cards', label: 'Card Library', icon: Library },
+  { href: '/about', label: 'About', icon: Info },
+  { href: '/roadmap', label: 'Roadmap', icon: Map },
 ];
 
-export function Header({ theme, onThemeToggle }: HeaderProps) {
+export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { theme, toggleTheme } = useThemeContext();
+  const { user, signOut } = useAuth();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
-      <div className="container max-w-5xl mx-auto px-4">
-        <div className="flex items-center justify-between h-14">
+      <div className="container max-w-6xl mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-lg font-semibold">
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <CreditCard className="w-4 h-4 text-primary" />
+            </div>
+            <span className="text-lg font-semibold tracking-tight">
               CardClutch
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className={cn(
-                  "text-sm transition-colors",
-                  location.pathname === link.href
-                    ? "text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
+          <nav className="hidden lg:flex items-center gap-1">
+            {navLinks.map((link) => {
+              const Icon = link.icon;
+              return (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
+                    location.pathname === link.href
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  {link.label}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Right side */}
           <div className="flex items-center gap-2">
-            <ThemeToggle theme={theme} onToggle={onThemeToggle} />
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    <span className="max-w-24 truncate">{user.email?.split('@')[0]}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={signOut} className="cursor-pointer">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link to="/auth">
+                <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2">
+                  <LogIn className="w-4 h-4" />
+                  Sign in
+                </Button>
+              </Link>
+            )}
             
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-muted-foreground hover:text-foreground"
+              className="lg:hidden p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -66,23 +103,50 @@ export function Header({ theme, onThemeToggle }: HeaderProps) {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-border">
+          <nav className="lg:hidden py-4 border-t border-border animate-fade-in">
             <div className="flex flex-col gap-1">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={cn(
-                    "px-3 py-2 rounded-md text-sm transition-colors",
-                    location.pathname === link.href
-                      ? "bg-muted text-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const Icon = link.icon;
+                return (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-colors",
+                      location.pathname === link.href
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {link.label}
+                  </Link>
+                );
+              })}
+              <div className="border-t border-border mt-2 pt-2">
+                {user ? (
+                  <button
+                    onClick={() => {
+                      signOut();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted w-full"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign out
+                  </button>
+                ) : (
+                  <Link
+                    to="/auth"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Sign in
+                  </Link>
+                )}
+              </div>
             </div>
           </nav>
         )}
