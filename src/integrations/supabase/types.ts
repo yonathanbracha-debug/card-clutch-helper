@@ -428,6 +428,30 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit_log: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string | null
+          event_payload: Json
+          event_type: string
+          id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string | null
+          event_payload?: Json
+          event_type: string
+          id?: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string | null
+          event_payload?: Json
+          event_type?: string
+          id?: string
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           created_at: string
@@ -459,6 +483,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
       }
       user_wallet_cards: {
         Row: {
@@ -560,6 +605,13 @@ export type Database = {
           category_slug: string
         }[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_merchant_excluded: {
         Args: { p_card_id: string; p_merchant_pattern: string }
         Returns: {
@@ -569,6 +621,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "user" | "admin"
       card_network: "visa" | "mastercard" | "amex" | "discover"
       user_mode: "rewards" | "conservative"
       utilization_level: "low" | "medium" | "high"
@@ -700,6 +753,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["user", "admin"],
       card_network: ["visa", "mastercard", "amex", "discover"],
       user_mode: ["rewards", "conservative"],
       utilization_level: ["low", "medium", "high"],
