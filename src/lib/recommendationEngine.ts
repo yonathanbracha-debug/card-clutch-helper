@@ -82,7 +82,6 @@ function getCardMultiplier(
   
   // Check for warehouse/grocery exclusions
   if (merchant?.excludedFromGrocery && category === 'groceries') {
-    // Check if this card has grocery exclusions that apply
     const groceryReward = card.rewards.find(r => r.category === 'groceries');
     if (groceryReward?.exclusions) {
       const isExcluded = groceryReward.exclusions.some(
@@ -94,7 +93,7 @@ function getCardMultiplier(
         return {
           multiplier: generalReward?.multiplier || 1,
           excluded: true,
-          exclusionReason: `${merchant.name} is excluded from grocery bonus`,
+          exclusionReason: `${merchant.name} excluded from grocery bonus — falls to base rate`,
         };
       }
     }
@@ -104,13 +103,29 @@ function getCardMultiplier(
   if (merchant?.isWarehouse) {
     const groceryReward = card.rewards.find(r => r.category === 'groceries');
     if (groceryReward?.exclusions?.some(ex => 
-      ['costco', 'sam\'s club', 'bj\'s', 'warehouse'].some(w => ex.toLowerCase().includes(w))
+      ['costco', 'sam\'s club', 'bj\'s', 'wholesale', 'warehouse'].some(w => ex.toLowerCase().includes(w))
     )) {
       const generalReward = card.rewards.find(r => r.category === 'general');
       return {
         multiplier: generalReward?.multiplier || 1,
         excluded: true,
-        exclusionReason: 'Warehouse clubs excluded from grocery bonus',
+        exclusionReason: `Warehouse clubs excluded from grocery bonus — falls to base rate`,
+      };
+    }
+  }
+
+  // Special handling for big box stores
+  if (merchant?.excludedFromGrocery) {
+    const groceryReward = card.rewards.find(r => r.category === 'groceries');
+    if (groceryReward?.exclusions?.some(ex => 
+      ex.toLowerCase().includes(merchant.name.toLowerCase()) ||
+      merchant.name.toLowerCase().includes(ex.toLowerCase())
+    )) {
+      const generalReward = card.rewards.find(r => r.category === 'general');
+      return {
+        multiplier: generalReward?.multiplier || 1,
+        excluded: true,
+        exclusionReason: `${merchant.name} excluded from grocery bonus — falls to base rate`,
       };
     }
   }
@@ -153,7 +168,6 @@ function analyzeCard(
   const { multiplier, excluded, exclusionReason } = getCardMultiplier(card, category, merchant);
   
   let reason: string;
-  const cardName = `${card.issuer} ${card.name}`;
   
   if (excluded && exclusionReason) {
     reason = exclusionReason;
@@ -171,7 +185,7 @@ function analyzeCard(
     effectiveMultiplier: multiplier,
     reason,
     excluded,
-    exclusionReason: excluded ? `${merchant?.name || 'This merchant'} excluded from ${categoryLabels[category].toLowerCase()} bonus. Falls to ${multiplier}X.` : undefined,
+    exclusionReason: exclusionReason,
   };
 }
 
@@ -215,17 +229,17 @@ export function getRecommendation(
     analyzeCard(card, category, knownMerchant || null)
   );
 
-  // Sort by multiplier (highest first), preferring non-excluded cards
+  // Sort: non-excluded first, then by multiplier, then by annual fee
   analyses.sort((a, b) => {
     // Non-excluded cards first
     if (a.excluded !== b.excluded) {
       return a.excluded ? 1 : -1;
     }
-    // Then by multiplier
+    // Then by multiplier (highest first)
     if (b.effectiveMultiplier !== a.effectiveMultiplier) {
       return b.effectiveMultiplier - a.effectiveMultiplier;
     }
-    // Prefer lower annual fee cards as tiebreaker
+    // Lower annual fee as tiebreaker
     const aFee = a.card.annualFee || 0;
     const bFee = b.card.annualFee || 0;
     return aFee - bFee;
@@ -234,20 +248,23 @@ export function getRecommendation(
   const bestCard = analyses[0];
   const alternatives = analyses.slice(1);
 
-  // Generate reason with explicit why
+  // Generate clear, factual reason
   let reason: string;
   const cardName = `${bestCard.card.issuer} ${bestCard.card.name}`;
   
   if (bestCard.excluded) {
-    reason = `Other cards have exclusions for ${merchantName}. ${cardName} provides a consistent ${bestCard.effectiveMultiplier}% return here.`;
+    reason = `Other cards have exclusions for ${merchantName}. ${cardName} provides a consistent ${bestCard.effectiveMultiplier}X return here.`;
   } else if (bestCard.effectiveMultiplier >= 3) {
     const reward = bestCard.card.rewards.find(r => r.category === category);
-    const qualifier = reward?.cap ? ` (${reward.cap.toLowerCase()})` : '';
-    reason = `${cardName} earns ${bestCard.effectiveMultiplier}X on ${categoryLabels[category].toLowerCase()}${qualifier}. This is your highest available rate.`;
+    if (reward?.cap) {
+      reason = `${cardName} earns ${bestCard.effectiveMultiplier}X on ${categoryLabels[category].toLowerCase()} (${reward.cap.toLowerCase()}). This is your highest available rate for ${merchantName}.`;
+    } else {
+      reason = `${cardName} earns ${bestCard.effectiveMultiplier}X on ${categoryLabels[category].toLowerCase()}. This is your highest available rate for ${merchantName}.`;
+    }
   } else if (bestCard.effectiveMultiplier >= 1.5) {
-    reason = `${cardName} earns ${bestCard.effectiveMultiplier}% on all purchases. No card in your wallet has a category bonus here.`;
+    reason = `No category bonus applies at ${merchantName}. ${cardName} provides ${bestCard.effectiveMultiplier}X on all purchases — your best flat-rate option.`;
   } else {
-    reason = `No category bonus applies at ${merchantName}. ${cardName} provides ${bestCard.effectiveMultiplier}% on general purchases.`;
+    reason = `No category bonus applies at ${merchantName}. ${cardName} provides ${bestCard.effectiveMultiplier}X on general purchases.`;
   }
 
   return {
