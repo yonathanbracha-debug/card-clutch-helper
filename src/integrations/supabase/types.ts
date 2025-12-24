@@ -14,7 +14,450 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      card_reward_rules: {
+        Row: {
+          cap_cents: number | null
+          cap_period: string | null
+          card_id: string
+          category_id: string
+          conditions: string | null
+          created_at: string
+          description: string | null
+          exclusions: string[] | null
+          id: string
+          last_verified_at: string
+          multiplier: number
+          source_url: string | null
+        }
+        Insert: {
+          cap_cents?: number | null
+          cap_period?: string | null
+          card_id: string
+          category_id: string
+          conditions?: string | null
+          created_at?: string
+          description?: string | null
+          exclusions?: string[] | null
+          id?: string
+          last_verified_at?: string
+          multiplier: number
+          source_url?: string | null
+        }
+        Update: {
+          cap_cents?: number | null
+          cap_period?: string | null
+          card_id?: string
+          category_id?: string
+          conditions?: string | null
+          created_at?: string
+          description?: string | null
+          exclusions?: string[] | null
+          id?: string
+          last_verified_at?: string
+          multiplier?: number
+          source_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_reward_rules_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "card_reward_rules_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "reward_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_cards: {
+        Row: {
+          annual_fee_cents: number
+          created_at: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          issuer_id: string | null
+          last_verified_at: string
+          name: string
+          network: Database["public"]["Enums"]["card_network"]
+          reward_summary: string
+          source_url: string
+          terms_url: string | null
+          updated_at: string
+          verification_status: Database["public"]["Enums"]["verification_status"]
+        }
+        Insert: {
+          annual_fee_cents: number
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          issuer_id?: string | null
+          last_verified_at?: string
+          name: string
+          network: Database["public"]["Enums"]["card_network"]
+          reward_summary: string
+          source_url: string
+          terms_url?: string | null
+          updated_at?: string
+          verification_status?: Database["public"]["Enums"]["verification_status"]
+        }
+        Update: {
+          annual_fee_cents?: number
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          issuer_id?: string | null
+          last_verified_at?: string
+          name?: string
+          network?: Database["public"]["Enums"]["card_network"]
+          reward_summary?: string
+          source_url?: string
+          terms_url?: string | null
+          updated_at?: string
+          verification_status?: Database["public"]["Enums"]["verification_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_cards_issuer_id_fkey"
+            columns: ["issuer_id"]
+            isOneToOne: false
+            referencedRelation: "issuers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_issue_reports: {
+        Row: {
+          card_id: string | null
+          created_at: string
+          description: string
+          id: string
+          issue_type: string
+          merchant_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          card_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          issue_type: string
+          merchant_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          card_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          issue_type?: string
+          merchant_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_issue_reports_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_issue_reports_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_issue_reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      issuers: {
+        Row: {
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      merchants: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          domain: string
+          excluded_from_grocery: boolean
+          id: string
+          is_warehouse: boolean
+          name: string
+          updated_at: string
+          verification_status: Database["public"]["Enums"]["verification_status"]
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          domain: string
+          excluded_from_grocery?: boolean
+          id?: string
+          is_warehouse?: boolean
+          name: string
+          updated_at?: string
+          verification_status?: Database["public"]["Enums"]["verification_status"]
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          domain?: string
+          excluded_from_grocery?: boolean
+          id?: string
+          is_warehouse?: boolean
+          name?: string
+          updated_at?: string
+          verification_status?: Database["public"]["Enums"]["verification_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchants_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "reward_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recommendation_logs: {
+        Row: {
+          category_slug: string | null
+          confidence: string
+          created_at: string
+          decision_path: Json | null
+          domain: string | null
+          explanation: string | null
+          id: string
+          merchant_id: string | null
+          multiplier: number | null
+          recommended_card_id: string | null
+          runner_up_card_id: string | null
+          url: string
+          user_id: string | null
+        }
+        Insert: {
+          category_slug?: string | null
+          confidence: string
+          created_at?: string
+          decision_path?: Json | null
+          domain?: string | null
+          explanation?: string | null
+          id?: string
+          merchant_id?: string | null
+          multiplier?: number | null
+          recommended_card_id?: string | null
+          runner_up_card_id?: string | null
+          url: string
+          user_id?: string | null
+        }
+        Update: {
+          category_slug?: string | null
+          confidence?: string
+          created_at?: string
+          decision_path?: Json | null
+          domain?: string | null
+          explanation?: string | null
+          id?: string
+          merchant_id?: string | null
+          multiplier?: number | null
+          recommended_card_id?: string | null
+          runner_up_card_id?: string | null
+          url?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_logs_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendation_logs_recommended_card_id_fkey"
+            columns: ["recommended_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendation_logs_runner_up_card_id_fkey"
+            columns: ["runner_up_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendation_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reward_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          created_at: string
+          mode: Database["public"]["Enums"]["user_mode"]
+          onboarding_completed: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          mode?: Database["public"]["Enums"]["user_mode"]
+          onboarding_completed?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          mode?: Database["public"]["Enums"]["user_mode"]
+          onboarding_completed?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_wallet_cards: {
+        Row: {
+          card_id: string
+          created_at: string
+          do_not_recommend: boolean
+          id: string
+          updated_at: string
+          user_id: string
+          utilization_status: Database["public"]["Enums"]["utilization_level"]
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          do_not_recommend?: boolean
+          id?: string
+          updated_at?: string
+          user_id: string
+          utilization_status?: Database["public"]["Enums"]["utilization_level"]
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          do_not_recommend?: boolean
+          id?: string
+          updated_at?: string
+          user_id?: string
+          utilization_status?: Database["public"]["Enums"]["utilization_level"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_wallet_cards_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_wallet_cards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +466,10 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      card_network: "visa" | "mastercard" | "amex" | "discover"
+      user_mode: "rewards" | "conservative"
+      utilization_level: "low" | "medium" | "high"
+      verification_status: "verified" | "pending" | "stale"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +596,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      card_network: ["visa", "mastercard", "amex", "discover"],
+      user_mode: ["rewards", "conservative"],
+      utilization_level: ["low", "medium", "high"],
+      verification_status: ["verified", "pending", "stale"],
+    },
   },
 } as const
