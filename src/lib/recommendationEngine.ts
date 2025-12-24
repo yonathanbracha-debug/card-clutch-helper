@@ -72,16 +72,35 @@ function inferCategoryFromDomain(domain: string): { category: MerchantCategory; 
   return { category: 'general', merchantName };
 }
 
-function getCardMultiplier(card: CreditCard, category: MerchantCategory, isWarehouse: boolean): number {
+function getCardMultiplier(card: CreditCard, category: MerchantCategory, isWarehouse: boolean, isApplePartner: boolean): number {
   // Special handling for Amex Gold - no grocery bonus at warehouse/big box
   if (card.id === 'amex-gold' && category === 'groceries' && isWarehouse) {
     return 1; // Falls back to base rate
+  }
+  
+  // Special handling for Apple Card - 3% at Apple partners
+  if (card.id === 'apple-card') {
+    if (category === 'apple' || isApplePartner) {
+      return 3;
+    }
+    // Note: Apple Pay 2% would apply but we can't detect that here
+    // Conservative: assume physical card usage at 1%
+    const generalReward = card.rewards.find(r => r.category === 'general');
+    return generalReward?.multiplier || 1;
   }
   
   // Find the reward for this category
   const reward = card.rewards.find(r => r.category === category);
   if (reward) {
     return reward.multiplier;
+  }
+  
+  // For streaming, check if card has entertainment bonus as fallback
+  if (category === 'streaming') {
+    const entertainmentReward = card.rewards.find(r => r.category === 'entertainment');
+    if (entertainmentReward) {
+      return entertainmentReward.multiplier;
+    }
   }
   
   // Fall back to general rate
@@ -106,11 +125,13 @@ export function getRecommendation(
   let merchantName: string;
   let confidence: 'high' | 'medium' | 'low';
   let isWarehouse = false;
+  let isApplePartner = false;
 
   if (knownMerchant) {
     category = knownMerchant.category;
     merchantName = knownMerchant.name;
     isWarehouse = knownMerchant.isWarehouse || false;
+    isApplePartner = knownMerchant.isApplePartner || false;
     confidence = 'high';
   } else {
     // Infer category from domain
@@ -129,21 +150,33 @@ export function getRecommendation(
 
   // Calculate best card
   let bestCard = availableCards[0];
-  let bestMultiplier = getCardMultiplier(bestCard, category, isWarehouse);
+  let bestMultiplier = getCardMultiplier(bestCard, category, isWarehouse, isApplePartner);
 
   for (const card of availableCards) {
-    const multiplier = getCardMultiplier(card, category, isWarehouse);
+    const multiplier = getCardMultiplier(card, category, isWarehouse, isApplePartner);
     if (multiplier > bestMultiplier) {
       bestMultiplier = multiplier;
       bestCard = card;
     }
   }
 
-  // If all cards have the same multiplier, prefer Chase Freedom Unlimited as fallback
+  // If all cards have the same multiplier, prefer higher flat-rate cards
+  // Citi Double Cash (2%) > Chase Freedom Unlimited (1.5%) for general purchases
+  const citiDouble = availableCards.find(c => c.id === 'citi-double-cash');
   const cfu = availableCards.find(c => c.id === 'chase-freedom-unlimited');
-  if (cfu && bestMultiplier === getCardMultiplier(cfu, category, isWarehouse)) {
-    bestCard = cfu;
-    bestMultiplier = getCardMultiplier(cfu, category, isWarehouse);
+  
+  if (citiDouble && bestMultiplier <= 2) {
+    const citiMultiplier = getCardMultiplier(citiDouble, category, isWarehouse, isApplePartner);
+    if (citiMultiplier >= bestMultiplier) {
+      bestCard = citiDouble;
+      bestMultiplier = citiMultiplier;
+    }
+  } else if (cfu && bestMultiplier <= 1.5) {
+    const cfuMultiplier = getCardMultiplier(cfu, category, isWarehouse, isApplePartner);
+    if (cfuMultiplier >= bestMultiplier) {
+      bestCard = cfu;
+      bestMultiplier = cfuMultiplier;
+    }
   }
 
   // Generate reason
