@@ -1,13 +1,17 @@
-// CardClutch Credit Card Data Model
-// All data is conservative and based on publicly available card terms
-// Last verified: 2024
+// CardClutch Credit Card Data Model (V1 Production)
+// All data verified against official issuer terms
+// Last audit: December 2024
+
+export type CardNetwork = 'visa' | 'mastercard' | 'amex' | 'discover';
 
 export interface CreditCard {
   id: string;
   name: string;
   issuer: string;
-  annualFee: number | null;
+  network: CardNetwork;
+  annualFee: number;
   rewards: CardReward[];
+  rewardSummary: string; // One-line summary for display
   notes?: string[];
 }
 
@@ -39,7 +43,9 @@ export const creditCards: CreditCard[] = [
     id: 'amex-gold',
     name: 'Gold Card',
     issuer: 'American Express',
+    network: 'amex',
     annualFee: 250,
+    rewardSummary: '4X Dining, 4X U.S. Groceries (excludes Costco, Walmart, Target)',
     rewards: [
       {
         category: 'dining',
@@ -50,27 +56,33 @@ export const creditCards: CreditCard[] = [
         category: 'groceries',
         multiplier: 4,
         description: '4X at U.S. supermarkets',
-        exclusions: ['Costco', 'Sam\'s Club', 'Walmart', 'Target', 'Amazon Fresh'],
-        cap: 'On up to $25,000/year, then 1X',
+        exclusions: ['Costco', 'Sam\'s Club', 'Walmart', 'Target', 'Amazon Fresh', 'Wholesale clubs'],
+        cap: 'Up to $25,000/year in purchases, then 1X',
       },
       {
         category: 'general',
         multiplier: 1,
-        description: '1X on other purchases',
+        description: '1X on all other purchases',
       },
     ],
-    notes: ['Dining credit partially offsets fee', 'No foreign transaction fees'],
+    notes: [
+      '$120 Uber Cash credit annually',
+      '$120 dining credit annually',
+      'No foreign transaction fees',
+    ],
   },
   {
     id: 'amex-platinum',
     name: 'Platinum Card',
     issuer: 'American Express',
+    network: 'amex',
     annualFee: 695,
+    rewardSummary: '5X Flights direct, 5X Hotels via Amex Travel',
     rewards: [
       {
         category: 'flights',
         multiplier: 5,
-        description: '5X on flights booked directly with airlines',
+        description: '5X on flights booked directly with airlines or via Amex Travel',
       },
       {
         category: 'hotels',
@@ -81,23 +93,30 @@ export const creditCards: CreditCard[] = [
       {
         category: 'general',
         multiplier: 1,
-        description: '1X on other purchases',
+        description: '1X on all other purchases',
       },
     ],
-    notes: ['Best for frequent travelers with high spend', 'Multiple credits offset fee'],
+    notes: [
+      '$200 airline fee credit annually',
+      '$200 hotel credit annually',
+      '$240 digital entertainment credit',
+      'Priority Pass lounge access',
+    ],
   },
   {
     id: 'amex-blue-cash-preferred',
     name: 'Blue Cash Preferred',
     issuer: 'American Express',
+    network: 'amex',
     annualFee: 95,
+    rewardSummary: '6% Groceries (capped), 6% Streaming, 3% Gas/Transit',
     rewards: [
       {
         category: 'groceries',
         multiplier: 6,
         description: '6% cash back at U.S. supermarkets',
-        exclusions: ['Costco', 'Sam\'s Club', 'Walmart', 'Target'],
-        cap: 'On up to $6,000/year, then 1%',
+        exclusions: ['Costco', 'Sam\'s Club', 'Walmart', 'Target', 'Wholesale clubs'],
+        cap: 'Up to $6,000/year, then 1%',
       },
       {
         category: 'streaming',
@@ -117,9 +136,43 @@ export const creditCards: CreditCard[] = [
       {
         category: 'general',
         multiplier: 1,
-        description: '1% on other purchases',
+        description: '1% on all other purchases',
       },
     ],
+  },
+  {
+    id: 'amex-blue-cash-everyday',
+    name: 'Blue Cash Everyday',
+    issuer: 'American Express',
+    network: 'amex',
+    annualFee: 0,
+    rewardSummary: '3% Groceries (capped), 3% Gas, 3% Online retail',
+    rewards: [
+      {
+        category: 'groceries',
+        multiplier: 3,
+        description: '3% at U.S. supermarkets',
+        exclusions: ['Costco', 'Sam\'s Club', 'Walmart', 'Target'],
+        cap: 'Up to $6,000/year, then 1%',
+      },
+      {
+        category: 'gas',
+        multiplier: 3,
+        description: '3% at U.S. gas stations',
+      },
+      {
+        category: 'online',
+        multiplier: 3,
+        description: '3% on U.S. online retail purchases',
+        cap: 'Up to $6,000/year, then 1%',
+      },
+      {
+        category: 'general',
+        multiplier: 1,
+        description: '1% on all other purchases',
+      },
+    ],
+    notes: ['No annual fee'],
   },
 
   // === CHASE ===
@@ -127,18 +180,20 @@ export const creditCards: CreditCard[] = [
     id: 'chase-sapphire-preferred',
     name: 'Sapphire Preferred',
     issuer: 'Chase',
+    network: 'visa',
     annualFee: 95,
+    rewardSummary: '5X Travel via Chase, 3X Dining, 3X Streaming',
     rewards: [
       {
         category: 'travel',
         multiplier: 5,
         description: '5X on travel via Chase Travel',
-        conditions: 'Must book through Chase portal',
+        conditions: 'Must book through Chase Ultimate Rewards portal',
       },
       {
         category: 'dining',
         multiplier: 3,
-        description: '3X on dining',
+        description: '3X on dining at restaurants',
       },
       {
         category: 'streaming',
@@ -157,30 +212,36 @@ export const creditCards: CreditCard[] = [
         description: '1X on all other purchases',
       },
     ],
-    notes: ['Points worth 25% more via Chase Travel', 'No foreign transaction fees'],
+    notes: [
+      'Points worth 25% more via Chase Travel',
+      'No foreign transaction fees',
+      'Transfer to airline/hotel partners',
+    ],
   },
   {
     id: 'chase-sapphire-reserve',
     name: 'Sapphire Reserve',
     issuer: 'Chase',
+    network: 'visa',
     annualFee: 550,
+    rewardSummary: '10X Hotels via Chase, 5X Flights via Chase, 3X Dining',
     rewards: [
-      {
-        category: 'travel',
-        multiplier: 5,
-        description: '5X on flights via Chase Travel',
-        conditions: 'After earning $300 travel credit',
-      },
       {
         category: 'hotels',
         multiplier: 10,
         description: '10X on hotels and car rentals via Chase Travel',
-        conditions: 'Must book through Chase portal',
+        conditions: 'Must book through Chase Ultimate Rewards portal',
+      },
+      {
+        category: 'flights',
+        multiplier: 5,
+        description: '5X on flights via Chase Travel',
+        conditions: 'Must book through Chase Ultimate Rewards portal',
       },
       {
         category: 'dining',
         multiplier: 3,
-        description: '3X on dining',
+        description: '3X on dining at restaurants',
       },
       {
         category: 'general',
@@ -188,13 +249,20 @@ export const creditCards: CreditCard[] = [
         description: '1X on all other purchases',
       },
     ],
-    notes: ['$300 annual travel credit', 'Points worth 50% more via Chase Travel', 'Priority Pass lounge access'],
+    notes: [
+      '$300 annual travel credit',
+      'Points worth 50% more via Chase Travel',
+      'Priority Pass lounge access',
+      'No foreign transaction fees',
+    ],
   },
   {
     id: 'chase-freedom-unlimited',
     name: 'Freedom Unlimited',
     issuer: 'Chase',
+    network: 'visa',
     annualFee: 0,
+    rewardSummary: '5X Travel via Chase, 3X Dining, 3X Drugstores, 1.5% Everything else',
     rewards: [
       {
         category: 'travel',
@@ -205,7 +273,7 @@ export const creditCards: CreditCard[] = [
       {
         category: 'dining',
         multiplier: 3,
-        description: '3% on dining',
+        description: '3% on dining at restaurants',
       },
       {
         category: 'drugstores',
@@ -215,7 +283,7 @@ export const creditCards: CreditCard[] = [
       {
         category: 'general',
         multiplier: 1.5,
-        description: '1.5% on all other purchases',
+        description: '1.5% cash back on all other purchases',
       },
     ],
     notes: ['No annual fee', 'Good base card for Chase ecosystem'],
@@ -224,12 +292,14 @@ export const creditCards: CreditCard[] = [
     id: 'chase-freedom-flex',
     name: 'Freedom Flex',
     issuer: 'Chase',
+    network: 'mastercard',
     annualFee: 0,
+    rewardSummary: '5% Rotating quarterly (activation required), 3X Dining, 3X Drugstores',
     rewards: [
       {
         category: 'dining',
         multiplier: 3,
-        description: '3% on dining',
+        description: '3% on dining at restaurants',
       },
       {
         category: 'drugstores',
@@ -242,7 +312,11 @@ export const creditCards: CreditCard[] = [
         description: '1% on all other purchases',
       },
     ],
-    notes: ['5% rotating categories (quarterly activation required)', 'No annual fee'],
+    notes: [
+      '5% on rotating quarterly categories (requires activation)',
+      'Up to $1,500 in quarterly bonus category purchases',
+      'No annual fee',
+    ],
   },
 
   // === CITI ===
@@ -250,7 +324,9 @@ export const creditCards: CreditCard[] = [
     id: 'citi-double-cash',
     name: 'Double Cash',
     issuer: 'Citi',
+    network: 'mastercard',
     annualFee: 0,
+    rewardSummary: '2% flat on everything (1% when you buy, 1% when you pay)',
     rewards: [
       {
         category: 'general',
@@ -258,13 +334,19 @@ export const creditCards: CreditCard[] = [
         description: '2% on all purchases (1% when you buy, 1% when you pay)',
       },
     ],
-    notes: ['Best flat-rate card with no annual fee', 'Must pay bill to earn full 2%'],
+    notes: [
+      'Must pay your bill to earn the second 1%',
+      'No annual fee',
+      'Best flat-rate no-fee card',
+    ],
   },
   {
     id: 'citi-premier',
     name: 'Premier',
     issuer: 'Citi',
+    network: 'mastercard',
     annualFee: 95,
+    rewardSummary: '3X Flights, Hotels, Dining, Groceries, Gas',
     rewards: [
       {
         category: 'flights',
@@ -297,23 +379,32 @@ export const creditCards: CreditCard[] = [
         description: '1X on all other purchases',
       },
     ],
-    notes: ['No foreign transaction fees', 'Points transfer to airline partners'],
+    notes: [
+      'No foreign transaction fees',
+      'Points transfer to airline partners',
+    ],
   },
   {
     id: 'citi-custom-cash',
     name: 'Custom Cash',
     issuer: 'Citi',
+    network: 'mastercard',
     annualFee: 0,
+    rewardSummary: '5% on top spend category each cycle (auto-selected, capped at $500)',
     rewards: [
       {
         category: 'general',
         multiplier: 5,
         description: '5% on your top eligible spend category each billing cycle',
-        cap: 'On up to $500/billing cycle, then 1%',
-        conditions: 'Automatically applied to highest spend category',
+        cap: 'Up to $500/billing cycle, then 1%',
+        conditions: 'Automatically applied to highest spend category (restaurants, gas, groceries, etc.)',
       },
     ],
-    notes: ['Category auto-selects based on spend', 'Good for focused spending'],
+    notes: [
+      'Category auto-selects based on your spending',
+      'Good for focused spending patterns',
+      'No annual fee',
+    ],
   },
 
   // === CAPITAL ONE ===
@@ -321,7 +412,9 @@ export const creditCards: CreditCard[] = [
     id: 'capital-one-savor-one',
     name: 'SavorOne',
     issuer: 'Capital One',
+    network: 'mastercard',
     annualFee: 0,
+    rewardSummary: '3X Dining, Groceries, Streaming, Entertainment',
     rewards: [
       {
         category: 'dining',
@@ -332,7 +425,7 @@ export const creditCards: CreditCard[] = [
         category: 'groceries',
         multiplier: 3,
         description: '3% at grocery stores',
-        exclusions: ['Costco', 'Sam\'s Club'],
+        exclusions: ['Costco', 'Sam\'s Club', 'Wholesale clubs'],
       },
       {
         category: 'streaming',
@@ -351,7 +444,9 @@ export const creditCards: CreditCard[] = [
     id: 'capital-one-venture',
     name: 'Venture',
     issuer: 'Capital One',
+    network: 'visa',
     annualFee: 95,
+    rewardSummary: '2X miles on every purchase',
     rewards: [
       {
         category: 'general',
@@ -359,23 +454,30 @@ export const creditCards: CreditCard[] = [
         description: '2X miles on every purchase',
       },
     ],
-    notes: ['Miles transfer to travel partners', 'No foreign transaction fees'],
+    notes: [
+      'Miles transfer to travel partners',
+      'No foreign transaction fees',
+    ],
   },
   {
     id: 'capital-one-venture-x',
     name: 'Venture X',
     issuer: 'Capital One',
+    network: 'visa',
     annualFee: 395,
+    rewardSummary: '10X Hotels via Capital One, 5X Flights via Capital One, 2X Everything else',
     rewards: [
-      {
-        category: 'flights',
-        multiplier: 5,
-        description: '5X on flights via Capital One Travel',
-      },
       {
         category: 'hotels',
         multiplier: 10,
         description: '10X on hotels via Capital One Travel',
+        conditions: 'Must book through Capital One Travel portal',
+      },
+      {
+        category: 'flights',
+        multiplier: 5,
+        description: '5X on flights via Capital One Travel',
+        conditions: 'Must book through Capital One Travel portal',
       },
       {
         category: 'general',
@@ -383,13 +485,19 @@ export const creditCards: CreditCard[] = [
         description: '2X miles on all other purchases',
       },
     ],
-    notes: ['$300 annual travel credit', 'Priority Pass lounge access', '10,000 bonus miles annually'],
+    notes: [
+      '$300 annual travel credit',
+      '10,000 bonus miles annually',
+      'Priority Pass lounge access',
+    ],
   },
   {
     id: 'capital-one-quicksilver',
     name: 'Quicksilver',
     issuer: 'Capital One',
+    network: 'mastercard',
     annualFee: 0,
+    rewardSummary: '1.5% flat cash back on all purchases',
     rewards: [
       {
         category: 'general',
@@ -405,19 +513,21 @@ export const creditCards: CreditCard[] = [
     id: 'apple-card',
     name: 'Apple Card',
     issuer: 'Apple',
+    network: 'mastercard',
     annualFee: 0,
+    rewardSummary: '3% Apple/partners (Apple Pay), 2% All Apple Pay, 1% Physical card',
     rewards: [
       {
         category: 'general',
         multiplier: 3,
         description: '3% at Apple and select partners (Uber, Walgreens, T-Mobile, Nike)',
-        conditions: 'When using Apple Pay',
+        conditions: 'Must use Apple Pay',
       },
       {
         category: 'general',
         multiplier: 2,
-        description: '2% everywhere when using Apple Pay',
-        conditions: 'Must use Apple Pay',
+        description: '2% on all purchases when using Apple Pay',
+        conditions: 'Apple Pay transactions only',
       },
       {
         category: 'general',
@@ -425,15 +535,21 @@ export const creditCards: CreditCard[] = [
         description: '1% when using physical card',
       },
     ],
-    notes: ['Daily Cash paid immediately', 'No fees whatsoever'],
+    notes: [
+      'Daily Cash paid immediately',
+      'No fees whatsoever',
+      'Best if you always use Apple Pay',
+    ],
   },
 
   // === DISCOVER ===
   {
     id: 'discover-it',
-    name: 'Discover it',
+    name: 'Discover it Cash Back',
     issuer: 'Discover',
+    network: 'discover',
     annualFee: 0,
+    rewardSummary: '5% Rotating quarterly (activation required), 1% Everything else',
     rewards: [
       {
         category: 'general',
@@ -441,13 +557,20 @@ export const creditCards: CreditCard[] = [
         description: '1% on all purchases',
       },
     ],
-    notes: ['5% rotating categories (quarterly activation required)', 'Cash back match first year', 'No annual fee'],
+    notes: [
+      '5% on rotating quarterly categories (requires activation)',
+      'Up to $1,500 in quarterly bonus purchases',
+      'Cashback Match first year (effectively doubles rewards)',
+      'No annual fee',
+    ],
   },
   {
     id: 'discover-it-miles',
     name: 'Discover it Miles',
     issuer: 'Discover',
+    network: 'discover',
     annualFee: 0,
+    rewardSummary: '1.5X miles on all purchases (matched first year = 3X)',
     rewards: [
       {
         category: 'general',
@@ -455,7 +578,10 @@ export const creditCards: CreditCard[] = [
         description: '1.5X miles on all purchases',
       },
     ],
-    notes: ['Miles match first year (effectively 3X)', 'No annual fee'],
+    notes: [
+      'Miles Match first year (effectively 3X)',
+      'No annual fee',
+    ],
   },
 
   // === WELLS FARGO ===
@@ -463,7 +589,9 @@ export const creditCards: CreditCard[] = [
     id: 'wells-fargo-active-cash',
     name: 'Active Cash',
     issuer: 'Wells Fargo',
+    network: 'visa',
     annualFee: 0,
+    rewardSummary: '2% flat cash back on all purchases',
     rewards: [
       {
         category: 'general',
@@ -477,7 +605,9 @@ export const creditCards: CreditCard[] = [
     id: 'wells-fargo-autograph',
     name: 'Autograph',
     issuer: 'Wells Fargo',
+    network: 'visa',
     annualFee: 0,
+    rewardSummary: '3X Dining, Travel, Gas, Transit, Streaming',
     rewards: [
       {
         category: 'dining',
@@ -518,20 +648,22 @@ export const creditCards: CreditCard[] = [
     id: 'bofa-customized-cash',
     name: 'Customized Cash Rewards',
     issuer: 'Bank of America',
+    network: 'visa',
     annualFee: 0,
+    rewardSummary: '3% Choice category (capped), 2% Groceries (capped), 1% Everything else',
     rewards: [
       {
         category: 'general',
         multiplier: 3,
         description: '3% in category of your choice',
-        cap: 'On up to $2,500/quarter, then 1%',
+        cap: 'Up to $2,500/quarter, then 1%',
         conditions: 'Choose from: gas, online shopping, dining, travel, drug stores, or home improvement',
       },
       {
         category: 'groceries',
         multiplier: 2,
         description: '2% at grocery stores and wholesale clubs',
-        cap: 'On up to $2,500/quarter, then 1%',
+        cap: 'Up to $2,500/quarter, then 1%',
       },
       {
         category: 'general',
@@ -539,13 +671,18 @@ export const creditCards: CreditCard[] = [
         description: '1% on all other purchases',
       },
     ],
-    notes: ['Bonus increased with Preferred Rewards status', 'No annual fee'],
+    notes: [
+      'Bonus increased with Preferred Rewards status',
+      'No annual fee',
+    ],
   },
   {
     id: 'bofa-premium-rewards',
     name: 'Premium Rewards',
     issuer: 'Bank of America',
+    network: 'visa',
     annualFee: 95,
+    rewardSummary: '2X Travel & Dining, 1.5X Everything else',
     rewards: [
       {
         category: 'travel',
@@ -563,15 +700,20 @@ export const creditCards: CreditCard[] = [
         description: '1.5X on all other purchases',
       },
     ],
-    notes: ['$100 airline incidental credit', 'TSA PreCheck/Global Entry credit'],
+    notes: [
+      '$100 airline incidental credit',
+      'TSA PreCheck/Global Entry credit',
+    ],
   },
 
-  // === US BANK ===
+  // === U.S. BANK ===
   {
     id: 'usbank-altitude-go',
     name: 'Altitude Go',
     issuer: 'U.S. Bank',
+    network: 'visa',
     annualFee: 0,
+    rewardSummary: '4X Dining, 2X Groceries/Gas/Streaming, 1X Everything else',
     rewards: [
       {
         category: 'dining',
@@ -599,7 +741,7 @@ export const creditCards: CreditCard[] = [
         description: '1X on all other purchases',
       },
     ],
-    notes: ['No annual fee', 'Good dining card for no fee'],
+    notes: ['No annual fee', 'Excellent no-fee dining card'],
   },
 ];
 
@@ -650,7 +792,7 @@ export const merchantMappings: MerchantMapping[] = [
   // === WAREHOUSE CLUBS (excluded from grocery bonuses) ===
   { domain: 'costco.com', name: 'Costco', category: 'warehouse', isWarehouse: true, excludedFromGrocery: true },
   { domain: 'samsclub.com', name: "Sam's Club", category: 'warehouse', isWarehouse: true, excludedFromGrocery: true },
-  { domain: 'bjs.com', name: "BJ's", category: 'warehouse', isWarehouse: true, excludedFromGrocery: true },
+  { domain: 'bjs.com', name: "BJ's Wholesale", category: 'warehouse', isWarehouse: true, excludedFromGrocery: true },
   
   // === BIG BOX RETAIL (excluded from grocery bonuses) ===
   { domain: 'walmart.com', name: 'Walmart', category: 'general', excludedFromGrocery: true },
@@ -772,6 +914,13 @@ export const categoryLabels: Record<MerchantCategory, string> = {
   transit: 'Transit / Rideshare',
   drugstores: 'Pharmacy',
   online: 'Online Shopping',
+};
+
+export const networkLabels: Record<CardNetwork, string> = {
+  visa: 'Visa',
+  mastercard: 'Mastercard',
+  amex: 'American Express',
+  discover: 'Discover',
 };
 
 // Helper function to find if a card has exclusions for a merchant

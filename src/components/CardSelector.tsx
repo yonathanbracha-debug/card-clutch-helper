@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { creditCards, CreditCard } from '@/lib/cardData';
-import { Search, X, Check, ChevronDown } from 'lucide-react';
+import { creditCards, CreditCard, networkLabels } from '@/lib/cardData';
+import { Search, X, Check, ChevronDown, CreditCard as CardIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Popover,
@@ -23,13 +23,26 @@ export function CardSelector({ selectedCards, onToggleCard }: CardSelectorProps)
     return creditCards.filter(
       (card) =>
         card.name.toLowerCase().includes(q) ||
-        card.issuer.toLowerCase().includes(q)
+        card.issuer.toLowerCase().includes(q) ||
+        card.network.toLowerCase().includes(q)
     );
   }, [search]);
 
   const selectedCardObjects = useMemo(() => {
     return creditCards.filter((card) => selectedCards.includes(card.id));
   }, [selectedCards]);
+
+  // Group cards by issuer for better organization
+  const groupedCards = useMemo(() => {
+    const groups: Record<string, CreditCard[]> = {};
+    filteredCards.forEach(card => {
+      if (!groups[card.issuer]) {
+        groups[card.issuer] = [];
+      }
+      groups[card.issuer].push(card);
+    });
+    return groups;
+  }, [filteredCards]);
 
   return (
     <div className="w-full">
@@ -38,16 +51,19 @@ export function CardSelector({ selectedCards, onToggleCard }: CardSelectorProps)
         <PopoverTrigger asChild>
           <button
             className={cn(
-              "w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-colors text-left",
-              "bg-card hover:bg-card-hover border-border",
-              open && "ring-2 ring-ring ring-offset-2 ring-offset-background"
+              "w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all text-left",
+              "bg-card hover:bg-muted/50 border-border",
+              open && "ring-2 ring-primary/20 border-primary/50"
             )}
           >
-            <span className="text-sm text-muted-foreground">
-              {selectedCards.length === 0
-                ? 'Select your cards...'
-                : `${selectedCards.length} card${selectedCards.length > 1 ? 's' : ''} selected`}
-            </span>
+            <div className="flex items-center gap-2">
+              <CardIcon className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                {selectedCards.length === 0
+                  ? 'Select your cards'
+                  : `${selectedCards.length} card${selectedCards.length > 1 ? 's' : ''} selected`}
+              </span>
+            </div>
             <ChevronDown className={cn(
               "w-4 h-4 text-muted-foreground transition-transform",
               open && "rotate-180"
@@ -56,16 +72,16 @@ export function CardSelector({ selectedCards, onToggleCard }: CardSelectorProps)
         </PopoverTrigger>
         
         <PopoverContent 
-          className="w-[var(--radix-popover-trigger-width)] p-0" 
+          className="w-[var(--radix-popover-trigger-width)] p-0 max-w-md" 
           align="start"
           sideOffset={4}
         >
           {/* Search */}
-          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-muted/30">
             <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
             <input
               type="text"
-              placeholder="Search cards..."
+              placeholder="Search by card, issuer, or network..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
@@ -82,58 +98,78 @@ export function CardSelector({ selectedCards, onToggleCard }: CardSelectorProps)
           </div>
           
           {/* Card list */}
-          <div className="max-h-64 overflow-y-auto py-1">
-            {filteredCards.length === 0 ? (
+          <div className="max-h-80 overflow-y-auto">
+            {Object.keys(groupedCards).length === 0 ? (
               <div className="px-3 py-6 text-center text-sm text-muted-foreground">
                 No cards found
               </div>
             ) : (
-              filteredCards.map((card) => {
-                const isSelected = selectedCards.includes(card.id);
-                return (
-                  <button
-                    key={card.id}
-                    onClick={() => onToggleCard(card.id)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 text-left transition-colors",
-                      "hover:bg-muted",
-                      isSelected && "bg-muted/50"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors",
-                      isSelected 
-                        ? "bg-primary border-primary" 
-                        : "border-border"
-                    )}>
-                      {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">
-                        {card.issuer} {card.name}
-                      </div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {card.annualFee === 0 || card.annualFee === null 
-                          ? 'No annual fee' 
-                          : `$${card.annualFee}/year`}
-                      </div>
-                    </div>
-                    <CardRewardBadge card={card} />
-                  </button>
-                );
-              })
+              Object.entries(groupedCards).map(([issuer, cards]) => (
+                <div key={issuer}>
+                  <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide bg-muted/50 sticky top-0">
+                    {issuer}
+                  </div>
+                  {cards.map((card) => {
+                    const isSelected = selectedCards.includes(card.id);
+                    return (
+                      <button
+                        key={card.id}
+                        onClick={() => onToggleCard(card.id)}
+                        className={cn(
+                          "w-full flex items-start gap-3 px-3 py-2.5 text-left transition-colors border-b border-border/50 last:border-0",
+                          "hover:bg-muted/50",
+                          isSelected && "bg-primary/5"
+                        )}
+                      >
+                        {/* Checkbox */}
+                        <div className={cn(
+                          "w-4 h-4 mt-0.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors",
+                          isSelected 
+                            ? "bg-primary border-primary" 
+                            : "border-border"
+                        )}>
+                          {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                        </div>
+                        
+                        {/* Card info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{card.name}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wide">
+                              {networkLabels[card.network]}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                            {card.rewardSummary}
+                          </div>
+                        </div>
+                        
+                        {/* Annual fee */}
+                        <div className="text-right flex-shrink-0">
+                          <div className={cn(
+                            "text-xs font-medium",
+                            card.annualFee === 0 ? "text-primary" : "text-muted-foreground"
+                          )}>
+                            {card.annualFee === 0 ? 'No fee' : `$${card.annualFee}/yr`}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))
             )}
           </div>
         </PopoverContent>
       </Popover>
 
-      {/* Selected cards as chips */}
+      {/* Selected cards as compact chips */}
       {selectedCardObjects.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-3">
+        <div className="flex flex-wrap gap-1.5 mt-3">
           {selectedCardObjects.map((card) => (
             <div
               key={card.id}
-              className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-md bg-muted text-sm"
+              className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded bg-muted text-xs"
             >
               <span className="font-medium">{card.issuer}</span>
               <span className="text-muted-foreground">{card.name}</span>
@@ -148,22 +184,5 @@ export function CardSelector({ selectedCards, onToggleCard }: CardSelectorProps)
         </div>
       )}
     </div>
-  );
-}
-
-function CardRewardBadge({ card }: { card: CreditCard }) {
-  // Show annual fee badge instead of vague multipliers
-  if (card.annualFee === 0 || card.annualFee === null) {
-    return (
-      <span className="text-xs text-muted-foreground">
-        No fee
-      </span>
-    );
-  }
-
-  return (
-    <span className="text-xs text-muted-foreground">
-      ${card.annualFee}/yr
-    </span>
   );
 }
