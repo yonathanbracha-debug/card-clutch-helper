@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AdminCardManager } from '@/components/admin/AdminCardManager';
 import { AdminMerchantManager } from '@/components/admin/AdminMerchantManager';
 import { AdminAuditLogs } from '@/components/admin/AdminAuditLogs';
-import { Shield, CreditCard, Store, ClipboardList, Loader2 } from 'lucide-react';
+import { AdminUrlHealthChecker } from '@/components/admin/AdminUrlHealthChecker';
+import { Shield, CreditCard, Store, ClipboardList, Loader2, LinkIcon } from 'lucide-react';
 
 export default function Admin() {
   const { user, loading: authLoading } = useAuth();
@@ -69,6 +70,10 @@ export default function Admin() {
                 <CreditCard className="w-4 h-4" />
                 Cards
               </TabsTrigger>
+              <TabsTrigger value="url-health" className="gap-2">
+                <LinkIcon className="w-4 h-4" />
+                URL Health
+              </TabsTrigger>
               <TabsTrigger value="merchants" className="gap-2">
                 <Store className="w-4 h-4" />
                 Merchants
@@ -81,6 +86,10 @@ export default function Admin() {
 
             <TabsContent value="cards">
               <AdminCardManager />
+            </TabsContent>
+
+            <TabsContent value="url-health">
+              <AdminUrlHealthChecker />
             </TabsContent>
 
             <TabsContent value="merchants">

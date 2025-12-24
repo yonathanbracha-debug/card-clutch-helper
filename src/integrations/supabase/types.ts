@@ -619,6 +619,7 @@ export type Database = {
           is_excluded: boolean
         }[]
       }
+      is_valid_http_url: { Args: { url: string }; Returns: boolean }
     }
     Enums: {
       app_role: "user" | "admin"
