@@ -7,6 +7,7 @@ import { VerificationBadge } from '@/components/VerificationBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Search, 
   ArrowRight, 
@@ -16,13 +17,13 @@ import {
   ExternalLink,
   Clock,
   Link as LinkIcon,
-  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { creditCards } from '@/lib/cardData';
-import { getRecommendation, Recommendation } from '@/lib/recommendationEngine';
+import { getRecommendationFromDB, Recommendation } from '@/lib/recommendationEngineV2';
 import { useWalletCards } from '@/hooks/useWalletCards';
 import { useCreditCards } from '@/hooks/useCreditCards';
+import { useAllCardRewardRules } from '@/hooks/useCardRewardRules';
+import { useAllMerchantExclusions } from '@/hooks/useMerchantExclusions';
 import {
   Collapsible,
   CollapsibleContent,
@@ -33,18 +34,11 @@ import { Link } from 'react-router-dom';
 const Recommend = () => {
   const { selectedCardIds, loading: walletLoading } = useWalletCards();
   const { cards: dbCards, loading: cardsLoading } = useCreditCards();
+  const { rules: allRules, loading: rulesLoading } = useAllCardRewardRules();
+  const { exclusions: allExclusions, loading: exclusionsLoading } = useAllMerchantExclusions();
   
-  // Map DB card IDs to local cardData IDs for recommendation engine
-  // For now, use local cardData until we migrate the engine to use DB
-  const selectedCards = selectedCardIds.length > 0 
-    ? creditCards.filter(c => {
-        // Try matching by name pattern
-        return dbCards.some(db => 
-          db.name.toLowerCase() === c.name.toLowerCase() && 
-          selectedCardIds.includes(db.id)
-        );
-      }).map(c => c.id)
-    : [];
+  const selectedCards = dbCards.filter(c => selectedCardIds.includes(c.id));
+  
   const [url, setUrl] = useState('');
   const [pageTitle, setPageTitle] = useState('');
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
@@ -77,14 +71,11 @@ const Recommend = () => {
     if (!url.trim()) return;
     
     setIsLoading(true);
-    
-    // Simulate slight delay for UX
     await new Promise(r => setTimeout(r, 300));
     
-    const result = getRecommendation(url, selectedCards);
+    const result = getRecommendationFromDB(url, selectedCards, allRules, allExclusions);
     setRecommendation(result);
     
-    // Save to recent searches
     if (result) {
       const search = {
         url,
@@ -100,7 +91,23 @@ const Recommend = () => {
     setIsLoading(false);
   };
 
-  const selectedCardDetails = selectedCards.map(id => creditCards.find(c => c.id === id)).filter(Boolean);
+  const dataLoading = cardsLoading || walletLoading || rulesLoading || exclusionsLoading;
+
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-20 pb-12">
+          <div className="container max-w-4xl mx-auto px-4">
+            <Skeleton className="h-10 w-64 mx-auto mb-4" />
+            <Skeleton className="h-5 w-96 mx-auto mb-8" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -111,30 +118,27 @@ const Recommend = () => {
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold mb-2">Get a Recommendation</h1>
             <p className="text-muted-foreground">
-              Paste any shopping URL to find the best card to use.
+              Right card. Right moment. Paste any URL to find your best option.
             </p>
           </div>
 
-          {/* No cards warning */}
           {selectedCards.length === 0 && (
             <div className="mb-8 p-4 rounded-xl border border-amber-500/50 bg-amber-500/10 flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-amber-500">No cards in your wallet</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  You need to add cards to your wallet first to get personalized recommendations.
+                  Add cards to get personalized recommendations.
                 </p>
                 <Link to="/vault">
                   <Button variant="outline" size="sm" className="mt-3 gap-2">
-                    Add Cards to Wallet
-                    <ArrowRight className="w-4 h-4" />
+                    Add Cards <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>
               </div>
             </div>
           )}
 
-          {/* URL Input */}
           <div className="p-6 rounded-xl border border-border bg-card space-y-4">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
@@ -158,32 +162,10 @@ const Recommend = () => {
               </Button>
             </div>
 
-            {/* Advanced options */}
-            <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-              <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <ChevronDown className={cn("w-4 h-4 transition-transform", showAdvanced && "rotate-180")} />
-                Advanced options
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-3">
-                <div className="space-y-2">
-                  <label className="text-sm text-muted-foreground">Page title (optional)</label>
-                  <Input
-                    placeholder="e.g., Amazon.com Shopping Cart"
-                    value={pageTitle}
-                    onChange={(e) => setPageTitle(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Providing the page title can help improve category detection.
-                  </p>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-
-            {/* Quick actions */}
             <div className="flex flex-wrap gap-2 pt-2">
               <span className="text-xs text-muted-foreground">Try:</span>
               {[
-                { label: 'Amazon', url: 'https://www.amazon.com/cart' },
+                { label: 'Amazon', url: 'https://www.amazon.com' },
                 { label: 'Uber Eats', url: 'https://www.ubereats.com' },
                 { label: 'Target', url: 'https://www.target.com' },
               ].map(example => (
@@ -198,14 +180,12 @@ const Recommend = () => {
             </div>
           </div>
 
-          {/* Recommendation Result */}
           {recommendation && (
             <div className="mt-8 animate-fade-in space-y-6">
-              {/* Main Result Card */}
               <div className="p-6 rounded-xl border border-primary/50 bg-gradient-to-br from-primary/5 to-transparent">
                 <div className="flex flex-col md:flex-row gap-6">
                   <CardImage 
-                    issuer={recommendation.card.issuer}
+                    issuer={recommendation.card.issuer_name}
                     cardName={recommendation.card.name}
                     network={recommendation.card.network}
                     size="lg"
@@ -215,17 +195,25 @@ const Recommend = () => {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <Badge className="bg-primary/20 text-primary border-0">Recommended</Badge>
-                        <VerificationBadge status="unverified" />
+                        <VerificationBadge 
+                          status={recommendation.card.verification_status === 'verified' ? 'verified' : 'unverified'} 
+                        />
                       </div>
                       <h2 className="text-2xl font-bold">{recommendation.card.name}</h2>
-                      <p className="text-muted-foreground">{recommendation.card.issuer}</p>
+                      <p className="text-muted-foreground">{recommendation.card.issuer_name}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        ${recommendation.card.annual_fee_cents / 100}/year
+                      </p>
                     </div>
 
-                    <ConfidenceMeter confidence={Number(recommendation.confidence)} />
+                    <ConfidenceMeter confidence={
+                      recommendation.confidence === 'high' ? 90 : 
+                      recommendation.confidence === 'medium' ? 70 : 50
+                    } />
 
                     <div className="grid grid-cols-2 gap-4 pt-2">
                       <div className="p-3 rounded-lg bg-muted/50">
-                        <p className="text-xs text-muted-foreground mb-1">Detected Merchant</p>
+                        <p className="text-xs text-muted-foreground mb-1">Merchant</p>
                         <p className="font-medium">{recommendation.merchant?.name || extractDomain(url)}</p>
                       </div>
                       <div className="p-3 rounded-lg bg-muted/50">
@@ -236,7 +224,6 @@ const Recommend = () => {
                   </div>
                 </div>
 
-                {/* Reasoning */}
                 <div className="mt-6 pt-6 border-t border-border">
                   <div className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
@@ -249,22 +236,9 @@ const Recommend = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Sources */}
-              <div className="p-4 rounded-xl border border-border bg-card/50">
-                <div className="flex items-center gap-2 mb-3">
-                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Sources</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Card data sourced from official issuer terms. Last updated: December 2024. 
-                  <span className="text-amber-500 ml-1">Data may not be verified.</span>
-                </p>
-              </div>
             </div>
           )}
 
-          {/* Recent Searches */}
           {recentSearches.length > 0 && !recommendation && (
             <div className="mt-12">
               <div className="flex items-center justify-between mb-4">
@@ -295,9 +269,6 @@ const Recommend = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-sm">{search.cardName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(search.timestamp).toLocaleDateString()}
-                      </p>
                     </div>
                   </button>
                 ))}

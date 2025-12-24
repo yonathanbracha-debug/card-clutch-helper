@@ -27,6 +27,8 @@ export type Database = {
           id: string
           last_verified_at: string
           multiplier: number
+          notes: string | null
+          priority: number | null
           source_url: string | null
         }
         Insert: {
@@ -41,6 +43,8 @@ export type Database = {
           id?: string
           last_verified_at?: string
           multiplier: number
+          notes?: string | null
+          priority?: number | null
           source_url?: string | null
         }
         Update: {
@@ -55,6 +59,8 @@ export type Database = {
           id?: string
           last_verified_at?: string
           multiplier?: number
+          notes?: string | null
+          priority?: number | null
           source_url?: string | null
         }
         Relationships: [
@@ -78,6 +84,8 @@ export type Database = {
         Row: {
           annual_fee_cents: number
           created_at: string
+          credits_summary: string | null
+          foreign_tx_fee_percent: number | null
           id: string
           image_url: string | null
           is_active: boolean
@@ -86,6 +94,7 @@ export type Database = {
           name: string
           network: Database["public"]["Enums"]["card_network"]
           reward_summary: string
+          slug: string | null
           source_url: string
           terms_url: string | null
           updated_at: string
@@ -94,6 +103,8 @@ export type Database = {
         Insert: {
           annual_fee_cents: number
           created_at?: string
+          credits_summary?: string | null
+          foreign_tx_fee_percent?: number | null
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -102,6 +113,7 @@ export type Database = {
           name: string
           network: Database["public"]["Enums"]["card_network"]
           reward_summary: string
+          slug?: string | null
           source_url: string
           terms_url?: string | null
           updated_at?: string
@@ -110,6 +122,8 @@ export type Database = {
         Update: {
           annual_fee_cents?: number
           created_at?: string
+          credits_summary?: string | null
+          foreign_tx_fee_percent?: number | null
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -118,6 +132,7 @@ export type Database = {
           name?: string
           network?: Database["public"]["Enums"]["card_network"]
           reward_summary?: string
+          slug?: string | null
           source_url?: string
           terms_url?: string | null
           updated_at?: string
@@ -211,6 +226,38 @@ export type Database = {
           website_url?: string | null
         }
         Relationships: []
+      }
+      merchant_exclusions: {
+        Row: {
+          card_id: string
+          created_at: string
+          id: string
+          merchant_pattern: string
+          reason: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          id?: string
+          merchant_pattern: string
+          reason: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          id?: string
+          merchant_pattern?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_exclusions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       merchants: {
         Row: {
