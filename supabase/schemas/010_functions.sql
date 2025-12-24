@@ -1,15 +1,22 @@
--- Database Functions
--- Execution order: 010 (after all tables and policies)
+-- Database Functions (Deterministic Decision Engine)
+-- Spec: Section 6
+-- Execution order: 010
 
--- Function: Get active reward rules for a card
+-- ============================================================
+-- FUNCTION: Get active reward rules for a card
+-- ============================================================
 CREATE OR REPLACE FUNCTION get_active_reward_rules(p_card_id UUID)
 RETURNS TABLE (
   rule_id UUID,
+  category_slug TEXT,
   category_name TEXT,
   multiplier NUMERIC,
-  cap_amount_cents INTEGER,
+  reward_currency reward_currency,
+  spend_cap_cents INTEGER,
   cap_period cap_period,
-  requires_enrollment BOOLEAN
+  requires_activation BOOLEAN,
+  requires_enrollment BOOLEAN,
+  is_promotion BOOLEAN
 )
 LANGUAGE sql
 STABLE
@@ -18,11 +25,15 @@ SET search_path = public
 AS $$
   SELECT 
     crr.id AS rule_id,
-    rc.name AS category_name,
+    rc.slug AS category_slug,
+    rc.display_name AS category_name,
     crr.multiplier,
-    crr.cap_amount_cents,
+    crr.reward_currency,
+    crr.spend_cap_cents,
     crr.cap_period,
-    crr.requires_enrollment
+    crr.requires_activation,
+    crr.requires_enrollment,
+    crr.promotion AS is_promotion
   FROM card_reward_rules crr
   JOIN reward_categories rc ON rc.id = crr.category_id
   WHERE crr.card_id = p_card_id
@@ -31,30 +42,51 @@ AS $$
   ORDER BY crr.multiplier DESC;
 $$;
 
--- Function: Check if merchant is excluded for a card
-CREATE OR REPLACE FUNCTION is_merchant_excluded(p_card_id UUID, p_merchant_domain TEXT)
-RETURNS BOOLEAN
+-- ============================================================
+-- FUNCTION: Check if merchant is excluded for a card
+-- ============================================================
+CREATE OR REPLACE FUNCTION is_merchant_excluded(
+  p_card_id UUID, 
+  p_merchant_domain TEXT
+)
+RETURNS TABLE (
+  is_excluded BOOLEAN,
+  exclusion_reason TEXT
+)
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT EXISTS (
-    SELECT 1 
-    FROM merchant_exclusions 
-    WHERE card_id = p_card_id 
-      AND merchant_domain = lower(p_merchant_domain)
-  );
+  SELECT 
+    true AS is_excluded,
+    me.exclusion_reason
+  FROM merchant_exclusions me
+  WHERE me.card_id = p_card_id 
+    AND me.merchant_domain = lower(p_merchant_domain)
+  UNION ALL
+  SELECT 
+    false AS is_excluded,
+    NULL AS exclusion_reason
+  WHERE NOT EXISTS (
+    SELECT 1 FROM merchant_exclusions me2
+    WHERE me2.card_id = p_card_id 
+      AND me2.merchant_domain = lower(p_merchant_domain)
+  )
+  LIMIT 1;
 $$;
 
--- Function: Get merchant category with confidence
-CREATE OR REPLACE FUNCTION get_merchant_category(p_domain TEXT)
+-- ============================================================
+-- FUNCTION: Get verified merchant category
+-- Returns NULL if merchant is not verified (conservative approach)
+-- ============================================================
+CREATE OR REPLACE FUNCTION get_verified_merchant_category(p_domain TEXT)
 RETURNS TABLE (
   category_id UUID,
+  category_slug TEXT,
   category_name TEXT,
   confidence_score NUMERIC,
-  is_verified BOOLEAN,
-  source merchant_source
+  verification_source verification_source
 )
 LANGUAGE sql
 STABLE
@@ -63,32 +95,74 @@ SET search_path = public
 AS $$
   SELECT 
     rc.id AS category_id,
-    rc.name AS category_name,
+    rc.slug AS category_slug,
+    rc.display_name AS category_name,
     m.confidence_score,
-    m.verified AS is_verified,
-    m.source
+    m.verification_source
   FROM merchants m
   JOIN reward_categories rc ON rc.id = m.default_category_id
   WHERE m.domain = lower(p_domain)
+    AND m.verification_status = 'verified'
   LIMIT 1;
 $$;
 
--- Function: Get best card for category (excluding specified merchants)
-CREATE OR REPLACE FUNCTION get_best_card_for_category(
-  p_category_name TEXT,
+-- ============================================================
+-- FUNCTION: Get AI inference (NON-AUTHORITATIVE)
+-- Only returns if no verified category exists
+-- ============================================================
+CREATE OR REPLACE FUNCTION get_merchant_inference(p_domain TEXT)
+RETURNS TABLE (
+  category_id UUID,
+  category_slug TEXT,
+  confidence_score NUMERIC,
+  method inference_method,
+  is_human_reviewed BOOLEAN
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT 
+    rc.id AS category_id,
+    rc.slug AS category_slug,
+    mci.confidence_score,
+    mci.method,
+    mci.reviewed_by_human AS is_human_reviewed
+  FROM merchant_category_inference mci
+  JOIN reward_categories rc ON rc.id = mci.suggested_category_id
+  WHERE mci.merchant_domain = lower(p_domain)
+    AND mci.accepted = true
+  ORDER BY mci.confidence_score DESC, mci.created_at DESC
+  LIMIT 1;
+$$;
+
+-- ============================================================
+-- FUNCTION: Get best cards for a category (respecting exclusions)
+-- Implements Spec Section 6 ranking:
+-- 1. Highest effective return
+-- 2. Uncapped > capped
+-- 3. Lower annual fee
+-- ============================================================
+CREATE OR REPLACE FUNCTION get_best_cards_for_category(
+  p_category_slug TEXT,
   p_merchant_domain TEXT DEFAULT NULL,
-  p_card_ids UUID[] DEFAULT NULL
+  p_user_card_ids UUID[] DEFAULT NULL
 )
 RETURNS TABLE (
+  rank INTEGER,
   card_id UUID,
   card_name TEXT,
   issuer_name TEXT,
   multiplier NUMERIC,
-  cap_amount_cents INTEGER,
+  reward_currency reward_currency,
+  spend_cap_cents INTEGER,
   cap_period cap_period,
   annual_fee_cents INTEGER,
   is_excluded BOOLEAN,
-  exclusion_reason TEXT
+  exclusion_reason TEXT,
+  requires_enrollment BOOLEAN,
+  is_promotion BOOLEAN
 )
 LANGUAGE sql
 STABLE
@@ -98,63 +172,117 @@ AS $$
   WITH ranked_cards AS (
     SELECT 
       cc.id AS card_id,
-      cc.name AS card_name,
-      i.name AS issuer_name,
+      cc.official_product_name AS card_name,
+      i.brand_name AS issuer_name,
       crr.multiplier,
-      crr.cap_amount_cents,
+      crr.reward_currency,
+      crr.spend_cap_cents,
       crr.cap_period,
       cc.annual_fee_cents,
-      CASE 
-        WHEN p_merchant_domain IS NOT NULL AND EXISTS (
-          SELECT 1 FROM merchant_exclusions me 
-          WHERE me.card_id = cc.id 
-            AND me.merchant_domain = lower(p_merchant_domain)
-        ) THEN true
-        ELSE false
-      END AS is_excluded,
-      (
-        SELECT me.reason FROM merchant_exclusions me 
-        WHERE me.card_id = cc.id 
-          AND me.merchant_domain = lower(p_merchant_domain)
-        LIMIT 1
-      ) AS exclusion_reason,
+      COALESCE(
+        (SELECT true FROM merchant_exclusions me 
+         WHERE me.card_id = cc.id 
+           AND p_merchant_domain IS NOT NULL
+           AND me.merchant_domain = lower(p_merchant_domain)
+         LIMIT 1),
+        false
+      ) AS is_excluded,
+      (SELECT me.exclusion_reason FROM merchant_exclusions me 
+       WHERE me.card_id = cc.id 
+         AND p_merchant_domain IS NOT NULL
+         AND me.merchant_domain = lower(p_merchant_domain)
+       LIMIT 1) AS exclusion_reason,
+      crr.requires_enrollment,
+      crr.promotion AS is_promotion,
       ROW_NUMBER() OVER (
         ORDER BY 
-          CASE WHEN p_merchant_domain IS NOT NULL AND EXISTS (
+          -- Excluded cards sort last
+          CASE WHEN EXISTS (
             SELECT 1 FROM merchant_exclusions me 
             WHERE me.card_id = cc.id 
+              AND p_merchant_domain IS NOT NULL
               AND me.merchant_domain = lower(p_merchant_domain)
           ) THEN 1 ELSE 0 END,
+          -- Highest multiplier first
           crr.multiplier DESC,
-          CASE WHEN crr.cap_amount_cents IS NULL THEN 0 ELSE 1 END,
+          -- Uncapped preferred over capped
+          CASE WHEN crr.spend_cap_cents IS NULL THEN 0 ELSE 1 END,
+          -- Lower annual fee preferred
           cc.annual_fee_cents ASC
       ) AS rank
     FROM credit_cards cc
     JOIN issuers i ON i.id = cc.issuer_id
     JOIN card_reward_rules crr ON crr.card_id = cc.id
     JOIN reward_categories rc ON rc.id = crr.category_id
-    WHERE rc.name = p_category_name
+    WHERE rc.slug = p_category_slug
       AND cc.discontinued = false
       AND (crr.effective_start_date IS NULL OR crr.effective_start_date <= CURRENT_DATE)
       AND (crr.effective_end_date IS NULL OR crr.effective_end_date >= CURRENT_DATE)
-      AND (p_card_ids IS NULL OR cc.id = ANY(p_card_ids))
+      AND (p_user_card_ids IS NULL OR cc.id = ANY(p_user_card_ids))
   )
   SELECT 
+    rank::INTEGER,
     card_id,
     card_name,
     issuer_name,
     multiplier,
-    cap_amount_cents,
+    reward_currency,
+    spend_cap_cents,
     cap_period,
     annual_fee_cents,
     is_excluded,
-    exclusion_reason
+    exclusion_reason,
+    requires_enrollment,
+    is_promotion
   FROM ranked_cards
   ORDER BY rank;
 $$;
 
+-- ============================================================
+-- FUNCTION: Check data staleness
+-- Returns cards/rules that need re-verification
+-- ============================================================
+CREATE OR REPLACE FUNCTION get_stale_data(p_days_threshold INTEGER DEFAULT 90)
+RETURNS TABLE (
+  entity_type TEXT,
+  entity_id UUID,
+  entity_name TEXT,
+  last_verified_at TIMESTAMPTZ,
+  days_stale INTEGER
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT 
+    'credit_card' AS entity_type,
+    id AS entity_id,
+    official_product_name AS entity_name,
+    last_verified_at,
+    EXTRACT(DAY FROM (now() - last_verified_at))::INTEGER AS days_stale
+  FROM credit_cards
+  WHERE last_verified_at < now() - (p_days_threshold || ' days')::INTERVAL
+    AND discontinued = false
+  UNION ALL
+  SELECT 
+    'reward_rule' AS entity_type,
+    crr.id AS entity_id,
+    cc.official_product_name || ' - ' || rc.display_name AS entity_name,
+    crr.last_verified_at,
+    EXTRACT(DAY FROM (now() - crr.last_verified_at))::INTEGER AS days_stale
+  FROM card_reward_rules crr
+  JOIN credit_cards cc ON cc.id = crr.card_id
+  JOIN reward_categories rc ON rc.id = crr.category_id
+  WHERE crr.last_verified_at < now() - (p_days_threshold || ' days')::INTERVAL
+    AND (crr.effective_end_date IS NULL OR crr.effective_end_date >= CURRENT_DATE)
+  ORDER BY days_stale DESC;
+$$;
+
 -- Comments
-COMMENT ON FUNCTION get_active_reward_rules IS 'Returns all currently active reward rules for a given card';
-COMMENT ON FUNCTION is_merchant_excluded IS 'Checks if a merchant is excluded from rewards for a specific card';
-COMMENT ON FUNCTION get_merchant_category IS 'Returns the verified category for a known merchant';
-COMMENT ON FUNCTION get_best_card_for_category IS 'Returns cards ranked by reward value for a category, respecting exclusions';
+COMMENT ON FUNCTION get_active_reward_rules IS 'Returns all currently active reward rules for a card';
+COMMENT ON FUNCTION is_merchant_excluded IS 'Checks if merchant is excluded from rewards for a specific card';
+COMMENT ON FUNCTION get_verified_merchant_category IS 'Returns ONLY verified category - NULL if not verified (conservative)';
+COMMENT ON FUNCTION get_merchant_inference IS 'Returns AI inference - NON-AUTHORITATIVE, advisory only';
+COMMENT ON FUNCTION get_best_cards_for_category IS 'Ranks cards by effective value, respecting exclusions (Spec Section 6)';
+COMMENT ON FUNCTION get_stale_data IS 'Identifies data needing re-verification - prevents silent drift';

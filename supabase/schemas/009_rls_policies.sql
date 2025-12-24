@@ -1,5 +1,6 @@
--- Row Level Security Policies
--- Execution order: 009 (after all tables)
+-- Row Level Security Policies (Bank-Grade Access Control)
+-- Spec: Section 9
+-- Execution order: 009
 
 -- Enable RLS on all tables
 ALTER TABLE issuers ENABLE ROW LEVEL SECURITY;
@@ -8,60 +9,75 @@ ALTER TABLE credit_cards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE card_reward_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE merchant_exclusions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE merchants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE merchant_category_evaluations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE recommendation_audits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE merchant_category_inference ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recommendation_audit_log ENABLE ROW LEVEL SECURITY;
 
--- Public read access for reference data (cards, issuers, categories, rules)
--- These are canonical truth and should be publicly readable
+-- ============================================================
+-- PUBLIC READ ACCESS (Canonical Truth Tables)
+-- These are public reference data - no PII, no user data
+-- ============================================================
 
-CREATE POLICY "Public read access for issuers"
+CREATE POLICY "Public read: issuers"
   ON issuers FOR SELECT
   TO anon, authenticated
   USING (true);
 
-CREATE POLICY "Public read access for reward_categories"
+CREATE POLICY "Public read: reward_categories"
   ON reward_categories FOR SELECT
   TO anon, authenticated
   USING (true);
 
-CREATE POLICY "Public read access for credit_cards"
+CREATE POLICY "Public read: credit_cards"
   ON credit_cards FOR SELECT
   TO anon, authenticated
   USING (true);
 
-CREATE POLICY "Public read access for card_reward_rules"
+CREATE POLICY "Public read: card_reward_rules"
   ON card_reward_rules FOR SELECT
   TO anon, authenticated
   USING (true);
 
-CREATE POLICY "Public read access for merchant_exclusions"
+CREATE POLICY "Public read: merchant_exclusions"
   ON merchant_exclusions FOR SELECT
   TO anon, authenticated
   USING (true);
 
-CREATE POLICY "Public read access for merchants"
+CREATE POLICY "Public read: merchants (verified only)"
   ON merchants FOR SELECT
   TO anon, authenticated
-  USING (true);
+  USING (verification_status = 'verified');
 
--- Evaluations and audits are internal/service-level
--- Read access for authenticated users, write via service role only
+-- ============================================================
+-- RESTRICTED ACCESS (Internal/Service Tables)
+-- Inference and audit data require authentication
+-- ============================================================
 
-CREATE POLICY "Authenticated read access for evaluations"
-  ON merchant_category_evaluations FOR SELECT
+CREATE POLICY "Authenticated read: merchant_category_inference"
+  ON merchant_category_inference FOR SELECT
   TO authenticated
   USING (true);
 
-CREATE POLICY "Authenticated read access for audits"
-  ON recommendation_audits FOR SELECT
+CREATE POLICY "Authenticated read: recommendation_audit_log"
+  ON recommendation_audit_log FOR SELECT
   TO authenticated
   USING (true);
 
--- Insert policy for audits (edge functions can write via service role)
-CREATE POLICY "Service insert for audits"
-  ON recommendation_audits FOR INSERT
+-- ============================================================
+-- WRITE ACCESS (Service Role Only)
+-- All canonical data writes must go through service_role
+-- Edge functions with service_role key can insert audits
+-- ============================================================
+
+CREATE POLICY "Service insert: recommendation_audit_log"
+  ON recommendation_audit_log FOR INSERT
   TO authenticated
   WITH CHECK (true);
 
--- Note: All write operations for canonical data (cards, rules, exclusions)
--- should be performed via service_role key in admin contexts only
+-- Note: All writes to canonical truth tables (issuers, credit_cards, 
+-- card_reward_rules, merchant_exclusions, merchants) should be 
+-- performed via service_role key in admin/verification contexts ONLY.
+-- 
+-- This ensures:
+-- 1. No unauthorized data modification
+-- 2. Full audit trail via database logs
+-- 3. Compliance with data integrity requirements
