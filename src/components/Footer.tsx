@@ -4,6 +4,13 @@ export function Footer() {
   return (
     <footer className="py-12 px-4 border-t border-border">
       <div className="container max-w-6xl mx-auto">
+        {/* Positioning statement */}
+        <div className="text-center mb-10 pb-10 border-b border-border">
+          <p className="text-sm text-muted-foreground max-w-lg mx-auto">
+            CardClutch is the intelligence layer behind a future browser extension and credit guidance platform.
+          </p>
+        </div>
+
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo */}
           <a href="/" className="flex items-center gap-2">

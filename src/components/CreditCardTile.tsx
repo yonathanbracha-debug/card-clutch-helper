@@ -19,7 +19,7 @@ export function CreditCardTile({ card, isSelected, onToggle }: CreditCardTilePro
     <button
       onClick={() => onToggle(card.id)}
       className={cn(
-        "relative w-full rounded-xl transition-all duration-300 group text-left",
+        "relative w-full rounded-xl transition-all duration-200 group text-left touch-manipulation",
         "hover:scale-[1.02] active:scale-[0.98]",
         isSelected 
           ? "ring-2 ring-primary shadow-lg" 
