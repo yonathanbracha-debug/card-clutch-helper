@@ -1,14 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Search, Sparkles } from 'lucide-react';
 
 interface UrlInputProps {
   onSubmit: (url: string) => void;
   isDisabled: boolean;
+  defaultUrl?: string;
 }
 
-export function UrlInput({ onSubmit, isDisabled }: UrlInputProps) {
-  const [url, setUrl] = useState('');
+export function UrlInput({ onSubmit, isDisabled, defaultUrl }: UrlInputProps) {
+  const [url, setUrl] = useState(defaultUrl || '');
+
+  useEffect(() => {
+    if (defaultUrl && !url) {
+      setUrl(defaultUrl);
+    }
+  }, [defaultUrl]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +33,16 @@ export function UrlInput({ onSubmit, isDisabled }: UrlInputProps) {
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-xl mx-auto">
-      <div className="relative">
+      <div className="mb-2">
+        <label className="block text-sm font-medium text-foreground mb-1">
+          Paste a checkout or product page URL
+        </label>
+        <p className="text-xs text-muted-foreground">
+          CardClutch automatically detects the merchant and purchase category.
+        </p>
+      </div>
+      
+      <div className="relative mt-3">
         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
           <Search className="w-5 h-5" />
         </div>
@@ -35,7 +51,7 @@ export function UrlInput({ onSubmit, isDisabled }: UrlInputProps) {
           type="text"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="Paste a shopping URL (e.g., amazon.com)"
+          placeholder="e.g., amazon.com/cart or target.com/checkout"
           className="w-full h-14 pl-12 pr-40 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
           disabled={isDisabled}
         />

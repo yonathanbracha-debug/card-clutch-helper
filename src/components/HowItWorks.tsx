@@ -1,20 +1,20 @@
-import { Wallet, Link, Zap } from 'lucide-react';
+import { Wallet, Link, Zap, ArrowRight } from 'lucide-react';
 
 const steps = [
   {
     icon: Wallet,
-    title: 'Add your cards',
-    description: 'Select which credit cards you own from our library. We support the most popular rewards cards.',
+    title: 'Select your cards',
+    description: 'Choose from popular rewards cards. We remember your selection.',
   },
   {
     icon: Link,
-    title: 'Paste a shopping link',
-    description: 'Copy the URL from any online store. We identify the merchant and their category automatically.',
+    title: 'Paste a checkout URL',
+    description: 'Copy any shopping URL. We detect the merchant automatically.',
   },
   {
     icon: Zap,
-    title: 'Get the best card',
-    description: "We instantly analyze your cards' rewards and recommend which one maximizes your earnings.",
+    title: 'Use the best card',
+    description: 'Get an instant recommendation with clear reasoning.',
   },
 ];
 
@@ -27,11 +27,11 @@ export function HowItWorks() {
             How It <span className="gradient-text">Works</span>
           </h2>
           <p className="text-muted-foreground max-w-lg mx-auto">
-            Three simple steps to never miss a reward again.
+            Three steps. No sign-up. No tracking. Just smarter spending.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-6">
           {steps.map((step, index) => (
             <div 
               key={step.title} 
@@ -41,6 +41,13 @@ export function HowItWorks() {
               <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
                 {index + 1}
               </div>
+
+              {/* Arrow connector (hidden on mobile, shown on md+) */}
+              {index < steps.length - 1 && (
+                <div className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-muted items-center justify-center">
+                  <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                </div>
+              )}
 
               {/* Icon */}
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6 group-hover:bg-primary/20 transition-colors">
