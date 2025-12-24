@@ -3,7 +3,7 @@ import { Recommendation } from '@/lib/recommendationEngine';
 import { RecommendationResult } from './RecommendationResult';
 import { RecentSearches } from './RecentSearches';
 import { RecentSearch } from '@/hooks/useRecentSearches';
-import { CreditCard, ArrowDown, Zap } from 'lucide-react';
+import { CardSelector } from './CardSelector';
 
 interface HeroProps {
   onUrlSubmit: (url: string) => void;
@@ -12,6 +12,8 @@ interface HeroProps {
   lastUrl?: string;
   recentSearches: RecentSearch[];
   onClearSearches: () => void;
+  selectedCards: string[];
+  onToggleCard: (cardId: string) => void;
 }
 
 export function Hero({ 
@@ -20,76 +22,79 @@ export function Hero({
   hasSelectedCards, 
   lastUrl,
   recentSearches,
-  onClearSearches 
+  onClearSearches,
+  selectedCards,
+  onToggleCard,
 }: HeroProps) {
   return (
-    <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-4 py-20 overflow-hidden">
-      {/* Background glow effect */}
-      <div className="absolute inset-0 hero-glow opacity-50 pointer-events-none" />
-      
-      {/* Floating card decoration */}
-      <div className="absolute top-20 right-10 opacity-10 animate-float hidden lg:block">
-        <CreditCard className="w-32 h-32 text-primary" />
-      </div>
-      <div className="absolute bottom-40 left-10 opacity-10 animate-float hidden lg:block" style={{ animationDelay: '2s' }}>
-        <CreditCard className="w-24 h-24 text-primary rotate-12" />
-      </div>
-
-      <div className="relative z-10 text-center max-w-4xl mx-auto w-full">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary border border-border mb-8 animate-fade-in">
-          <Zap className="w-4 h-4 text-primary" />
-          <span className="text-sm text-muted-foreground">
-            The brain behind smarter shopping
-          </span>
+    <section className="px-4 py-16 md:py-24">
+      <div className="container max-w-2xl mx-auto">
+        {/* Headline - authority first */}
+        <div className="text-center mb-12">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold mb-4 text-balance animate-fade-in">
+            Credit decisions should happen before damage is done.
+          </h1>
+          <p className="text-muted-foreground text-lg md:text-xl max-w-xl mx-auto animate-fade-in">
+            CardClutch tells you which card to use at the moment of purchase—not after.
+          </p>
         </div>
 
-        {/* Main headline */}
-        <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold mb-6 animate-slide-up">
-          CardClutch tells you which card to use{' '}
-          <span className="gradient-text">before you pay.</span>
-        </h1>
+        {/* Decision Engine */}
+        <div className="surface-elevated rounded-lg p-6 md:p-8 animate-slide-up">
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
+            Decision Engine
+          </div>
+          
+          {/* Card Selector */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-2">
+              Your cards
+            </label>
+            <CardSelector 
+              selectedCards={selectedCards} 
+              onToggleCard={onToggleCard} 
+            />
+          </div>
 
-        {/* Subheadline */}
-        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          Paste any checkout URL. Get an instant recommendation. Maximize every purchase.
-        </p>
+          {/* URL Input */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Checkout URL
+            </label>
+            {!hasSelectedCards ? (
+              <div className="px-4 py-3 rounded-lg border border-dashed border-border text-sm text-muted-foreground">
+                Select at least one card above to get started
+              </div>
+            ) : (
+              <UrlInput onSubmit={onUrlSubmit} isDisabled={!hasSelectedCards} defaultUrl={lastUrl} />
+            )}
+          </div>
 
-        {/* URL Input or Warning */}
-        <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          {!hasSelectedCards ? (
-            <div className="glass-card rounded-xl p-6 max-w-md mx-auto">
-              <p className="text-muted-foreground mb-4">
-                First, select your credit cards below
-              </p>
-              <a 
-                href="#cards"
-                className="inline-flex items-center gap-2 text-primary hover:underline font-medium"
-              >
-                <ArrowDown className="w-4 h-4" />
-                Choose your cards
-              </a>
+          {/* Recommendation Result */}
+          {recommendation && (
+            <div className="mt-6 pt-6 border-t border-border">
+              <RecommendationResult recommendation={recommendation} />
             </div>
-          ) : (
-            <UrlInput onSubmit={onUrlSubmit} isDisabled={!hasSelectedCards} defaultUrl={lastUrl} />
           )}
         </div>
 
-        {/* Recommendation Result */}
-        {recommendation && (
-          <div className="mt-12">
-            <RecommendationResult recommendation={recommendation} />
+        {/* Recent Searches */}
+        {!recommendation && hasSelectedCards && recentSearches.length > 0 && (
+          <div className="mt-6">
+            <RecentSearches 
+              searches={recentSearches} 
+              onSelect={onUrlSubmit}
+              onClear={onClearSearches}
+            />
           </div>
         )}
 
-        {/* Recent Searches - only show when no active recommendation and has selected cards */}
-        {!recommendation && hasSelectedCards && recentSearches.length > 0 && (
-          <RecentSearches 
-            searches={recentSearches} 
-            onSelect={onUrlSubmit}
-            onClear={onClearSearches}
-          />
-        )}
+        {/* Why statement */}
+        <div className="mt-12 text-center">
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            No accounts. No tracking. All logic runs locally in your browser.
+          </p>
+        </div>
       </div>
     </section>
   );

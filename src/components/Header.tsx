@@ -1,4 +1,4 @@
-import { CreditCard, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
@@ -22,16 +22,13 @@ export function Header({ theme, onThemeToggle }: HeaderProps) {
   const location = useLocation();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50 transition-colors duration-300">
-      <div className="container max-w-6xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+      <div className="container max-w-5xl mx-auto px-4">
+        <div className="flex items-center justify-between h-14">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center group-hover:scale-105 transition-transform">
-              <CreditCard className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-display text-xl font-bold">
-              Card<span className="gradient-text">Clutch</span>
+          <Link to="/" className="flex items-center gap-2">
+            <span className="text-lg font-semibold">
+              CardClutch
             </span>
           </Link>
 
@@ -54,7 +51,7 @@ export function Header({ theme, onThemeToggle }: HeaderProps) {
           </nav>
 
           {/* Right side */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <ThemeToggle theme={theme} onToggle={onThemeToggle} />
             
             {/* Mobile menu button */}
@@ -69,17 +66,17 @@ export function Header({ theme, onThemeToggle }: HeaderProps) {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-border/50">
-            <div className="flex flex-col gap-2">
+          <nav className="md:hidden py-4 border-t border-border">
+            <div className="flex flex-col gap-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   to={link.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    "px-3 py-2 rounded-lg text-sm transition-colors",
+                    "px-3 py-2 rounded-md text-sm transition-colors",
                     location.pathname === link.href
-                      ? "bg-primary/10 text-foreground font-medium"
+                      ? "bg-muted text-foreground font-medium"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                 >

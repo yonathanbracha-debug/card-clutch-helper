@@ -13,11 +13,11 @@ export function RecentSearches({ searches, onSelect, onClear }: RecentSearchesPr
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto mt-8 animate-fade-in">
+    <div className="surface-primary rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Clock className="w-4 h-4" />
-          <span className="text-sm font-medium">Recent searches</span>
+          <Clock className="w-3.5 h-3.5" />
+          <span className="text-xs font-medium">Recent</span>
         </div>
         <button
           onClick={onClear}
@@ -28,29 +28,27 @@ export function RecentSearches({ searches, onSelect, onClear }: RecentSearchesPr
         </button>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1">
         {searches.map((search) => (
           <button
             key={search.id}
             onClick={() => onSelect(search.url)}
-            className="w-full glass-card rounded-xl p-4 text-left hover:border-primary/50 transition-all group"
+            className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md text-left hover:bg-muted transition-colors group"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-foreground truncate">
-                    {search.merchantName}
-                  </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground flex-shrink-0">
-                    {search.categoryLabel}
-                  </span>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Use <span className="text-primary font-medium">{search.cardIssuer} {search.cardName}</span>
-                </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium truncate">
+                  {search.merchantName}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {search.categoryLabel}
+                </span>
               </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0 ml-4" />
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {search.cardIssuer} {search.cardName}
+              </div>
             </div>
+            <ArrowRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
           </button>
         ))}
       </div>
