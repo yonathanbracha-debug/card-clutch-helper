@@ -10,13 +10,19 @@ export function Footer() {
               CardClutch
             </Link>
             <span className="hidden md:inline">
-              Decision intelligence for credit card usage
+              Earn more. Stress less.
             </span>
           </div>
 
           <div className="flex items-center gap-6">
-            <Link to="/trust" className="hover:text-foreground transition-colors">
+            <Link to="/privacy" className="hover:text-foreground transition-colors">
               Privacy
+            </Link>
+            <Link to="/security" className="hover:text-foreground transition-colors">
+              Security
+            </Link>
+            <Link to="/roadmap" className="hover:text-foreground transition-colors">
+              Roadmap
             </Link>
             <span>© 2024</span>
           </div>

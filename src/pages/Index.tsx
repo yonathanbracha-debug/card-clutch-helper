@@ -1,10 +1,21 @@
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Shield, Zap, Target, ChevronRight } from 'lucide-react';
+import { ArrowRight, Shield, Zap, Target, ChevronRight, CreditCard, CheckCircle, Users, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { CardImage } from '@/components/CardImage';
+import { useCreditCards } from '@/hooks/useCreditCards';
+import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 
 const Index = () => {
+  const { cards: allCards, loading } = useCreditCards();
+  const { startWithDemo, demoCardIds } = useUnifiedWallet();
+  
+  // Get demo cards for preview
+  const demoCards = allCards.filter(c => demoCardIds.includes(c.id)).slice(0, 3);
+  const featuredCards = allCards.slice(0, 6);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -15,36 +26,76 @@ const Index = () => {
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
           <div className="container max-w-6xl mx-auto px-4 py-24 md:py-32 relative">
             <div className="max-w-3xl mx-auto text-center space-y-6">
+              <Badge variant="outline" className="mb-4">
+                No sign-up required to try
+              </Badge>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-balance">
-                Don't let the credit system use you.{' '}
-                <span className="text-primary">Use it.</span>
+                Right card.{' '}
+                <span className="text-primary">Right moment.</span>
               </h1>
               <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto text-balance">
-                Know the right card before you pay. CardClutch helps you maximize rewards with verified, accurate card data.
+                Know exactly which card maximizes your rewards before you pay. 
+                Verified data. No guesswork.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                <Link to="/recommend">
+                <Link to="/analyze">
                   <Button size="lg" className="w-full sm:w-auto gap-2 shadow-lg shadow-primary/25">
-                    Get a Recommendation
+                    Try the Analyzer
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>
-                <Link to="/vault">
+                <Link to="/cards">
                   <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2">
-                    Build My Wallet
+                    Browse Cards
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </Link>
               </div>
               <p className="text-sm text-muted-foreground pt-2">
-                Built for students, first-gen credit builders, and anyone who wants to spend smarter.
+                Earn more. Stress less. Stay in control.
               </p>
             </div>
           </div>
         </section>
 
+        {/* Quick Demo CTA */}
+        <section className="border-t border-border bg-gradient-to-b from-primary/5 to-transparent">
+          <div className="container max-w-6xl mx-auto px-4 py-12">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-2xl bg-card border border-border shadow-sm">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold mb-2">Try it instantly</h3>
+                <p className="text-muted-foreground text-sm">
+                  Use our demo wallet with popular cards and analyze any shopping URL right now.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {demoCards.length > 0 && (
+                  <div className="hidden sm:flex -space-x-2">
+                    {demoCards.map(card => (
+                      <CardImage 
+                        key={card.id}
+                        issuer={card.issuer_name}
+                        cardName={card.name}
+                        network={card.network}
+                        size="sm"
+                        className="ring-2 ring-background"
+                      />
+                    ))}
+                  </div>
+                )}
+                <Link to="/analyze" onClick={() => startWithDemo()}>
+                  <Button className="gap-2">
+                    Start Demo
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* How It Works */}
-        <section className="border-t border-border bg-card/50">
+        <section className="border-t border-border">
           <div className="container max-w-6xl mx-auto px-4 py-20">
             <div className="text-center mb-12">
               <h2 className="text-2xl md:text-3xl font-bold mb-4">How It Works</h2>
@@ -54,21 +105,21 @@ const Index = () => {
               {[
                 {
                   step: '01',
-                  title: 'Add Your Cards',
-                  description: 'Select the credit cards you own. We support 50+ major cards with verified reward structures.',
-                  icon: Target,
+                  title: 'Select Your Cards',
+                  description: 'Choose from 50+ verified cards or use our demo wallet to get started instantly.',
+                  icon: CreditCard,
                 },
                 {
                   step: '02',
                   title: 'Paste Any URL',
-                  description: 'Shopping somewhere? Paste the URL and we detect the merchant category automatically.',
+                  description: 'Shopping somewhere? Paste the merchant URL and we detect the category automatically.',
                   icon: Zap,
                 },
                 {
                   step: '03',
                   title: 'Get Your Answer',
-                  description: 'See exactly which card to use, why, and what exclusions might apply.',
-                  icon: Shield,
+                  description: 'See which card to use, why it wins, and what exclusions might apply.',
+                  icon: Target,
                 },
               ].map((item) => {
                 const Icon = item.icon;
@@ -87,38 +138,137 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Privacy Promise */}
+        {/* Featured Cards Preview */}
+        <section className="border-t border-border bg-muted/30">
+          <div className="container max-w-6xl mx-auto px-4 py-20">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold mb-2">Card Library</h2>
+                <p className="text-muted-foreground">Verified reward data you can trust</p>
+              </div>
+              <Link to="/cards">
+                <Button variant="outline" className="gap-2">
+                  View All
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {featuredCards.map(card => {
+                const annualFee = card.annual_fee_cents / 100;
+                return (
+                  <Link 
+                    key={card.id}
+                    to={`/cards/${card.id}`}
+                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <CardImage 
+                        issuer={card.issuer_name}
+                        cardName={card.name}
+                        network={card.network}
+                        size="sm"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-sm truncate group-hover:text-primary transition-colors">
+                          {card.name}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">{card.issuer_name}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {annualFee === 0 ? 'No annual fee' : `$${annualFee}/year`}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* Trust & Privacy */}
         <section className="border-t border-border">
           <div className="container max-w-6xl mx-auto px-4 py-20">
-            <div className="max-w-2xl mx-auto text-center">
-              <Shield className="w-12 h-12 text-primary mx-auto mb-6" />
-              <h2 className="text-2xl md:text-3xl font-bold mb-4">Privacy First</h2>
-              <p className="text-muted-foreground mb-8">
-                CardClutch runs entirely in your browser. We don't store your URLs, track your purchases, or sell your data. Your wallet stays yours.
-              </p>
-              <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
-                <span className="px-4 py-2 rounded-full bg-muted">No tracking</span>
-                <span className="px-4 py-2 rounded-full bg-muted">No selling data</span>
-                <span className="px-4 py-2 rounded-full bg-muted">Client-side only</span>
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div>
+                <Shield className="w-12 h-12 text-primary mb-6" />
+                <h2 className="text-2xl md:text-3xl font-bold mb-4">Privacy First</h2>
+                <p className="text-muted-foreground mb-6">
+                  We don't store your URLs, track your purchases, or sell your data. 
+                  Your wallet stays yours. Period.
+                </p>
+                <div className="space-y-3">
+                  {[
+                    'No purchase tracking',
+                    'No data selling',
+                    'Encrypted storage',
+                    'You control your data',
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm">
+                      <CheckCircle className="w-4 h-4 text-primary" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="p-6 rounded-2xl bg-muted/50 border border-border">
+                <h3 className="font-semibold mb-4">Why CardClutch?</h3>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <TrendingUp className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Maximize Every Swipe</p>
+                      <p className="text-xs text-muted-foreground">Know the best card for every purchase</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Shield className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Verified Data</p>
+                      <p className="text-xs text-muted-foreground">Sourced from official issuer terms</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Users className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Built for You</p>
+                      <p className="text-xs text-muted-foreground">By people who actually use credit cards</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* CTA */}
+        {/* Final CTA */}
         <section className="border-t border-border bg-primary/5">
           <div className="container max-w-6xl mx-auto px-4 py-16">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div>
-                <h2 className="text-xl md:text-2xl font-bold mb-2">Ready to maximize your rewards?</h2>
-                <p className="text-muted-foreground">Start by adding your cards to your wallet.</p>
+            <div className="text-center space-y-6">
+              <h2 className="text-2xl md:text-3xl font-bold">Ready to stop leaving money on the table?</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto">
+                Try it now — no sign-up required. Save your wallet when you're ready.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link to="/analyze">
+                  <Button size="lg" className="gap-2">
+                    Try the Analyzer
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Link to="/wallet">
+                  <Button size="lg" variant="outline" className="gap-2">
+                    Build My Wallet
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </Link>
               </div>
-              <Link to="/vault">
-                <Button size="lg" className="gap-2">
-                  Get Started
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
             </div>
           </div>
         </section>
