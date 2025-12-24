@@ -510,7 +510,63 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_active_reward_rules: {
+        Args: { p_card_id: string }
+        Returns: {
+          cap_cents: number
+          cap_period: string
+          category_name: string
+          category_slug: string
+          description: string
+          multiplier: number
+          notes: string
+          rule_id: string
+        }[]
+      }
+      get_best_cards_for_category: {
+        Args: {
+          p_category_slug: string
+          p_merchant_domain?: string
+          p_user_card_ids?: string[]
+        }
+        Returns: {
+          annual_fee_cents: number
+          cap_cents: number
+          cap_period: string
+          card_id: string
+          card_name: string
+          exclusion_reason: string
+          is_excluded: boolean
+          issuer_name: string
+          multiplier: number
+          rank: number
+        }[]
+      }
+      get_stale_data: {
+        Args: { p_days_threshold?: number }
+        Returns: {
+          days_stale: number
+          entity_id: string
+          entity_name: string
+          entity_type: string
+          last_verified_at: string
+        }[]
+      }
+      get_verified_merchant_category: {
+        Args: { p_domain: string }
+        Returns: {
+          category_id: string
+          category_name: string
+          category_slug: string
+        }[]
+      }
+      is_merchant_excluded: {
+        Args: { p_card_id: string; p_merchant_pattern: string }
+        Returns: {
+          exclusion_reason: string
+          is_excluded: boolean
+        }[]
+      }
     }
     Enums: {
       card_network: "visa" | "mastercard" | "amex" | "discover"
