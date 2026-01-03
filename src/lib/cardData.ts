@@ -44,7 +44,7 @@ export const creditCards: CreditCard[] = [
     name: 'Gold Card',
     issuer: 'American Express',
     network: 'amex',
-    annualFee: 250,
+    annualFee: 325, // CORRECT: $325/year (verified 2026-01-03)
     rewardSummary: '4X Dining, 4X U.S. Groceries (excludes Costco, Walmart, Target)',
     rewards: [
       {
