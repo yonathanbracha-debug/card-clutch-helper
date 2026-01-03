@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, X, Check, CreditCard as CardIcon } from 'lucide-react';
+import { Search, X, Check, CreditCard as CardIcon, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sheet';
 import { CreditCardDB } from '@/hooks/useCreditCards';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CardDetailsSheet } from '@/components/CardDetailsSheet';
 
 interface CardVaultSheetProps {
   open: boolean;
@@ -34,6 +35,7 @@ export function CardVaultSheet({
   onSave,
 }: CardVaultSheetProps) {
   const [search, setSearch] = useState('');
+  const [detailCard, setDetailCard] = useState<CreditCardDB | null>(null);
 
   const filteredCards = useMemo(() => {
     if (!search.trim()) return allCards;
@@ -157,6 +159,18 @@ export function CardVaultSheet({
                             </div>
                           </div>
                           
+                          {/* Info button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDetailCard(card);
+                            }}
+                            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                            aria-label={`View details for ${card.name}`}
+                          >
+                            <Info className="w-4 h-4" />
+                          </button>
+                          
                           {/* Checkbox */}
                           <div className={cn(
                             "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all",
@@ -193,6 +207,13 @@ export function CardVaultSheet({
           </Button>
         </div>
       </SheetContent>
+
+      {/* Card Details Sheet */}
+      <CardDetailsSheet
+        card={detailCard}
+        open={!!detailCard}
+        onOpenChange={(open) => !open && setDetailCard(null)}
+      />
     </Sheet>
   );
 }

@@ -40,6 +40,7 @@ import { CardVaultSheet } from '@/components/vault/CardVaultSheet';
 import { SelectedCardChips } from '@/components/vault/SelectedCardChips';
 import { VaultEmptyState } from '@/components/vault/VaultEmptyState';
 import { OnboardingNudge } from '@/components/onboarding/OnboardingNudge';
+import { AccuracySection } from '@/components/trust/AccuracySection';
 
 const Analyze = () => {
   const { user } = useAuth();
@@ -357,6 +358,8 @@ const Analyze = () => {
                   </div>
                 </div>
               )}
+              {/* Accuracy Section */}
+              <AccuracySection />
             </div>
           )}
 
