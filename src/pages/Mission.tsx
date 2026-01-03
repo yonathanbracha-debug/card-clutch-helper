@@ -1,6 +1,8 @@
 import { PageLayout } from '@/components/PageLayout';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import { useScrollToHash } from '@/hooks/useScrollToHash';
+import { WaitlistForm } from '@/components/WaitlistForm';
 
 const phases = [
   {
@@ -35,6 +37,8 @@ const phases = [
 ];
 
 export default function Mission() {
+  useScrollToHash();
+  
   return (
     <PageLayout>
       <section className="py-16 px-4">
@@ -118,6 +122,17 @@ export default function Mission() {
               </p>
             </div>
           </section>
+
+          {/* Waitlist section */}
+          <div className="mt-16 pt-12 border-t border-border">
+            <h3 className="text-xl font-semibold mb-3">Join the waitlist</h3>
+            <p className="text-muted-foreground mb-6">
+              Be the first to know when new features launch.
+            </p>
+            <div className="max-w-md">
+              <WaitlistForm variant="inline" />
+            </div>
+          </div>
 
           <div className="mt-12 pt-8 border-t border-border">
             <Link 

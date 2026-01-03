@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, CheckCircle, Loader2 } from 'lucide-react';
+import { Mail, CheckCircle, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import confetti from 'canvas-confetti';
 
 interface WaitlistFormProps {
   className?: string;
@@ -15,6 +16,36 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  const triggerConfetti = useCallback(() => {
+    const duration = 3000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+    const randomInRange = (min: number, max: number) =>
+      Math.random() * (max - min) + min;
+
+    const interval = window.setInterval(() => {
+      const timeLeft = animationEnd - Date.now();
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+        colors: ['#34d399', '#10b981', '#059669', '#047857'],
+      });
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+        colors: ['#34d399', '#10b981', '#059669', '#047857'],
+      });
+    }, 250);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,14 +75,16 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
 
       if (error) {
         if (error.code === '23505') {
-          toast.success("You're already on the list!");
+          toast.success("You're already on the list! 🎉");
           setSuccess(true);
+          triggerConfetti();
         } else {
           throw error;
         }
       } else {
         setSuccess(true);
-        toast.success('Welcome to the waitlist!');
+        toast.success('Welcome to the waitlist! 🎉');
+        triggerConfetti();
       }
     } catch (err) {
       console.error('Waitlist signup failed:', err);
@@ -63,7 +96,7 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
 
   if (success) {
     return (
-      <div className={cn("flex items-center gap-2 text-emerald-600 dark:text-emerald-400", className)}>
+      <div className={cn("flex items-center gap-2 text-primary", className)}>
         <CheckCircle className="w-5 h-5" />
         <span className="font-medium">You're on the list!</span>
       </div>
