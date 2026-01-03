@@ -11,6 +11,7 @@ import {
   TestimonialSection 
 } from '@/components/marketing';
 import { WaitlistForm } from '@/components/WaitlistForm';
+import { Spotlight } from '@/components/ui/spotlight';
 
 const Index = () => {
   return (
@@ -18,10 +19,15 @@ const Index = () => {
       <Header />
       
       <main className="pt-16">
-        {/* Hero Section - Clean, Premium with 3D Card */}
+        {/* Hero Section - Clean, Premium with Spotlight + 3D Card */}
         <section className="relative overflow-hidden">
+          {/* Spotlight Effect */}
+          <Spotlight 
+            className="-top-40 left-0 md:left-60 md:-top-20" 
+            fill="hsl(var(--primary) / 0.15)"
+          />
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
-          <div className="container max-w-6xl mx-auto px-4 py-24 md:py-32 relative">
+          <div className="container max-w-6xl mx-auto px-4 py-24 md:py-32 relative z-10">
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
               {/* Left: Copy */}
               <div className="max-w-xl space-y-6 text-center lg:text-left">
@@ -42,10 +48,10 @@ const Index = () => {
                       <ArrowRight className="w-4 h-4" />
                     </Button>
                   </Link>
-                  <Link to="/wallet">
+                  <Link to="/mission#roadmap">
                     <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2 hover:glow-primary-subtle transition-all">
-                      Build my card vault
-                      <ChevronRight className="w-4 h-4" />
+                      Join Waitlist
+                      <Sparkles className="w-4 h-4" />
                     </Button>
                   </Link>
                 </div>

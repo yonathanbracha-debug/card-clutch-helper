@@ -18,8 +18,8 @@ import {
 
 const navLinks = [
   { href: '/', label: 'Home', icon: Home },
+  { href: '/analyze', label: 'Analyzer', icon: Sparkles },
   { href: '/cards', label: 'Cards', icon: Library },
-  { href: '/features', label: 'Features', icon: Sparkles },
   { href: '/mission', label: 'Mission', icon: Target },
   { href: '/privacy', label: 'Privacy', icon: Lock },
 ];
