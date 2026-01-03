@@ -13,7 +13,8 @@ import {
   Gift, 
   ExternalLink,
   Clock,
-  Percent
+  Percent,
+  HelpCircle
 } from 'lucide-react';
 import { CreditCardDB } from '@/hooks/useCreditCards';
 
@@ -30,11 +31,25 @@ export function CardInfoDrawer({ card, open, onOpenChange }: CardInfoDrawerProps
   if (!card) return null;
 
   const annualFee = card.annual_fee_cents / 100;
+  const isVerified = card.verification_status === 'verified';
   const verifiedDate = new Date(card.last_verified_at).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
+
+  // Format foreign transaction fee - show actual value or "Not provided"
+  const formatForeignTxFee = () => {
+    if (card.foreign_tx_fee_percent !== null && card.foreign_tx_fee_percent !== undefined) {
+      if (card.foreign_tx_fee_percent === 0) {
+        return { text: 'No foreign transaction fees', verified: true };
+      }
+      return { text: `${card.foreign_tx_fee_percent}% foreign transaction fee`, verified: true };
+    }
+    return { text: 'Not provided', verified: false };
+  };
+
+  const foreignTxFee = formatForeignTxFee();
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -56,7 +71,7 @@ export function CardInfoDrawer({ card, open, onOpenChange }: CardInfoDrawerProps
                   {card.network.toUpperCase()}
                 </Badge>
                 <VerificationBadge 
-                  status={card.verification_status === 'verified' ? 'verified' : 'unverified'} 
+                  status={isVerified ? 'verified' : 'unverified'} 
                   className="scale-90" 
                 />
               </div>
@@ -164,21 +179,56 @@ export function CardInfoDrawer({ card, open, onOpenChange }: CardInfoDrawerProps
               <Globe className="w-4 h-4" />
               <span>Foreign Transaction Fee</span>
             </div>
-            <p className="text-sm font-medium">
-              {/* Default to 2.7% if not specified */}
-              No foreign transaction fees
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium">
+                {foreignTxFee.text}
+              </p>
+              {!foreignTxFee.verified && (
+                <HelpCircle className="w-4 h-4 text-muted-foreground" />
+              )}
+            </div>
+            {!foreignTxFee.verified && card.terms_url && (
+              <a
+                href={card.terms_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline flex items-center gap-1"
+              >
+                <ExternalLink className="w-3 h-3" />
+                See issuer terms
+              </a>
+            )}
           </div>
 
           {/* Credits Summary */}
-          {card.reward_summary.includes('credit') && (
+          {card.credits_summary ? (
+            <div className="p-4 rounded-xl border border-border space-y-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Gift className="w-4 h-4" />
+                <span>Card Credits</span>
+              </div>
+              <p className="text-sm">
+                {card.credits_summary}
+              </p>
+            </div>
+          ) : card.reward_summary.toLowerCase().includes('credit') && (
             <div className="p-4 rounded-xl border border-border space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Gift className="w-4 h-4" />
                 <span>Card Credits</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Check card terms for available statement credits.
+                This card may offer statement credits.{' '}
+                {card.terms_url && (
+                  <a
+                    href={card.terms_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Check official terms
+                  </a>
+                )}
               </p>
             </div>
           )}
@@ -187,7 +237,9 @@ export function CardInfoDrawer({ card, open, onOpenChange }: CardInfoDrawerProps
           <div className="pt-4 border-t border-border space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="w-4 h-4" />
-              <span>Last verified: {verifiedDate}</span>
+              <span>
+                {isVerified ? 'Verified' : 'Unverified'}: {verifiedDate}
+              </span>
             </div>
             <a
               href={card.source_url}

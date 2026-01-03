@@ -1,58 +1,50 @@
--- Credit Cards Table (CANONICAL TRUTH - IMMUTABLE FACTS ONLY)
--- Spec: Section 5.2
+-- Credit Cards Table (CANONICAL TRUTH)
 -- Execution order: 003
 -- 
--- CRITICAL: This table stores ONLY immutable facts
--- Fee changes require NEW ROW, never modify history
--- Example: Amex Gold = 25000 cents
+-- CRITICAL: This is the source of truth for credit card metadata.
+-- Updated to reflect actual production schema.
 
 CREATE TABLE credit_cards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  issuer_id UUID NOT NULL REFERENCES issuers(id) ON DELETE RESTRICT,
-  official_product_name TEXT NOT NULL,
+  issuer_id UUID REFERENCES issuers(id) ON DELETE RESTRICT,
+  name TEXT NOT NULL,
   network card_network NOT NULL,
   annual_fee_cents INTEGER NOT NULL,
-  currency TEXT NOT NULL DEFAULT 'USD',
-  first_year_fee_waived BOOLEAN NOT NULL DEFAULT false,
-  product_type product_type NOT NULL DEFAULT 'credit',
-  discontinued BOOLEAN NOT NULL DEFAULT false,
-  effective_start_date DATE,
-  effective_end_date DATE,
+  reward_summary TEXT NOT NULL,
+  image_url TEXT,
+  terms_url TEXT,
   source_url TEXT NOT NULL,
-  last_verified_at TIMESTAMPTZ NOT NULL,
+  last_verified_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  verification_status verification_status NOT NULL DEFAULT 'verified',
+  is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  slug TEXT,
+  foreign_tx_fee_percent NUMERIC,
+  credits_summary TEXT,
   
   -- Constraints
   CONSTRAINT credit_cards_annual_fee_non_negative CHECK (annual_fee_cents >= 0),
-  CONSTRAINT credit_cards_name_not_empty CHECK (length(trim(official_product_name)) > 0),
-  CONSTRAINT credit_cards_source_url_not_empty CHECK (length(trim(source_url)) > 0),
-  CONSTRAINT credit_cards_valid_date_range CHECK (
-    effective_end_date IS NULL OR 
-    effective_start_date IS NULL OR 
-    effective_end_date >= effective_start_date
-  ),
-  CONSTRAINT credit_cards_unique_product_version UNIQUE (
-    issuer_id, 
-    official_product_name, 
-    effective_start_date
-  )
+  CONSTRAINT credit_cards_name_not_empty CHECK (length(trim(name)) > 0),
+  CONSTRAINT credit_cards_source_url_valid CHECK (is_valid_http_url(source_url)),
+  CONSTRAINT credit_cards_terms_url_valid CHECK (is_valid_http_url(terms_url)),
+  CONSTRAINT credit_cards_image_url_valid CHECK (is_valid_http_url(image_url))
 );
 
 -- Indexes
 CREATE INDEX idx_credit_cards_issuer_id ON credit_cards (issuer_id);
 CREATE INDEX idx_credit_cards_network ON credit_cards (network);
-CREATE INDEX idx_credit_cards_product_type ON credit_cards (product_type);
-CREATE INDEX idx_credit_cards_active ON credit_cards (discontinued, effective_end_date) 
-  WHERE discontinued = false AND (effective_end_date IS NULL OR effective_end_date >= CURRENT_DATE);
-CREATE INDEX idx_credit_cards_name ON credit_cards (official_product_name);
-CREATE INDEX idx_credit_cards_annual_fee ON credit_cards (annual_fee_cents);
+CREATE INDEX idx_credit_cards_is_active ON credit_cards (is_active) WHERE is_active = true;
+CREATE INDEX idx_credit_cards_name ON credit_cards (name);
+CREATE INDEX idx_credit_cards_slug ON credit_cards (slug);
 
 -- Comments
-COMMENT ON TABLE credit_cards IS 'CANONICAL TRUTH: Immutable credit card records - NO inferred data, NO modifications to history';
-COMMENT ON COLUMN credit_cards.official_product_name IS 'Exact product name as listed by issuer';
-COMMENT ON COLUMN credit_cards.annual_fee_cents IS 'Annual fee in cents - must be exact (e.g., Amex Gold = 25000)';
+COMMENT ON TABLE credit_cards IS 'CANONICAL TRUTH: Credit card records';
+COMMENT ON COLUMN credit_cards.name IS 'Display name of the credit card product';
+COMMENT ON COLUMN credit_cards.annual_fee_cents IS 'Annual fee in cents (e.g., Amex Gold = 32500)';
 COMMENT ON COLUMN credit_cards.source_url IS 'Official issuer URL - required for audit trail';
-COMMENT ON COLUMN credit_cards.last_verified_at IS 'Last verification against official source - triggers staleness alerts';
-COMMENT ON COLUMN credit_cards.effective_start_date IS 'When this card version became active';
-COMMENT ON COLUMN credit_cards.effective_end_date IS 'When this card version was superseded (NULL = current)';
+COMMENT ON COLUMN credit_cards.terms_url IS 'Link to official card terms and conditions';
+COMMENT ON COLUMN credit_cards.image_url IS 'URL to card image in storage';
+COMMENT ON COLUMN credit_cards.last_verified_at IS 'Last verification against official source';
+COMMENT ON COLUMN credit_cards.foreign_tx_fee_percent IS 'Foreign transaction fee percentage (NULL = unknown)';
+COMMENT ON COLUMN credit_cards.credits_summary IS 'Summary of card credits/perks';

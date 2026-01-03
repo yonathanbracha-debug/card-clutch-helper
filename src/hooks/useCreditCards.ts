@@ -9,11 +9,15 @@ export interface CreditCardDB {
   reward_summary: string;
   image_url: string | null;
   source_url: string;
+  terms_url: string | null;
   last_verified_at: string;
   verification_status: string;
   issuer_name: string;
   issuer_id: string | null;
   is_active: boolean;
+  foreign_tx_fee_percent: number | null;
+  credits_summary: string | null;
+  slug: string | null;
 }
 
 export function useCreditCards() {
@@ -34,10 +38,14 @@ export function useCreditCards() {
           reward_summary,
           image_url,
           source_url,
+          terms_url,
           last_verified_at,
           verification_status,
           issuer_id,
           is_active,
+          foreign_tx_fee_percent,
+          credits_summary,
+          slug,
           issuers!inner(id, name)
         `)
         .eq('is_active', true)
@@ -53,11 +61,15 @@ export function useCreditCards() {
         reward_summary: card.reward_summary,
         image_url: card.image_url,
         source_url: card.source_url,
+        terms_url: card.terms_url,
         last_verified_at: card.last_verified_at,
         verification_status: card.verification_status,
         issuer_id: card.issuer_id,
         issuer_name: (card.issuers as any)?.name || 'Unknown',
-        is_active: card.is_active
+        is_active: card.is_active,
+        foreign_tx_fee_percent: card.foreign_tx_fee_percent,
+        credits_summary: card.credits_summary,
+        slug: card.slug,
       }));
       
       setCards(transformed);
