@@ -13,8 +13,9 @@ import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { AdminReportsManager } from '@/components/admin/AdminReportsManager';
 import { AdminDataHealth } from '@/components/admin/AdminDataHealth';
 import { AdminCatalogQA } from '@/components/admin/AdminCatalogQA';
+import { AdminMerchantReview } from '@/components/admin/AdminMerchantReview';
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { Shield, CreditCard, Store, ClipboardList, Loader2, LinkIcon, LayoutDashboard, AlertCircle, HeartPulse, FileCheck } from 'lucide-react';
+import { Shield, CreditCard, Store, ClipboardList, Loader2, LinkIcon, LayoutDashboard, AlertCircle, HeartPulse, FileCheck, Brain } from 'lucide-react';
 
 export default function Admin() {
   const { user, loading: authLoading } = useAuth();
@@ -94,6 +95,10 @@ export default function Admin() {
                 <FileCheck className="w-4 h-4" />
                 Catalog QA
               </TabsTrigger>
+              <TabsTrigger value="merchant-review" className="gap-2">
+                <Brain className="w-4 h-4" />
+                AI Review
+              </TabsTrigger>
               <TabsTrigger value="cards" className="gap-2">
                 <CreditCard className="w-4 h-4" />
                 Cards
@@ -126,6 +131,10 @@ export default function Admin() {
 
             <TabsContent value="catalog-qa">
               <AdminCatalogQA />
+            </TabsContent>
+
+            <TabsContent value="merchant-review">
+              <AdminMerchantReview />
             </TabsContent>
 
             <TabsContent value="cards">
