@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +12,7 @@ import { CreditCardDB } from '@/hooks/useCreditCards';
 import { useCardRewardRules, CardRewardRule } from '@/hooks/useCardRewardRules';
 import { useMerchantExclusions } from '@/hooks/useMerchantExclusions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ReportIssueModal } from '@/components/cards/ReportIssueModal';
 import { 
   DollarSign, 
   CreditCard, 
@@ -22,7 +24,8 @@ import {
   Percent,
   Info,
   Star,
-  Ban
+  Ban,
+  Flag
 } from 'lucide-react';
 
 interface CardDetailsSheetProps {
@@ -42,6 +45,8 @@ function isCatalogCard(card: CreditCardDB | Card): card is Card {
 }
 
 export function CardDetailsSheet({ card, open, onOpenChange }: CardDetailsSheetProps) {
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  
   // Get card ID for database lookups
   const cardId = card?.id || null;
   const { rules, loading: rulesLoading } = useCardRewardRules(cardId);
@@ -434,9 +439,30 @@ export function CardDetailsSheet({ card, open, onOpenChange }: CardDetailsSheetP
                 ⚠️ Card terms may change. Always verify current rewards, fees, and benefits with your card issuer before making decisions.
               </p>
             </div>
+
+            {/* Report Issue */}
+            <div className="pt-4 mt-4 border-t border-border">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setReportModalOpen(true)}
+                className="w-full text-muted-foreground hover:text-foreground"
+              >
+                <Flag className="w-4 h-4 mr-2" />
+                Report incorrect info
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
       </SheetContent>
+
+      {/* Report Issue Modal */}
+      <ReportIssueModal
+        open={reportModalOpen}
+        onOpenChange={setReportModalOpen}
+        cardId={card.id}
+        cardName={name}
+      />
     </Sheet>
   );
 }
