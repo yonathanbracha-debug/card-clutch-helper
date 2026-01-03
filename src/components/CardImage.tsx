@@ -1,21 +1,35 @@
-// Re-export CardArtwork as CardImage for backward compatibility
-import { CardArtwork } from '@/components/CardArtwork';
+// CardImage - Uses CardThumbnail with real image support and CardArtwork fallback
+import { CardThumbnail } from '@/components/CardThumbnail';
+import { CardNetwork } from '@/lib/cardCatalog';
 
 interface CardImageProps {
   issuer: string;
   cardName: string;
   network: string;
+  imageUrl?: string | null;
+  imageAlt?: string;
   className?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   onError?: () => void;
 }
 
-export function CardImage({ issuer, cardName, network, className, size = 'md', onError }: CardImageProps) {
+export function CardImage({ 
+  issuer, 
+  cardName, 
+  network, 
+  imageUrl,
+  imageAlt,
+  className, 
+  size = 'md', 
+  onError 
+}: CardImageProps) {
   return (
-    <CardArtwork
+    <CardThumbnail
       issuer={issuer}
       cardName={cardName}
-      network={network}
+      network={network as CardNetwork}
+      imageUrl={imageUrl}
+      imageAlt={imageAlt || `${cardName} by ${issuer}`}
       className={className}
       size={size}
     />
