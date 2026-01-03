@@ -21,6 +21,7 @@ import Security from "./pages/Security";
 import Trust from "./pages/Trust";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
+import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -71,6 +72,9 @@ const App = () => (
               
               {/* Admin route (protected by component) */}
               <Route path="/admin" element={<Admin />} />
+              
+              {/* User Dashboard (protected) */}
+              <Route path="/dashboard" element={<Dashboard />} />
               
               {/* Wallet with friendly gating */}
               <Route path="/wallet" element={<WalletWrapper />} />
