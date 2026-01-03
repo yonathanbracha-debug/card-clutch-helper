@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 import { CardArtwork } from '@/components/CardArtwork';
 import { CardNetwork } from '@/lib/cardCatalog';
@@ -28,7 +28,7 @@ const sizeClasses = {
  * 1. Real card image (if imageUrl provided and loads successfully)
  * 2. CardArtwork fallback (premium gradient placeholder)
  */
-export function CardThumbnail({ 
+export const CardThumbnail = forwardRef<HTMLDivElement, CardThumbnailProps>(({ 
   issuer, 
   cardName, 
   network, 
@@ -36,7 +36,7 @@ export function CardThumbnail({
   imageAlt,
   className, 
   size = 'md' 
-}: CardThumbnailProps) {
+}, ref) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -53,18 +53,21 @@ export function CardThumbnail({
 
   if (!shouldShowImage) {
     return (
-      <CardArtwork
-        issuer={issuer}
-        cardName={cardName}
-        network={network}
-        size={size}
-        className={className}
-      />
+      <div ref={ref}>
+        <CardArtwork
+          issuer={issuer}
+          cardName={cardName}
+          network={network}
+          size={size}
+          className={className}
+        />
+      </div>
     );
   }
 
   return (
     <div 
+      ref={ref}
       className={cn(
         'relative overflow-hidden rounded-lg shadow-lg',
         sizeClasses[size],
@@ -98,4 +101,6 @@ export function CardThumbnail({
       />
     </div>
   );
-}
+});
+
+CardThumbnail.displayName = 'CardThumbnail';

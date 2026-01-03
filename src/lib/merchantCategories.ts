@@ -24,6 +24,9 @@ export const MERCHANT_CATEGORIES = [
   'sports',
   'pet',
   'office',
+  'subscription',
+  'insurance',
+  'financial',
   'other',
 ] as const;
 
@@ -53,6 +56,9 @@ export const CATEGORY_LABELS: Record<MerchantCategory, string> = {
   sports: 'Sports & Outdoors',
   pet: 'Pet Supplies',
   office: 'Office Supplies',
+  subscription: 'Subscriptions',
+  insurance: 'Insurance',
+  financial: 'Financial Services',
   other: 'Other',
 };
 
@@ -69,7 +75,7 @@ export function mapToEngineCategory(category: MerchantCategory): string {
     drugstores: 'drugstores',
     online_retail: 'online',
     department_store: 'general',
-    warehouse_club: 'groceries', // Often coded as grocery but with exclusions
+    warehouse_club: 'groceries',
     utilities: 'general',
     telecom: 'general',
     apparel: 'general',
@@ -79,6 +85,9 @@ export function mapToEngineCategory(category: MerchantCategory): string {
     sports: 'general',
     pet: 'general',
     office: 'general',
+    subscription: 'streaming',
+    insurance: 'general',
+    financial: 'general',
     other: 'general',
   };
   return mapping[category] || 'general';
