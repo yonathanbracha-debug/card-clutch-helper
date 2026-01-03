@@ -7,6 +7,7 @@ import { CardInfoDrawer } from '@/components/CardInfoDrawer';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { GlowingEffect } from '@/components/ui/glowing-effect';
 import { Search, ChevronRight, Filter, X, Info, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCreditCards, CreditCardDB } from '@/hooks/useCreditCards';
@@ -182,11 +183,18 @@ const Cards = () => {
             {filteredCards.map(card => {
               const annualFee = card.annual_fee_cents / 100;
               return (
-                <Link
-                  key={card.id}
-                  to={`/cards/${card.id}`}
-                  className="group p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-lg transition-all"
-                >
+                <div key={card.id} className="relative rounded-xl">
+                  <GlowingEffect
+                    spread={40}
+                    glow={true}
+                    disabled={false}
+                    proximity={64}
+                    inactiveZone={0.01}
+                  />
+                  <Link
+                    to={`/cards/${card.id}`}
+                    className="relative group block p-4 rounded-xl border border-border bg-card hover:border-primary/50 transition-all"
+                  >
                   <div className="flex items-start gap-4">
                     <CardImage 
                       issuer={card.issuer_name}
@@ -234,23 +242,24 @@ const Cards = () => {
                     </p>
                   </div>
 
-                  {/* Source link */}
-                  <div className="mt-3 flex items-center gap-2">
-                    <a
-                      href={card.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      View terms
-                    </a>
-                    <span className="text-xs text-muted-foreground">
-                      · Verified {new Date(card.last_verified_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                </Link>
+                    {/* Source link */}
+                    <div className="mt-3 flex items-center gap-2">
+                      <a
+                        href={card.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        View terms
+                      </a>
+                      <span className="text-xs text-muted-foreground">
+                        · Verified {new Date(card.last_verified_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </Link>
+                </div>
               );
             })}
           </div>
