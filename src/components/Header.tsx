@@ -1,13 +1,13 @@
-import { Menu, X, Wallet, Search, Library, Info, LogIn, LogOut, User, Shield, LayoutDashboard } from 'lucide-react';
+import { Menu, X, LogIn, LogOut, User, Shield, LayoutDashboard, Home, Sparkles, Library, Lock, Target, Map } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, NavLink } from 'react-router-dom';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { Button } from '@/components/ui/button';
-import { TubelightNav } from '@/components/marketing/TubelightNav';
+import { motion } from 'framer-motion';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,10 +17,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const navLinks = [
-  { href: '/analyze', label: 'Analyze', icon: Search },
-  { href: '/wallet', label: 'My Wallet', icon: Wallet },
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/features', label: 'Features', icon: Sparkles },
   { href: '/cards', label: 'Cards', icon: Library },
-  { href: '/about', label: 'About', icon: Info },
+  { href: '/privacy', label: 'Privacy', icon: Lock },
+  { href: '/mission', label: 'Mission', icon: Target },
+  { href: '/roadmap', label: 'Roadmap', icon: Map },
 ];
 
 export function Header() {
@@ -33,21 +35,51 @@ export function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="container max-w-6xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
+          <Link to="/" className="flex items-center gap-2 group shrink-0">
             <img 
               src="/favicon.png" 
               alt="CardClutch" 
               className="w-8 h-8 rounded-lg group-hover:scale-105 transition-transform"
             />
-            <span className="text-lg font-semibold tracking-tight">
+            <span className="text-lg font-semibold tracking-tight hidden sm:inline">
               CardClutch
             </span>
           </Link>
 
-          {/* Desktop Navigation with Tubelight Effect */}
-          <TubelightNav items={navLinks} className="hidden lg:flex" />
+          {/* Desktop Navigation - Horizontal next to logo */}
+          <nav className="hidden lg:flex items-center gap-1 ml-8">
+            {navLinks.map((link) => {
+              const isActive = location.pathname === link.href || 
+                (link.href !== '/' && location.pathname.startsWith(link.href));
+              
+              return (
+                <NavLink
+                  key={link.href}
+                  to={link.href}
+                  className="relative px-3 py-2"
+                >
+                  <span className={cn(
+                    "text-sm font-medium transition-colors",
+                    isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  )}>
+                    {link.label}
+                  </span>
+                  {isActive && (
+                    <motion.div
+                      layoutId="nav-indicator"
+                      className="absolute inset-x-1 -bottom-[1px] h-0.5 bg-primary rounded-full"
+                      transition={{ type: "spring", bounce: 0.25, duration: 0.5 }}
+                    />
+                  )}
+                </NavLink>
+              );
+            })}
+          </nav>
+
+          {/* Spacer */}
+          <div className="flex-1" />
 
           {/* Right side */}
           <div className="flex items-center gap-2">
@@ -66,6 +98,12 @@ export function Header() {
                     <Link to="/dashboard" className="flex items-center">
                       <LayoutDashboard className="w-4 h-4 mr-2" />
                       Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link to="/analyze" className="flex items-center">
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Analyzer
                     </Link>
                   </DropdownMenuItem>
                   {isAdmin && (
@@ -111,6 +149,8 @@ export function Header() {
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => {
                 const Icon = link.icon;
+                const isActive = location.pathname === link.href || 
+                  (link.href !== '/' && location.pathname.startsWith(link.href));
                 return (
                   <Link
                     key={link.href}
@@ -118,7 +158,7 @@ export function Header() {
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
                       "flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-colors",
-                      location.pathname === link.href
+                      isActive
                         ? "bg-primary/10 text-primary font-medium"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     )}
@@ -129,6 +169,14 @@ export function Header() {
                 );
               })}
               <div className="border-t border-border mt-2 pt-2">
+                <Link
+                  to="/analyze"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-primary font-medium hover:bg-primary/10"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Try Analyzer
+                </Link>
                 {user && (
                   <Link
                     to="/dashboard"

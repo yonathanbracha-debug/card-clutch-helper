@@ -20,6 +20,7 @@ import RoadmapPage from "./pages/RoadmapPage";
 import Privacy from "./pages/Privacy";
 import Security from "./pages/Security";
 import Trust from "./pages/Trust";
+import Features from "./pages/Features";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Dashboard from "./pages/Dashboard";
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/security" element={<Security />} />
               <Route path="/trust" element={<Trust />} />
+              <Route path="/features" element={<Features />} />
               <Route path="/auth" element={<Auth />} />
               
               {/* Admin route (protected by component) */}
