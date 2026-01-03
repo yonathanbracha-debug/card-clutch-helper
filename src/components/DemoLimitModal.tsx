@@ -7,14 +7,21 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { CreditCard, Sparkles, Lock } from 'lucide-react';
+import { CreditCard, Sparkles, Lock, Gift } from 'lucide-react';
 
 interface DemoLimitModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onContinueDemo?: () => void;
+  showBonusOption?: boolean;
 }
 
-export function DemoLimitModal({ open, onOpenChange }: DemoLimitModalProps) {
+export function DemoLimitModal({ 
+  open, 
+  onOpenChange, 
+  onContinueDemo,
+  showBonusOption = true 
+}: DemoLimitModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -22,7 +29,7 @@ export function DemoLimitModal({ open, onOpenChange }: DemoLimitModalProps) {
           <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
             <Lock className="w-8 h-8 text-primary" />
           </div>
-          <DialogTitle className="text-xl">Save your wallet to keep going</DialogTitle>
+          <DialogTitle className="text-xl">Save your card vault + get updates</DialogTitle>
           <DialogDescription className="text-base">
             Create a free account to keep your cards, unlock unlimited analyses, and get verified recommendations.
           </DialogDescription>
@@ -47,18 +54,35 @@ export function DemoLimitModal({ open, onOpenChange }: DemoLimitModalProps) {
 
         <div className="flex flex-col gap-2 pt-2">
           <Link to="/auth" className="w-full">
-            <Button className="w-full" size="lg">
-              Sign in to continue
+            <Button className="w-full gap-2" size="lg">
+              Create account
+              <Sparkles className="w-4 h-4" />
             </Button>
           </Link>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className="text-muted-foreground"
-          >
-            Not now
-          </Button>
+          {showBonusOption && onContinueDemo && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                onContinueDemo();
+                onOpenChange(false);
+              }}
+              className="gap-2"
+            >
+              <Gift className="w-4 h-4" />
+              Continue in demo (1 more)
+            </Button>
+          )}
+          {!showBonusOption && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="text-muted-foreground"
+            >
+              Not now
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
