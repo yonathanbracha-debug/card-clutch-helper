@@ -1,3 +1,7 @@
+/**
+ * Index - Homepage with premium hero, bento features, and curated sections
+ * Uses HeroCardShowcase instead of Spline for a focused, on-brand experience
+ */
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Link } from 'react-router-dom';
@@ -12,7 +16,8 @@ import {
 } from '@/components/marketing';
 import { WaitlistForm } from '@/components/WaitlistForm';
 import { Spotlight } from '@/components/ui/spotlight';
-import { SplineScene } from '@/components/ui/splite';
+import { HeroCardShowcase } from '@/components/hero/HeroCardShowcase';
+import { GlowingEffect } from '@/components/ui/glowing-effect';
 
 const Index = () => {
   return (
@@ -20,12 +25,12 @@ const Index = () => {
       <Header />
       
       <main className="pt-16">
-        {/* Hero Section - Clean, Premium with Spotlight + 3D Card */}
+        {/* Hero Section - Clean, Premium with Spotlight + 3D Tilt Card */}
         <section className="relative overflow-hidden">
           {/* Spotlight Effect */}
           <Spotlight 
             className="-top-40 left-0 md:left-60 md:-top-20" 
-            fill="hsl(var(--primary) / 0.15)"
+            fill="hsl(var(--primary) / 0.12)"
           />
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
           <div className="container max-w-6xl mx-auto px-4 py-24 md:py-32 relative z-10">
@@ -43,29 +48,37 @@ const Index = () => {
                   CardClutch tells you which card to use at checkout—based on real reward rules. Stop guessing. Max rewards. Avoid category traps.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
-                  <Link to="/analyze">
-                    <Button size="lg" className="w-full sm:w-auto gap-2 glow-primary animate-glow-pulse hover:scale-[1.02] transition-transform">
-                      Try demo
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </Link>
+                  {/* Primary CTA with GlowingEffect */}
+                  <div className="relative">
+                    <GlowingEffect 
+                      spread={30} 
+                      glow={true} 
+                      proximity={80}
+                      inactiveZone={0.01}
+                    />
+                    <Link to="/analyze">
+                      <Button size="lg" className="w-full sm:w-auto gap-2 hover:scale-[1.02] transition-transform">
+                        Try demo
+                        <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </Link>
+                  </div>
                   <Link to="/mission#roadmap">
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2 hover:glow-primary-subtle transition-all">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2">
                       Join Waitlist
                       <Sparkles className="w-4 h-4" />
                     </Button>
                   </Link>
                 </div>
+                {/* Early access pill */}
+                <div className="pt-2">
+                  <WaitlistForm variant="inline" className="max-w-sm mx-auto lg:mx-0" />
+                </div>
               </div>
               
-              {/* Right: 3D Spline Scene */}
+              {/* Right: 3D Tilt Card Showcase */}
               <div className="hidden md:flex justify-center lg:justify-end">
-                <div className="relative w-full max-w-md h-[460px] rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden glow-primary-subtle">
-                  <SplineScene 
-                    scene="https://prod.spline.design/6Wq1Q7YGyM-iab9i/scene.splinecode"
-                    className="w-full h-full"
-                  />
-                </div>
+                <HeroCardShowcase />
               </div>
             </div>
           </div>
@@ -123,7 +136,7 @@ const Index = () => {
               </p>
             </div>
             <div className="max-w-md mx-auto">
-              <WaitlistForm variant="inline" />
+              <WaitlistForm variant="default" />
             </div>
           </div>
         </section>

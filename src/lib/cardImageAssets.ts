@@ -120,3 +120,36 @@ export function isValidImageUrl(url: string | null | undefined): boolean {
     return false;
   }
 }
+
+/**
+ * Canonical helper to get the best card image source
+ * Priority: 1. DB image_url, 2. Local asset, 3. undefined (caller handles fallback)
+ */
+export interface CardImageInput {
+  name: string;
+  image_url?: string | null;
+  issuer?: string;
+}
+
+export function getCardImageSrc(card: CardImageInput): string | undefined {
+  // Priority 1: Valid database URL
+  if (isValidImageUrl(card.image_url)) {
+    return card.image_url as string;
+  }
+  
+  // Priority 2: Local asset by card name
+  const localAsset = getLocalCardImage(card.name);
+  if (localAsset) {
+    return localAsset;
+  }
+  
+  // Priority 3: Try with issuer prefix
+  if (card.issuer) {
+    const withIssuer = getLocalCardImage(`${card.issuer} ${card.name}`);
+    if (withIssuer) {
+      return withIssuer;
+    }
+  }
+  
+  return undefined;
+}
