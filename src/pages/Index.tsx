@@ -8,6 +8,12 @@ import { CardImage } from '@/components/CardImage';
 import { WaitlistForm } from '@/components/WaitlistForm';
 import { useCreditCards } from '@/hooks/useCreditCards';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
+import { 
+  ContainerScrollShowcase, 
+  FeatureHoverSection, 
+  BentoGridSection, 
+  TestimonialSection 
+} from '@/components/marketing';
 
 const Index = () => {
   const { cards: allCards, loading } = useCreditCards();
@@ -96,101 +102,20 @@ const Index = () => {
           </div>
         </section>
 
-        {/* How It Works */}
-        <section className="border-t border-border">
-          <div className="container max-w-6xl mx-auto px-4 py-20">
-            <div className="text-center mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold mb-4">How It Works</h2>
-              <p className="text-muted-foreground">Three steps to smarter spending</p>
-            </div>
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                {
-                  step: '01',
-                  title: 'Select Your Cards',
-                  description: 'Choose from 50+ verified cards or use our demo wallet to get started instantly.',
-                  icon: CreditCard,
-                },
-                {
-                  step: '02',
-                  title: 'Paste Any URL',
-                  description: 'Shopping somewhere? Paste the merchant URL and we detect the category automatically.',
-                  icon: Zap,
-                },
-                {
-                  step: '03',
-                  title: 'Get Your Answer',
-                  description: 'See which card to use, why it wins, and what exclusions might apply.',
-                  icon: Target,
-                },
-              ].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.step} className="relative p-6 rounded-xl border border-border bg-card hover:border-primary/50 transition-colors group">
-                    <span className="text-xs font-mono text-primary/60 mb-4 block">{item.step}</span>
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                      <Icon className="w-5 h-5 text-primary" />
-                    </div>
-                    <h3 className="font-semibold mb-2">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+        {/* Product Showcase with Scroll Animation */}
+        <ContainerScrollShowcase />
 
-        {/* Featured Cards Preview */}
-        <section className="border-t border-border bg-muted/30">
-          <div className="container max-w-6xl mx-auto px-4 py-20">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-2xl md:text-3xl font-bold mb-2">Card Library</h2>
-                <p className="text-muted-foreground">Verified reward data you can trust</p>
-              </div>
-              <Link to="/cards">
-                <Button variant="outline" className="gap-2">
-                  View All
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {featuredCards.map(card => {
-                const annualFee = card.annual_fee_cents / 100;
-                return (
-                  <Link 
-                    key={card.id}
-                    to={`/cards/${card.id}`}
-                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <CardImage 
-                        issuer={card.issuer_name}
-                        cardName={card.name}
-                        network={card.network}
-                        imageUrl={card.image_url}
-                        size="sm"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm truncate group-hover:text-primary transition-colors">
-                          {card.name}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">{card.issuer_name}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {annualFee === 0 ? 'No annual fee' : `$${annualFee}/year`}
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+        {/* Feature Pillars with Hover Effects */}
+        <FeatureHoverSection />
+
+        {/* Bento Grid Features */}
+        <BentoGridSection />
+
+        {/* Testimonials */}
+        <TestimonialSection />
 
         {/* Trust & Privacy */}
-        <section className="border-t border-border">
+        <section className="border-t border-border bg-muted/30">
           <div className="container max-w-6xl mx-auto px-4 py-20">
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div>
@@ -214,7 +139,7 @@ const Index = () => {
                   ))}
                 </div>
               </div>
-              <div className="p-6 rounded-2xl bg-muted/50 border border-border">
+              <div className="p-6 rounded-2xl bg-card border border-border shadow-sm">
                 <h3 className="font-semibold mb-4">Why CardClutch?</h3>
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">

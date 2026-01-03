@@ -1,4 +1,4 @@
-import { Menu, X, CreditCard, Wallet, Search, Library, Info, Map, LogIn, LogOut, User, Shield, LayoutDashboard } from 'lucide-react';
+import { Menu, X, Wallet, Search, Library, Info, LogIn, LogOut, User, Shield, LayoutDashboard } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
@@ -7,6 +7,7 @@ import { useThemeContext } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { Button } from '@/components/ui/button';
+import { TubelightNav } from '@/components/marketing/TubelightNav';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,27 +46,8 @@ export function Header() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              return (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
-                    location.pathname === link.href
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
-                >
-                  <Icon className="w-4 h-4" />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
+          {/* Desktop Navigation with Tubelight Effect */}
+          <TubelightNav items={navLinks} className="hidden lg:flex" />
 
           {/* Right side */}
           <div className="flex items-center gap-2">
