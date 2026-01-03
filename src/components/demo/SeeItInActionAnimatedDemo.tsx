@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Search, CheckCircle, CreditCard, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
+import { Search, CheckCircle, CreditCard, ArrowRight, Sparkles, Loader2, Pause, Play } from 'lucide-react';
 
 // Demo configuration - edit these to customize
 const DEMO_CONFIG = {
@@ -39,11 +39,13 @@ export function SeeItInActionAnimatedDemo() {
   const prefersReducedMotion = useReducedMotion();
   const [elapsed, setElapsed] = useState(0);
   const [typedText, setTypedText] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
   const startTimeRef = useRef(Date.now());
+  const pausedAtRef = useRef(0);
   
   const phase = getPhase(elapsed);
 
-  // Animation loop
+  // Animation loop with pause support
   useEffect(() => {
     if (prefersReducedMotion) {
       // Show final state for reduced motion
@@ -51,6 +53,14 @@ export function SeeItInActionAnimatedDemo() {
       setElapsed(TIMELINE.result.start + 0.1);
       return;
     }
+
+    if (isPaused) {
+      pausedAtRef.current = elapsed;
+      return;
+    }
+
+    // When resuming, adjust start time to maintain position
+    startTimeRef.current = Date.now() - (pausedAtRef.current * 1000);
 
     const animate = () => {
       const now = Date.now();
@@ -60,7 +70,7 @@ export function SeeItInActionAnimatedDemo() {
 
     const interval = setInterval(animate, 50);
     return () => clearInterval(interval);
-  }, [prefersReducedMotion]);
+  }, [prefersReducedMotion, isPaused]);
 
   // Typing effect
   useEffect(() => {
@@ -83,7 +93,11 @@ export function SeeItInActionAnimatedDemo() {
     }
   }, [elapsed, prefersReducedMotion]);
 
-  const showCaret = phase === 'typing';
+  // Handle hover pause
+  const handleMouseEnter = () => setIsPaused(true);
+  const handleMouseLeave = () => setIsPaused(false);
+
+  const showCaret = phase === 'typing' && !isPaused;
   const isButtonHovered = phase === 'click' && elapsed < 3.3;
   const isButtonPressed = phase === 'click' && elapsed >= 3.3;
   const isLoading = phase === 'loading';
@@ -92,11 +106,30 @@ export function SeeItInActionAnimatedDemo() {
   const showDetection = phase === 'click' || phase === 'loading' || phase === 'result' || prefersReducedMotion;
 
   return (
-    <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/10 overflow-hidden">
+    <div 
+      className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/10 overflow-hidden relative"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Pause indicator */}
+      <AnimatePresence>
+        {isPaused && !prefersReducedMotion && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="absolute top-4 right-4 z-20 flex items-center gap-2 px-2 py-1 rounded-full bg-muted/80 backdrop-blur-sm text-xs text-muted-foreground"
+          >
+            <Pause className="w-3 h-3" />
+            Paused
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Subtle breathing glow */}
       <motion.div
         className="absolute inset-0 rounded-2xl pointer-events-none"
-        animate={phase === 'idle' ? {
+        animate={phase === 'idle' && !isPaused ? {
           boxShadow: [
             '0 0 0 0 hsl(var(--primary) / 0)',
             '0 0 30px 2px hsl(var(--primary) / 0.08)',
@@ -258,13 +291,13 @@ export function SeeItInActionAnimatedDemo() {
                     <motion.div
                       className="absolute inset-0 rounded-xl pointer-events-none"
                       initial={{ boxShadow: '0 0 0 0 hsl(var(--primary) / 0.3)' }}
-                      animate={{ 
+                      animate={!isPaused ? { 
                         boxShadow: [
                           '0 0 0 0 hsl(var(--primary) / 0.3)',
                           '0 0 20px 4px hsl(var(--primary) / 0.15)',
                           '0 0 0 0 hsl(var(--primary) / 0)',
                         ]
-                      }}
+                      } : {}}
                       transition={{ duration: 1.5, ease: 'easeOut' }}
                     />
 

@@ -1,4 +1,4 @@
-import { Menu, X, LogIn, LogOut, User, Shield, LayoutDashboard, Home, Sparkles, Library, Lock, Target, Map } from 'lucide-react';
+import { Menu, X, LogIn, LogOut, User, Shield, LayoutDashboard, Home, Sparkles, Library, Lock, Target } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { Link, useLocation, NavLink } from 'react-router-dom';
 import { useState } from 'react';
@@ -22,7 +22,6 @@ const navLinks = [
   { href: '/cards', label: 'Cards', icon: Library },
   { href: '/privacy', label: 'Privacy', icon: Lock },
   { href: '/mission', label: 'Mission', icon: Target },
-  { href: '/roadmap', label: 'Roadmap', icon: Map },
 ];
 
 export function Header() {
@@ -48,9 +47,10 @@ export function Header() {
             </span>
           </Link>
 
-          {/* Desktop Navigation - Horizontal next to logo */}
-          <nav className="hidden lg:flex items-center gap-1 ml-8">
+          {/* Desktop Navigation - Horizontal centered next to logo */}
+          <nav className="hidden md:flex items-center gap-1 ml-8">
             {navLinks.map((link) => {
+              const Icon = link.icon;
               const isActive = location.pathname === link.href || 
                 (link.href !== '/' && location.pathname.startsWith(link.href));
               
@@ -58,19 +58,30 @@ export function Header() {
                 <NavLink
                   key={link.href}
                   to={link.href}
-                  className="relative px-3 py-2"
+                  className="relative px-3 py-2 flex items-center gap-1.5"
                 >
+                  {isActive && (
+                    <motion.div
+                      layoutId="tubelight-bg"
+                      className="absolute inset-0 bg-primary/10 rounded-lg"
+                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                    />
+                  )}
+                  <Icon className={cn(
+                    "w-4 h-4 relative z-10 transition-colors",
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  )} />
                   <span className={cn(
-                    "text-sm font-medium transition-colors",
+                    "text-sm font-medium transition-colors relative z-10",
                     isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                   )}>
                     {link.label}
                   </span>
                   {isActive && (
                     <motion.div
-                      layoutId="nav-indicator"
-                      className="absolute inset-x-1 -bottom-[1px] h-0.5 bg-primary rounded-full"
-                      transition={{ type: "spring", bounce: 0.25, duration: 0.5 }}
+                      layoutId="tubelight-glow"
+                      className="absolute inset-x-2 -bottom-px h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent"
+                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
                     />
                   )}
                 </NavLink>
@@ -133,19 +144,19 @@ export function Header() {
               </Link>
             )}
             
-            {/* Mobile menu button */}
+            {/* Mobile menu button - only show below md */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
+              className="md:hidden p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Navigation - only show below md */}
         {mobileMenuOpen && (
-          <nav className="lg:hidden py-4 border-t border-border animate-fade-in">
+          <nav className="md:hidden py-4 border-t border-border animate-fade-in">
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => {
                 const Icon = link.icon;

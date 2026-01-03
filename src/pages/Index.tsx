@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   ContainerScrollShowcase, 
-  HowItWorksCompact 
+  HowItWorksCompact,
+  InteractiveHeroCard 
 } from '@/components/marketing';
 
 const Index = () => {
@@ -15,34 +16,42 @@ const Index = () => {
       <Header />
       
       <main className="pt-16">
-        {/* Hero Section - Clean, Premium */}
+        {/* Hero Section - Clean, Premium with 3D Card */}
         <section className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
-          <div className="container max-w-4xl mx-auto px-4 py-24 md:py-32 relative">
-            <div className="max-w-2xl mx-auto text-center space-y-6">
-              <Badge variant="outline" className="mb-4">
-                No sign-up required
-              </Badge>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-                Don't let the credit system use you.{' '}
-                <span className="text-primary">Use it.</span>
-              </h1>
-              <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto">
-                Know which card maximizes your rewards before you pay.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                <Link to="/analyze">
-                  <Button size="lg" className="w-full sm:w-auto gap-2 shadow-lg shadow-primary/25">
-                    Try demo
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
-                <Link to="/wallet">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2">
-                    Build my card vault
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </Link>
+          <div className="container max-w-6xl mx-auto px-4 py-24 md:py-32 relative">
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+              {/* Left: Copy */}
+              <div className="max-w-xl space-y-6 text-center lg:text-left">
+                <Badge variant="outline" className="mb-4">
+                  No sign-up required
+                </Badge>
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
+                  Don't let the credit system use you.{' '}
+                  <span className="text-primary">Use it.</span>
+                </h1>
+                <p className="text-lg md:text-xl text-muted-foreground">
+                  Know which card maximizes your rewards before you pay.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
+                  <Link to="/analyze">
+                    <Button size="lg" className="w-full sm:w-auto gap-2 shadow-lg shadow-primary/25">
+                      Try demo
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                  <Link to="/wallet">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2">
+                      Build my card vault
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+              
+              {/* Right: 3D Interactive Card */}
+              <div className="flex justify-center lg:justify-end">
+                <InteractiveHeroCard className="hidden md:block" />
               </div>
             </div>
           </div>
