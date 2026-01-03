@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const GUEST_WALLET_KEY = 'cardclutch-guest-wallet';
-const GUEST_PREFS_KEY = 'cardclutch-guest-prefs';
+const GUEST_WALLET_KEY = 'cc_selected_cards_v1';
+const GUEST_PREFS_KEY = 'cc_prefs_v1';
+const DEMO_FLAG_KEY = 'cc_using_demo_v1';
 
 // Default demo cards (will be mapped to actual DB IDs)
 const DEFAULT_DEMO_CARDS = ['amex-gold', 'chase-freedom-unlimited', 'capital-one-savor-one'];

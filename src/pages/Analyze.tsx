@@ -20,6 +20,7 @@ import {
   Info,
   Sparkles,
   AlertCircle,
+  CreditCard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getRecommendationFromDB, Recommendation } from '@/lib/recommendationEngineV2';
@@ -34,6 +35,11 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
+import { CardVaultSheet } from '@/components/vault/CardVaultSheet';
+import { SelectedCardChips } from '@/components/vault/SelectedCardChips';
+import { VaultEmptyState } from '@/components/vault/VaultEmptyState';
+import { OnboardingNudge } from '@/components/onboarding/OnboardingNudge';
 
 const Analyze = () => {
   const { user } = useAuth();
@@ -45,6 +51,8 @@ const Analyze = () => {
     startWithDemo,
     loading: walletLoading,
     allCards,
+    toggleCard,
+    clearGuestWallet,
   } = useUnifiedWallet();
   const { rules: allRules, loading: rulesLoading } = useAllCardRewardRules();
   const { exclusions: allExclusions, loading: exclusionsLoading } = useAllMerchantExclusions();
@@ -55,6 +63,7 @@ const Analyze = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showDecisionTrace, setShowDecisionTrace] = useState(false);
   const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [vaultSheetOpen, setVaultSheetOpen] = useState(false);
 
   const handleUrlChange = (value: string) => {
     setUrl(value);
@@ -100,6 +109,20 @@ const Analyze = () => {
     setIsLoading(false);
   };
 
+  const handleVaultSave = () => {
+    toast.success('Vault saved');
+  };
+
+  const handleClearVault = () => {
+    clearGuestWallet();
+    toast.success('Vault cleared');
+  };
+
+  const handleLoadDemo = () => {
+    startWithDemo();
+    toast.success('Demo vault loaded');
+  };
+
   const dataLoading = walletLoading || rulesLoading || exclusionsLoading;
 
   return (
@@ -115,29 +138,56 @@ const Analyze = () => {
             </p>
           </div>
 
-          {/* No cards info - encourage demo */}
-          {!hasCards && !dataLoading && (
-            <div className="mb-6 p-4 rounded-xl border border-border bg-muted/50 flex items-start gap-3">
-              <Sparkles className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-medium">No cards selected</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  We'll use a demo wallet (3 popular cards) for this analysis. 
-                  <Link to="/wallet" className="text-primary hover:underline ml-1">
-                    Build your own wallet
-                  </Link> for personalized results.
-                </p>
-              </div>
-            </div>
-          )}
+          {/* Onboarding Nudge for first-time users */}
+          <OnboardingNudge 
+            hasCards={hasCards}
+            onOpenVault={() => setVaultSheetOpen(true)}
+            onComplete={() => {}}
+          />
 
-          {/* Using demo wallet indicator */}
-          {isUsingDemo && hasCards && (
-            <div className="mb-6 p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2">
-              <Info className="w-4 h-4 text-primary" />
-              <span className="text-sm">Using demo wallet. <Link to="/wallet" className="text-primary hover:underline">Customize your cards</Link></span>
+          {/* Card Vault Section */}
+          <div className="mb-6 p-4 rounded-xl border border-border bg-card shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Your Wallet</span>
+                {hasCards && (
+                  <Badge variant="secondary" className="text-xs">
+                    {selectedCardIds.length} card{selectedCardIds.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setVaultSheetOpen(true)}
+                className="gap-2"
+              >
+                {hasCards ? 'Edit' : 'Add cards'}
+              </Button>
             </div>
-          )}
+            
+            {hasCards ? (
+              <SelectedCardChips
+                selectedCards={selectedCards}
+                onRemoveCard={toggleCard}
+                onShowMore={() => setVaultSheetOpen(true)}
+              />
+            ) : (
+              <VaultEmptyState 
+                onOpenVault={() => setVaultSheetOpen(true)}
+                onLoadDemo={handleLoadDemo}
+              />
+            )}
+
+            {/* Using demo wallet indicator */}
+            {isUsingDemo && hasCards && (
+              <div className="mt-3 p-2 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2">
+                <Info className="w-4 h-4 text-primary" />
+                <span className="text-xs">Demo wallet active. <button onClick={() => setVaultSheetOpen(true)} className="text-primary hover:underline">Customize</button></span>
+              </div>
+            )}
+          </div>
 
           {/* URL Input */}
           <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
@@ -320,6 +370,17 @@ const Analyze = () => {
       </main>
 
       <Footer />
+
+      {/* Card Vault Sheet */}
+      <CardVaultSheet
+        open={vaultSheetOpen}
+        onOpenChange={setVaultSheetOpen}
+        allCards={allCards}
+        selectedCardIds={selectedCardIds}
+        onToggleCard={toggleCard}
+        onClearAll={handleClearVault}
+        onSave={handleVaultSave}
+      />
     </div>
   );
 };
