@@ -5,6 +5,7 @@ import { ArrowRight, Shield, Zap, Target, ChevronRight, CreditCard, CheckCircle,
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CardImage } from '@/components/CardImage';
+import { WaitlistForm } from '@/components/WaitlistForm';
 import { useCreditCards } from '@/hooks/useCreditCards';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 
@@ -247,27 +248,38 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Final CTA */}
+        {/* Final CTA + Waitlist */}
         <section className="border-t border-border bg-primary/5">
           <div className="container max-w-6xl mx-auto px-4 py-16">
-            <div className="text-center space-y-6">
-              <h2 className="text-2xl md:text-3xl font-bold">Ready to stop leaving money on the table?</h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
-                Try it now — no sign-up required. Save your wallet when you're ready.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to="/analyze">
-                  <Button size="lg" className="gap-2">
-                    Try the Analyzer
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
-                <Link to="/wallet">
-                  <Button size="lg" variant="outline" className="gap-2">
-                    Build My Wallet
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </Link>
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div className="text-center md:text-left space-y-6">
+                <h2 className="text-2xl md:text-3xl font-bold">
+                  Don't let the credit system use you.
+                </h2>
+                <p className="text-muted-foreground">
+                  Try it now — no sign-up required. Save your wallet when you're ready.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+                  <Link to="/analyze">
+                    <Button size="lg" className="gap-2 w-full sm:w-auto">
+                      Try the Analyzer
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                  <Link to="/wallet">
+                    <Button size="lg" variant="outline" className="gap-2 w-full sm:w-auto">
+                      Build My Wallet
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+              <div className="p-6 rounded-2xl bg-card border border-border shadow-sm">
+                <h3 className="font-semibold mb-2">Get Early Access</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Be first to know when new features drop.
+                </p>
+                <WaitlistForm />
               </div>
             </div>
           </div>

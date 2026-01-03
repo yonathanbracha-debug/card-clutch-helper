@@ -1,4 +1,4 @@
-import { Menu, X, CreditCard, Wallet, Search, Library, Info, Map, LogIn, LogOut, User, Shield } from 'lucide-react';
+import { Menu, X, CreditCard, Wallet, Search, Library, Info, Map, LogIn, LogOut, User, Shield, LayoutDashboard } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
@@ -80,17 +80,24 @@ export function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link to="/dashboard" className="flex items-center">
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
                   {isAdmin && (
                     <>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem asChild className="cursor-pointer">
                         <Link to="/admin" className="flex items-center">
                           <Shield className="w-4 h-4 mr-2" />
                           Admin Console
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
                     </>
                   )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={signOut} className="cursor-pointer">
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign out
@@ -140,6 +147,16 @@ export function Header() {
                 );
               })}
               <div className="border-t border-border mt-2 pt-2">
+                {user && (
+                  <Link
+                    to="/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    Dashboard
+                  </Link>
+                )}
                 {isAdmin && (
                   <Link
                     to="/admin"

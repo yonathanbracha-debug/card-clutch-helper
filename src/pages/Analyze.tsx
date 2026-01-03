@@ -29,6 +29,7 @@ import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { useAllCardRewardRules } from '@/hooks/useCardRewardRules';
 import { useAllMerchantExclusions } from '@/hooks/useMerchantExclusions';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import {
   Collapsible,
   CollapsibleContent,
@@ -44,6 +45,7 @@ import { AccuracySection } from '@/components/trust/AccuracySection';
 
 const Analyze = () => {
   const { user } = useAuth();
+  const { trackEvent } = useAnalytics();
   const { 
     selectedCards, 
     selectedCardIds, 
@@ -96,11 +98,31 @@ const Analyze = () => {
     }
     
     setIsLoading(true);
+    const startTime = Date.now();
     await new Promise(r => setTimeout(r, 400));
     
     const cardsToUse = hasCards ? selectedCards : allCards.slice(0, 3);
     const result = getRecommendationFromDB(url, cardsToUse, allRules, allExclusions);
     setRecommendation(result);
+    
+    // Track analytics
+    const latency = Date.now() - startTime;
+    trackEvent('recommendation_requested', {
+      domain: getDisplayDomain(url),
+      selectedCardCount: cardsToUse.length,
+      categorySlug: result?.categoryLabel || 'unknown',
+    }, url);
+    
+    if (result) {
+      trackEvent('recommendation_returned', {
+        domain: getDisplayDomain(url),
+        recommendedCardId: result.card.id,
+        confidence: result.confidence,
+        categorySlug: result.categoryLabel,
+        multiplier: result.multiplier,
+        latencyMs: latency,
+      });
+    }
     
     // Show save prompt after result if not logged in
     if (!user && result) {
