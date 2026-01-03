@@ -272,6 +272,7 @@ const Analyze = () => {
                     issuer={recommendation.card.issuer_name}
                     cardName={recommendation.card.name}
                     network={recommendation.card.network}
+                    imageUrl={recommendation.card.image_url}
                     size="lg"
                     className="shrink-0"
                   />

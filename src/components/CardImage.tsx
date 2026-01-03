@@ -1,7 +1,8 @@
 // CardImage - Uses CardThumbnail with real image support and CardArtwork fallback
 import { forwardRef } from 'react';
 import { CardThumbnail } from '@/components/CardThumbnail';
-import { CardNetwork } from '@/lib/cardCatalog';
+
+export type CardNetwork = 'visa' | 'mastercard' | 'amex' | 'discover';
 
 interface CardImageProps {
   issuer: string;

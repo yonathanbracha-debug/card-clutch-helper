@@ -1,7 +1,8 @@
 import { useState, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 import { CardArtwork } from '@/components/CardArtwork';
-import { CardNetwork } from '@/lib/cardCatalog';
+
+export type CardNetwork = 'visa' | 'mastercard' | 'amex' | 'discover';
 
 interface CardThumbnailProps {
   issuer: string;

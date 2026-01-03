@@ -45,6 +45,7 @@ export function CardInfoDrawer({ card, open, onOpenChange }: CardInfoDrawerProps
               issuer={card.issuer_name}
               cardName={card.name}
               network={card.network}
+              imageUrl={card.image_url}
               size="md"
             />
             <div className="flex-1 min-w-0">

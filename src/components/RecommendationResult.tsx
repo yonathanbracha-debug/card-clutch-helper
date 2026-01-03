@@ -1,8 +1,8 @@
-import { Recommendation, CardAnalysis } from '@/lib/recommendationEngine';
+import { Recommendation, CardAnalysis } from '@/lib/recommendationEngineV2';
 import { CheckCircle2, AlertCircle, HelpCircle, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
-import { networkLabels } from '@/lib/cardData';
+import { networkLabels } from '@/lib/types';
 
 interface RecommendationResultProps {
   recommendation: Recommendation;
@@ -75,12 +75,12 @@ export function RecommendationResult({ recommendation }: RecommendationResultPro
               <span className="text-xs text-muted-foreground uppercase tracking-wide">Recommended</span>
             </div>
             <div className="font-semibold text-lg mb-0.5">
-              {card.issuer} {card.name}
+              {card.issuer_name} {card.name}
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-              <span>{networkLabels[card.network]}</span>
+              <span>{networkLabels[card.network] || card.network.toUpperCase()}</span>
               <span>·</span>
-              <span>{card.annualFee === 0 ? 'No annual fee' : `$${card.annualFee}/year`}</span>
+              <span>{card.annual_fee_cents === 0 ? 'No annual fee' : `$${card.annual_fee_cents / 100}/year`}</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {reason}
@@ -163,8 +163,8 @@ function AlternativeCard({ analysis, winningMultiplier }: { analysis: CardAnalys
         : "bg-muted/30"
     )}>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium">{card.issuer} {card.name}</span>
+      <div className="flex items-center gap-2">
+          <span className="font-medium">{card.issuer_name} {card.name}</span>
           {excluded && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive uppercase tracking-wide">
               Excluded
