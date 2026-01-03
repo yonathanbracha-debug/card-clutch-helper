@@ -32,9 +32,11 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-              <CreditCard className="w-4 h-4 text-primary" />
-            </div>
+            <img 
+              src="/favicon.png" 
+              alt="CardClutch" 
+              className="w-8 h-8 rounded-lg group-hover:scale-105 transition-transform"
+            />
             <span className="text-lg font-semibold tracking-tight">
               CardClutch
             </span>
