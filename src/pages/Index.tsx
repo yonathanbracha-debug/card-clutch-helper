@@ -37,13 +37,13 @@ const Index = () => {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
                   <Link to="/analyze">
-                    <Button size="lg" className="w-full sm:w-auto gap-2 shadow-lg shadow-primary/25">
+                    <Button size="lg" className="w-full sm:w-auto gap-2 glow-primary animate-glow-pulse hover:scale-[1.02] transition-transform">
                       Try demo
                       <ArrowRight className="w-4 h-4" />
                     </Button>
                   </Link>
                   <Link to="/wallet">
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2 hover:glow-primary-subtle transition-all">
                       Build my card vault
                       <ChevronRight className="w-4 h-4" />
                     </Button>
