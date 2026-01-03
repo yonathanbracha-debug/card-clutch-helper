@@ -1,9 +1,12 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CardArtwork } from '@/components/CardArtwork';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { Card, CardReward, formatAnnualFee, networkLabels } from '@/lib/cardCatalog';
+import { validateCardUrls, getIssuerAllowlist } from '@/lib/cardUrlValidation';
 import { CreditCardDB } from '@/hooks/useCreditCards';
 import { useCardRewardRules, CardRewardRule } from '@/hooks/useCardRewardRules';
 import { useMerchantExclusions } from '@/hooks/useMerchantExclusions';
@@ -18,7 +21,8 @@ import {
   Clock,
   Percent,
   Info,
-  Star
+  Star,
+  Ban
 } from 'lucide-react';
 
 interface CardDetailsSheetProps {
@@ -30,6 +34,11 @@ interface CardDetailsSheetProps {
 // Type guard to check if it's a DB card
 function isDBCard(card: CreditCardDB | Card): card is CreditCardDB {
   return 'issuer_name' in card;
+}
+
+// Type guard to check if it's a catalog card with URL fields
+function isCatalogCard(card: CreditCardDB | Card): card is Card {
+  return 'learnMoreUrl' in card || 'applyUrl' in card;
 }
 
 export function CardDetailsSheet({ card, open, onOpenChange }: CardDetailsSheetProps) {
@@ -52,12 +61,18 @@ export function CardDetailsSheet({ card, open, onOpenChange }: CardDetailsSheetP
   const verificationStatus = isDBCard(card) ? card.verification_status : 'verified';
   
   // Get rewards and exclusions from catalog if available
-  const catalogCard = isDBCard(card) ? undefined : card;
-  const catalogRewards = catalogCard?.rewards || [];
-  const catalogExclusions = catalogCard?.exclusions || [];
-  const highlights = catalogCard?.highlights || [];
-  const foreignTxFee = catalogCard?.foreign_tx_fee_percent;
-  const creditsSummary = catalogCard?.credits_summary;
+  const catalogCard = isCatalogCard(card) ? card : undefined;
+  const catalogRewards = !isDBCard(card) ? (card as Card).rewards || [] : [];
+  const catalogExclusions = !isDBCard(card) ? (card as Card).exclusions || [] : [];
+  const highlights = !isDBCard(card) ? (card as Card).highlights || [] : [];
+  const foreignTxFee = !isDBCard(card) ? (card as Card).foreign_tx_fee_percent : null;
+  const creditsSummary = !isDBCard(card) ? (card as Card).credits_summary : undefined;
+
+  // Validate outbound URLs
+  const learnMoreUrl = catalogCard?.learnMoreUrl;
+  const applyUrl = catalogCard?.applyUrl;
+  const allowlist = catalogCard?.issuerDomainAllowlist || getIssuerAllowlist(issuer);
+  const urlValidation = validateCardUrls(issuer, learnMoreUrl, applyUrl, allowlist);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -152,6 +167,82 @@ export function CardDetailsSheet({ card, open, onOpenChange }: CardDetailsSheetP
                 </div>
               </div>
             )}
+
+            {/* Action Buttons - Learn More & Apply */}
+            <div className="flex gap-3 pt-2">
+              <TooltipProvider>
+                {urlValidation.learnMore.isValid && urlValidation.learnMore.normalizedUrl ? (
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    asChild
+                  >
+                    <a 
+                      href={urlValidation.learnMore.normalizedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Learn More
+                      {urlValidation.learnMore.displayHost && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          ({urlValidation.learnMore.displayHost})
+                        </span>
+                      )}
+                    </a>
+                  </Button>
+                ) : learnMoreUrl ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex-1 opacity-50 cursor-not-allowed"
+                        disabled
+                      >
+                        <Ban className="w-4 h-4 mr-2" />
+                        Learn More
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Link unavailable (invalid source)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ) : null}
+
+                {urlValidation.apply.isValid && urlValidation.apply.normalizedUrl ? (
+                  <Button
+                    variant="default"
+                    className="flex-1"
+                    asChild
+                  >
+                    <a 
+                      href={urlValidation.apply.normalizedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Apply
+                    </a>
+                  </Button>
+                ) : applyUrl ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="default"
+                        className="flex-1 opacity-50 cursor-not-allowed"
+                        disabled
+                      >
+                        <Ban className="w-4 h-4 mr-2" />
+                        Apply
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Link unavailable (invalid source)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ) : null}
+              </TooltipProvider>
+            </div>
           </TabsContent>
 
           {/* Earn Rates Tab */}
@@ -293,8 +384,25 @@ export function CardDetailsSheet({ card, open, onOpenChange }: CardDetailsSheetP
                 </div>
               </div>
 
-              {/* Source URL */}
-              {sourceUrl ? (
+              {/* Learn More URL - from catalog */}
+              {urlValidation.learnMore.isValid && urlValidation.learnMore.normalizedUrl ? (
+                <a
+                  href={urlValidation.learnMore.normalizedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary/50 transition-colors group"
+                >
+                  <ExternalLink className="w-5 h-5 text-primary" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium group-hover:text-primary transition-colors">
+                      View Official Card Page
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {urlValidation.learnMore.displayHost}
+                    </p>
+                  </div>
+                </a>
+              ) : sourceUrl ? (
                 <a
                   href={sourceUrl}
                   target="_blank"
