@@ -1,4 +1,5 @@
 // CardImage - Uses CardThumbnail with real image support and CardArtwork fallback
+import { forwardRef } from 'react';
 import { CardThumbnail } from '@/components/CardThumbnail';
 import { CardNetwork } from '@/lib/cardCatalog';
 
@@ -13,7 +14,7 @@ interface CardImageProps {
   onError?: () => void;
 }
 
-export function CardImage({ 
+export const CardImage = forwardRef<HTMLDivElement, CardImageProps>(({ 
   issuer, 
   cardName, 
   network, 
@@ -22,9 +23,10 @@ export function CardImage({
   className, 
   size = 'md', 
   onError 
-}: CardImageProps) {
+}, ref) => {
   return (
     <CardThumbnail
+      ref={ref}
       issuer={issuer}
       cardName={cardName}
       network={network as CardNetwork}
@@ -34,4 +36,6 @@ export function CardImage({
       size={size}
     />
   );
-}
+});
+
+CardImage.displayName = 'CardImage';

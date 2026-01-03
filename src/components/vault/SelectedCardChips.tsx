@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { X, ChevronRight, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CardImage } from '@/components/CardImage';
@@ -13,13 +13,13 @@ interface SelectedCardChipsProps {
   className?: string;
 }
 
-export function SelectedCardChips({
+export const SelectedCardChips = forwardRef<HTMLDivElement, SelectedCardChipsProps>(({
   selectedCards,
   onRemoveCard,
   onShowMore,
   maxVisible = 6,
   className,
-}: SelectedCardChipsProps) {
+}, ref) => {
   const [detailCard, setDetailCard] = useState<CreditCardDB | null>(null);
 
   if (selectedCards.length === 0) return null;
@@ -29,7 +29,7 @@ export function SelectedCardChips({
 
   return (
     <>
-      <div className={cn("flex flex-wrap gap-2", className)}>
+      <div ref={ref} className={cn("flex flex-wrap gap-2", className)}>
         {visibleCards.map((card) => (
           <div
             key={card.id}
@@ -87,4 +87,6 @@ export function SelectedCardChips({
       />
     </>
   );
-}
+});
+
+SelectedCardChips.displayName = 'SelectedCardChips';
