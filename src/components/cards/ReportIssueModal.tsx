@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const REPORTS_STORAGE_KEY = 'cc_card_reports_v1';
 
@@ -33,8 +35,9 @@ interface ReportIssueModalProps {
 export function ReportIssueModal({ open, onOpenChange, cardId, cardName }: ReportIssueModalProps) {
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!message.trim()) {
       toast.error('Please describe the issue');
       return;
@@ -42,12 +45,10 @@ export function ReportIssueModal({ open, onOpenChange, cardId, cardName }: Repor
 
     setIsSubmitting(true);
 
+    // Always save to localStorage as backup
     try {
-      // Get existing reports
       const stored = localStorage.getItem(REPORTS_STORAGE_KEY);
       const reports: CardReport[] = stored ? JSON.parse(stored) : [];
-
-      // Add new report
       const newReport: CardReport = {
         id: crypto.randomUUID(),
         cardId,
@@ -55,18 +56,36 @@ export function ReportIssueModal({ open, onOpenChange, cardId, cardName }: Repor
         message: message.trim(),
         timestamp: new Date().toISOString(),
       };
-
       reports.push(newReport);
       localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(reports));
-
-      toast.success("Saved. We'll review this.");
-      setMessage('');
-      onOpenChange(false);
-    } catch (error) {
-      toast.error('Failed to save report');
-    } finally {
-      setIsSubmitting(false);
+    } catch (err) {
+      console.error('LocalStorage backup failed:', err);
     }
+
+    // Try to send to Supabase
+    try {
+      const { error } = await supabase.from('data_issue_reports').insert({
+        card_id: cardId,
+        user_id: user?.id || null,
+        issue_type: 'incorrect_info',
+        description: message.trim(),
+        status: 'open',
+      });
+
+      if (error) {
+        console.error('Supabase insert failed:', error);
+        toast.success("Saved locally. We'll review this.");
+      } else {
+        toast.success("Sent to review. Thank you!");
+      }
+    } catch (err) {
+      console.error('Supabase error:', err);
+      toast.success("Saved locally (offline). We'll review this.");
+    }
+
+    setMessage('');
+    onOpenChange(false);
+    setIsSubmitting(false);
   };
 
   return (

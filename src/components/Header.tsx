@@ -1,15 +1,17 @@
-import { Menu, X, CreditCard, Wallet, Search, Library, Info, Map, LogIn, LogOut, User } from 'lucide-react';
+import { Menu, X, CreditCard, Wallet, Search, Library, Info, Map, LogIn, LogOut, User, Shield } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -25,6 +27,7 @@ export function Header() {
   const location = useLocation();
   const { theme, toggleTheme } = useThemeContext();
   const { user, signOut } = useAuth();
+  const { isAdmin } = useIsAdmin();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
@@ -77,6 +80,17 @@ export function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuItem asChild className="cursor-pointer">
+                        <Link to="/admin" className="flex items-center">
+                          <Shield className="w-4 h-4 mr-2" />
+                          Admin Console
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem onClick={signOut} className="cursor-pointer">
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign out
@@ -126,6 +140,16 @@ export function Header() {
                 );
               })}
               <div className="border-t border-border mt-2 pt-2">
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    <Shield className="w-4 h-4" />
+                    Admin Console
+                  </Link>
+                )}
                 {user ? (
                   <button
                     onClick={() => {

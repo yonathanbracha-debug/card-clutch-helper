@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          context: Json
+          created_at: string
+          domain: string | null
+          event_name: string
+          id: string
+          url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json
+          created_at?: string
+          domain?: string | null
+          event_name: string
+          id?: string
+          url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          domain?: string | null
+          event_name?: string
+          id?: string
+          url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       card_reward_rules: {
         Row: {
           cap_cents: number | null
@@ -150,32 +180,38 @@ export type Database = {
       }
       data_issue_reports: {
         Row: {
+          admin_notes: string | null
           card_id: string | null
           created_at: string
           description: string
           id: string
           issue_type: string
           merchant_id: string | null
+          resolved_at: string | null
           status: string
           user_id: string | null
         }
         Insert: {
+          admin_notes?: string | null
           card_id?: string | null
           created_at?: string
           description: string
           id?: string
           issue_type: string
           merchant_id?: string | null
+          resolved_at?: string | null
           status?: string
           user_id?: string | null
         }
         Update: {
+          admin_notes?: string | null
           card_id?: string | null
           created_at?: string
           description?: string
           id?: string
           issue_type?: string
           merchant_id?: string | null
+          resolved_at?: string | null
           status?: string
           user_id?: string | null
         }
