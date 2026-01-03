@@ -192,6 +192,7 @@ const Cards = () => {
                       issuer={card.issuer_name}
                       cardName={card.name}
                       network={card.network as any}
+                      imageUrl={card.image_url}
                       size="md"
                     />
                     <div className="flex-1 min-w-0">

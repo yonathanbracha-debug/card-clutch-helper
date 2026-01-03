@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useCreditCards, CreditCardDB } from '@/hooks/useCreditCards';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Plus, Pencil, Trash2, Check, ExternalLink } from 'lucide-react';
+import { Search, Pencil, Check, ExternalLink, Upload, Loader2, ImageIcon } from 'lucide-react';
 
 export function AdminCardManager() {
   const { cards, loading, refetch } = useCreditCards();
@@ -210,6 +210,53 @@ function CardEditForm({
   const [annualFee, setAnnualFee] = useState((card.annual_fee_cents / 100).toString());
   const [sourceUrl, setSourceUrl] = useState(card.source_url);
   const [imageUrl, setImageUrl] = useState(card.image_url || '');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Invalid file type. Please upload PNG, JPG, or WebP.');
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File too large. Maximum size is 5MB.');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // Generate a unique filename
+      const ext = file.name.split('.').pop();
+      const filename = `${card.id}-${Date.now()}.${ext}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('card-images')
+        .upload(filename, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('card-images')
+        .getPublicUrl(filename);
+
+      setImageUrl(urlData.publicUrl);
+      toast.success('Image uploaded successfully');
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast.error('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,6 +271,44 @@ function CardEditForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex items-center gap-4 mb-4">
+        <div className="w-24 h-16 rounded-lg bg-muted flex items-center justify-center overflow-hidden border border-border">
+          {imageUrl ? (
+            <img src={imageUrl} alt={card.name} className="w-full h-full object-cover" />
+          ) : (
+            <ImageIcon className="w-8 h-8 text-muted-foreground" />
+          )}
+        </div>
+        <div className="flex-1">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageUpload}
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Image
+              </>
+            )}
+          </Button>
+          <p className="text-xs text-muted-foreground mt-1">PNG, JPG, or WebP. Max 5MB.</p>
+        </div>
+      </div>
       <div>
         <label className="text-sm font-medium">Card Name</label>
         <Input value={name} onChange={(e) => setName(e.target.value)} />
@@ -242,8 +327,12 @@ function CardEditForm({
         <Input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
       </div>
       <div>
-        <label className="text-sm font-medium">Image URL (optional)</label>
-        <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+        <label className="text-sm font-medium">Image URL</label>
+        <Input 
+          value={imageUrl} 
+          onChange={(e) => setImageUrl(e.target.value)} 
+          placeholder="Auto-filled when you upload, or paste URL"
+        />
       </div>
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>

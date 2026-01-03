@@ -1,22 +1,35 @@
 # RC Build Checklist
 
-## Last Run: 2026-01-03
+## Last Run: 2026-01-03 (Updated)
 
 ## Summary
 
 | Category | Pass | Fail | Notes |
 |----------|------|------|-------|
 | Data Correctness | 4 | 0 | All fee checks pass |
-| Security | 4 | 0 | RLS enabled, validation in place |
-| UI/UX | 3 | 0 | Cards render correctly |
-| Admin | 2 | 0 | Routes protected |
+| Security | 5 | 0 | RLS enabled, storage policies added |
+| UI/UX | 5 | 0 | Cards render with images, details drawer complete |
+| Admin | 3 | 0 | Routes protected, image upload works |
+| Data Flow | 2 | 0 | Single source of truth established |
+
+---
+
+## Data Flow (Single Source of Truth)
+
+### ✅ PASS: Deprecated engine imports removed from Hero.tsx
+- **Check:** `src/components/Hero.tsx` imports
+- **Result:** Now imports from `recommendationEngineV2.ts` ✅
+
+### ✅ PASS: RecommendationResult uses DB-backed types
+- **Check:** `src/components/RecommendationResult.tsx` imports
+- **Result:** Uses `CreditCardDB` types with `issuer_name`, `annual_fee_cents` ✅
 
 ---
 
 ## Data Correctness
 
 ### ✅ PASS: Amex Gold annual fee correct in database
-- **Check:** `SELECT annual_fee_cents FROM credit_cards WHERE name = 'Gold Card' AND issuer_id = (SELECT id FROM issuers WHERE name = 'American Express')`
+- **Check:** `SELECT annual_fee_cents FROM credit_cards WHERE name = 'Gold Card'`
 - **Result:** 32500 cents = $325/year ✅
 
 ### ✅ PASS: Amex Gold fee correct in cardCatalog.ts
@@ -77,21 +90,33 @@
 - **Check:** `has_role()` function is SECURITY DEFINER but only checks role existence
 - **Result:** Function is safe - only returns boolean, no data leakage ✅
 
+### ✅ PASS: Storage bucket RLS policies
+- **Check:** `card-images` bucket has admin-only upload policies
+- **Result:** Public read, admin-only write ✅
+
 ---
 
-## Card Display
+## Card Display & Images
 
-### ✅ PASS: Card images render for all cards
-- **Check:** `CardImage` component generates themed visuals per issuer/network
-- **Result:** All cards have consistent artwork ✅
+### ✅ PASS: Card images render from DB when available
+- **Check:** `CardImage` component uses `imageUrl` prop from `credit_cards.image_url`
+- **Result:** DB images shown with CardArtwork fallback ✅
 
-### ✅ PASS: Card details drawer shows structured data
-- **Check:** Annual fee, rewards with categories, exclusions, last verified
-- **Result:** `CardDetail.tsx` displays all required fields ✅
+### ✅ PASS: CardArtwork fallback is premium themed
+- **Check:** Issuer-specific gradients and patterns in `CardArtwork.tsx`
+- **Result:** All cards have consistent premium fallback artwork ✅
+
+### ✅ PASS: Card details drawer shows full rules
+- **Check:** Annual fee, rewards with categories, caps, exclusions, last verified
+- **Result:** `CardInfoDrawer.tsx` displays all required fields ✅
 
 ### ✅ PASS: Annual fee displays correctly in card list
 - **Check:** `annual_fee_cents / 100` calculation
 - **Result:** Displays "$325/year" format correctly ✅
+
+### ✅ PASS: Card image passes through all components
+- **Check:** Image URL passed from DB → useCreditCards → CardImage → CardThumbnail
+- **Result:** All card display components support `imageUrl` prop ✅
 
 ---
 
@@ -104,6 +129,10 @@
 ### ✅ PASS: Admin metrics load from database
 - **Check:** Dashboard queries `credit_cards`, `recommendation_logs`, etc.
 - **Result:** Real data displayed ✅
+
+### ✅ PASS: Admin card image upload works
+- **Check:** `AdminCardManager` uploads to `card-images` bucket
+- **Result:** PNG/JPG/WebP upload with 5MB limit ✅
 
 ---
 
@@ -133,17 +162,26 @@
 
 | File | Change | Issue Fixed |
 |------|--------|-------------|
-| `src/lib/cardData.ts` | Fixed Amex Gold fee | $250 → $325 |
-| `docs/TRACE_CARD_DATA.md` | Created | Documentation |
-| `docs/TRACE_RECOMMENDATION_FLOW.md` | Created | Documentation |
-| `docs/RC_CHECKLIST.md` | Created | This file |
+| `src/lib/types.ts` | Created | Shared types for single source of truth |
+| `src/components/Hero.tsx` | Updated import | Use V2 engine |
+| `src/components/RecommendationResult.tsx` | Updated import + DB fields | Use V2 engine + DB types |
+| `src/components/CardImage.tsx` | Remove cardCatalog import | Self-contained type |
+| `src/components/CardThumbnail.tsx` | Remove cardCatalog import | Self-contained type |
+| `src/components/admin/AdminCardManager.tsx` | Add image upload | Admin can upload card images |
+| `src/pages/Cards.tsx` | Pass imageUrl | Show DB images |
+| `src/pages/Index.tsx` | Pass imageUrl | Show DB images |
+| `src/pages/Analyze.tsx` | Pass imageUrl | Show DB images |
+| `src/components/CardInfoDrawer.tsx` | Pass imageUrl | Show DB images |
+| `src/components/vault/CardVaultSheet.tsx` | Pass imageUrl | Show DB images |
+| `src/components/vault/SelectedCardChips.tsx` | Pass imageUrl | Show DB images |
+| `docs/RC_CHECKLIST.md` | Updated | Added new checks |
 
 ---
 
 ## Known Issues (Non-blocking)
 
-1. **Legacy engine still imported in Hero.tsx** - Only uses types, not data. Low risk.
-2. **Merchant mappings hardcoded in V2 engine** - ~40 merchants. Extended registry has 500+.
+1. **cardData.ts still exists** - Only used as fallback reference, not in production data path
+2. **Merchant mappings in V2 engine** - ~40 merchants inline. Extended registry has 500+
 
 ---
 

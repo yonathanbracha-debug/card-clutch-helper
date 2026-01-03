@@ -1,5 +1,5 @@
 import { UrlInput } from './UrlInput';
-import { Recommendation } from '@/lib/recommendationEngine';
+import { Recommendation } from '@/lib/recommendationEngineV2';
 import { RecommendationResult } from './RecommendationResult';
 import { RecentSearches } from './RecentSearches';
 import { RecentSearch } from '@/hooks/useRecentSearches';

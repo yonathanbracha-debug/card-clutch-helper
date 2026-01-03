@@ -39,6 +39,7 @@ export const SelectedCardChips = forwardRef<HTMLDivElement, SelectedCardChipsPro
               issuer={card.issuer_name}
               cardName={card.name}
               network={card.network}
+              imageUrl={card.image_url}
               size="sm"
               className="w-6 h-4"
             />

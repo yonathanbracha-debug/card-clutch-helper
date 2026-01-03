@@ -137,6 +137,7 @@ export function CardVaultSheet({
                             issuer={card.issuer_name}
                             cardName={card.name}
                             network={card.network}
+                            imageUrl={card.image_url}
                             size="sm"
                             className="shrink-0"
                           />

@@ -78,6 +78,7 @@ const Index = () => {
                         issuer={card.issuer_name}
                         cardName={card.name}
                         network={card.network}
+                        imageUrl={card.image_url}
                         size="sm"
                         className="ring-2 ring-background"
                       />
@@ -168,6 +169,7 @@ const Index = () => {
                         issuer={card.issuer_name}
                         cardName={card.name}
                         network={card.network}
+                        imageUrl={card.image_url}
                         size="sm"
                       />
                       <div className="flex-1 min-w-0">
