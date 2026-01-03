@@ -1,1 +1,7 @@
 project_id = "vtpujsezuxqbqfyjrbdc"
+
+[functions.classify-merchant]
+verify_jwt = true
+
+[functions.url-health-check]
+verify_jwt = true

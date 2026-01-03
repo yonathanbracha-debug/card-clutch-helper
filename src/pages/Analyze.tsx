@@ -30,6 +30,8 @@ import { useAllCardRewardRules } from '@/hooks/useCardRewardRules';
 import { useAllMerchantExclusions } from '@/hooks/useMerchantExclusions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { useDemoGate } from '@/hooks/useDemoGate';
+import { DemoLimitModal } from '@/components/DemoLimitModal';
 import {
   Collapsible,
   CollapsibleContent,
@@ -67,6 +69,16 @@ const Analyze = () => {
   const [showDecisionTrace, setShowDecisionTrace] = useState(false);
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [vaultSheetOpen, setVaultSheetOpen] = useState(false);
+  const [showDemoLimitModal, setShowDemoLimitModal] = useState(false);
+
+  const { 
+    canAnalyze, 
+    remaining, 
+    hasHitLimit, 
+    shouldShowBanner, 
+    incrementSuccess,
+    isLoggedIn 
+  } = useDemoGate();
 
   const handleUrlChange = (value: string) => {
     setUrl(value);
@@ -82,15 +94,29 @@ const Analyze = () => {
       return;
     }
     
+    // Check demo gate
+    if (!canAnalyze) {
+      trackEvent('demo_limit_reached', { remaining: 0 });
+      setShowDemoLimitModal(true);
+      return;
+    }
+    
     // Validate URL before processing
     const validation = validateUrl(url);
     if (!validation.ok) {
       setUrlError(validation.error || 'Invalid URL');
+      trackEvent('analyze_failed', { error: validation.error });
       return;
     }
     
     // Clear any previous error
     setUrlError(null);
+    
+    // Track demo analysis if not logged in
+    if (!isLoggedIn) {
+      trackEvent('demo_analysis_started', { remaining });
+    }
+    trackEvent('analyze_started', { domain: getDisplayDomain(url) }, url);
     
     // Use demo if no cards selected
     if (!hasCards) {
@@ -114,6 +140,21 @@ const Analyze = () => {
     }, url);
     
     if (result) {
+      // Increment demo counter on success
+      incrementSuccess();
+      
+      if (!isLoggedIn) {
+        trackEvent('demo_analysis_success', { remaining: remaining - 1 });
+      }
+      trackEvent('analyze_success', {
+        domain: getDisplayDomain(url),
+        recommendedCardId: result.card.id,
+        confidence: result.confidence,
+        categorySlug: result.categoryLabel,
+        multiplier: result.multiplier,
+        latencyMs: latency,
+      });
+      
       trackEvent('recommendation_returned', {
         domain: getDisplayDomain(url),
         recommendedCardId: result.card.id,
@@ -126,7 +167,10 @@ const Analyze = () => {
     
     // Show save prompt after result if not logged in
     if (!user && result) {
-      setTimeout(() => setShowSavePrompt(true), 1500);
+      setTimeout(() => {
+        setShowSavePrompt(true);
+        trackEvent('signup_prompt_shown', {});
+      }, 1500);
     }
     
     setIsLoading(false);
@@ -160,6 +204,21 @@ const Analyze = () => {
               Paste any shopping URL to find the best card to use.
             </p>
           </div>
+
+          {/* Demo Banner - show after first analysis but before limit */}
+          {shouldShowBanner && (
+            <div className="mb-6 p-3 rounded-lg border border-primary/30 bg-primary/5 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <span className="text-sm">
+                  You have <strong>{remaining}</strong> free {remaining === 1 ? 'analysis' : 'analyses'} left.{' '}
+                  <Link to="/auth" className="text-primary hover:underline" onClick={() => trackEvent('signup_clicked', {})}>
+                    Sign in to save your wallet
+                  </Link>
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Onboarding Nudge for first-time users */}
           <OnboardingNudge 
@@ -406,6 +465,12 @@ const Analyze = () => {
         onToggleCard={toggleCard}
         onClearAll={handleClearVault}
         onSave={handleVaultSave}
+      />
+
+      {/* Demo Limit Modal */}
+      <DemoLimitModal 
+        open={showDemoLimitModal}
+        onOpenChange={setShowDemoLimitModal}
       />
     </div>
   );

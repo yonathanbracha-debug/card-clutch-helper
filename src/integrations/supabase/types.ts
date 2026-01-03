@@ -110,6 +110,47 @@ export type Database = {
           },
         ]
       }
+      card_url_health: {
+        Row: {
+          card_id: string
+          checked_at: string
+          error_text: string | null
+          http_status: number | null
+          id: string
+          status: string
+          url: string
+          url_type: string
+        }
+        Insert: {
+          card_id: string
+          checked_at?: string
+          error_text?: string | null
+          http_status?: number | null
+          id?: string
+          status: string
+          url: string
+          url_type: string
+        }
+        Update: {
+          card_id?: string
+          checked_at?: string
+          error_text?: string | null
+          http_status?: number | null
+          id?: string
+          status?: string
+          url?: string
+          url_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_url_health_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_cards: {
         Row: {
           annual_fee_cents: number
