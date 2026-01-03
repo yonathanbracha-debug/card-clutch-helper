@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -9,12 +9,23 @@ import { AdminCardManager } from '@/components/admin/AdminCardManager';
 import { AdminMerchantManager } from '@/components/admin/AdminMerchantManager';
 import { AdminAuditLogs } from '@/components/admin/AdminAuditLogs';
 import { AdminUrlHealthChecker } from '@/components/admin/AdminUrlHealthChecker';
-import { Shield, CreditCard, Store, ClipboardList, Loader2, LinkIcon } from 'lucide-react';
+import { AdminDashboard } from '@/components/admin/AdminDashboard';
+import { AdminReportsManager } from '@/components/admin/AdminReportsManager';
+import { AdminDataHealth } from '@/components/admin/AdminDataHealth';
+import { useAnalytics } from '@/hooks/useAnalytics';
+import { Shield, CreditCard, Store, ClipboardList, Loader2, LinkIcon, LayoutDashboard, AlertCircle, HeartPulse } from 'lucide-react';
 
 export default function Admin() {
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
-  const [activeTab, setActiveTab] = useState('cards');
+  const { trackEvent } = useAnalytics();
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  useEffect(() => {
+    if (isAdmin) {
+      trackEvent('admin_viewed_dashboard');
+    }
+  }, [isAdmin]);
 
   if (authLoading || adminLoading) {
     return (
@@ -60,12 +71,24 @@ export default function Admin() {
               <h1 className="text-3xl font-bold">Admin Console</h1>
             </div>
             <p className="text-muted-foreground">
-              Manage card library, merchants, and view audit logs.
+              Monitor metrics, manage data, and review reports.
             </p>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6">
+            <TabsList className="mb-6 flex-wrap h-auto gap-1">
+              <TabsTrigger value="dashboard" className="gap-2">
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </TabsTrigger>
+              <TabsTrigger value="reports" className="gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Reports
+              </TabsTrigger>
+              <TabsTrigger value="data-health" className="gap-2">
+                <HeartPulse className="w-4 h-4" />
+                Data Health
+              </TabsTrigger>
               <TabsTrigger value="cards" className="gap-2">
                 <CreditCard className="w-4 h-4" />
                 Cards
@@ -83,6 +106,18 @@ export default function Admin() {
                 Audit Logs
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="dashboard">
+              <AdminDashboard />
+            </TabsContent>
+
+            <TabsContent value="reports">
+              <AdminReportsManager />
+            </TabsContent>
+
+            <TabsContent value="data-health">
+              <AdminDataHealth />
+            </TabsContent>
 
             <TabsContent value="cards">
               <AdminCardManager />

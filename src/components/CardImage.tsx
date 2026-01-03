@@ -7,9 +7,10 @@ interface CardImageProps {
   network: string;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  onError?: () => void;
 }
 
-export function CardImage({ issuer, cardName, network, className, size = 'md' }: CardImageProps) {
+export function CardImage({ issuer, cardName, network, className, size = 'md', onError }: CardImageProps) {
   return (
     <CardArtwork
       issuer={issuer}
