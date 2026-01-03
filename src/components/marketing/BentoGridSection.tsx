@@ -10,6 +10,7 @@ import {
   ArrowRight 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { GlowingEffect } from '@/components/ui/glowing-effect';
 
 const bentoItems = [
   {
@@ -118,33 +119,42 @@ export function BentoGridSection() {
                 variants={itemVariants}
                 className={cn("group relative", item.className)}
               >
-                <Link
-                  to={item.href}
-                  className="block h-full p-6 rounded-2xl border border-border bg-card hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
-                >
-                  <div className="flex flex-col h-full">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                        <Icon className="w-5 h-5 text-primary" />
+                <div className="relative h-full rounded-2xl">
+                  <GlowingEffect
+                    spread={40}
+                    glow={true}
+                    disabled={false}
+                    proximity={64}
+                    inactiveZone={0.01}
+                  />
+                  <Link
+                    to={item.href}
+                    className="relative block h-full p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-all duration-300"
+                  >
+                    <div className="flex flex-col h-full">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                          <Icon className="w-5 h-5 text-primary" />
+                        </div>
+                        {item.comingSoon && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                            Coming soon
+                          </span>
+                        )}
                       </div>
-                      {item.comingSoon && (
-                        <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                          Coming soon
-                        </span>
-                      )}
+                      <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
+                        {item.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground flex-1">
+                        {item.description}
+                      </p>
+                      <div className="mt-4 flex items-center gap-1 text-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span>Learn more</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </div>
                     </div>
-                    <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
-                      {item.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground flex-1">
-                      {item.description}
-                    </p>
-                    <div className="mt-4 flex items-center gap-1 text-sm text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span>Learn more</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </div>
-                  </div>
-                </Link>
+                  </Link>
+                </div>
               </motion.div>
             );
           })}

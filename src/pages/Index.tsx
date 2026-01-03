@@ -1,17 +1,18 @@
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronRight, Shield, CheckCircle, Sparkles } from 'lucide-react';
+import { ArrowRight, Shield, CheckCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   ContainerScrollShowcase, 
   HowItWorksCompact,
-  InteractiveHeroCard,
+  BentoGridSection,
   TestimonialSection 
 } from '@/components/marketing';
 import { WaitlistForm } from '@/components/WaitlistForm';
 import { Spotlight } from '@/components/ui/spotlight';
+import { SplineScene } from '@/components/ui/splite';
 
 const Index = () => {
   return (
@@ -57,9 +58,14 @@ const Index = () => {
                 </div>
               </div>
               
-              {/* Right: 3D Interactive Card */}
-              <div className="flex justify-center lg:justify-end">
-                <InteractiveHeroCard className="hidden md:block" />
+              {/* Right: 3D Spline Scene */}
+              <div className="hidden md:flex justify-center lg:justify-end">
+                <div className="relative w-full max-w-md h-[460px] rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden glow-primary-subtle">
+                  <SplineScene 
+                    scene="https://prod.spline.design/6Wq1Q7YGyM-iab9i/scene.splinecode"
+                    className="w-full h-full"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -67,6 +73,9 @@ const Index = () => {
 
         {/* Compact How It Works */}
         <HowItWorksCompact />
+
+        {/* Bento Grid Features */}
+        <BentoGridSection />
 
         {/* See It In Action - Interactive Demo */}
         <ContainerScrollShowcase />
