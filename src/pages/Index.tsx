@@ -1,14 +1,16 @@
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronRight, Shield, CheckCircle } from 'lucide-react';
+import { ArrowRight, ChevronRight, Shield, CheckCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   ContainerScrollShowcase, 
   HowItWorksCompact,
-  InteractiveHeroCard 
+  InteractiveHeroCard,
+  TestimonialSection 
 } from '@/components/marketing';
+import { WaitlistForm } from '@/components/WaitlistForm';
 
 const Index = () => {
   return (
@@ -28,10 +30,10 @@ const Index = () => {
                 </Badge>
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
                   Don't let the credit system use you.{' '}
-                  <span className="text-primary">Use it.</span>
+                  <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Use it.</span>
                 </h1>
-                <p className="text-lg md:text-xl text-muted-foreground">
-                  Know which card maximizes your rewards before you pay.
+                <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+                  CardClutch tells you which card to use at checkout—based on real reward rules. Stop guessing. Max rewards. Avoid category traps.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
                   <Link to="/analyze">
@@ -63,6 +65,9 @@ const Index = () => {
         {/* See It In Action - Interactive Demo */}
         <ContainerScrollShowcase />
 
+        {/* Testimonials Section */}
+        <TestimonialSection />
+
         {/* Single Trust Line */}
         <section className="border-t border-border">
           <div className="container max-w-4xl mx-auto px-4 py-12">
@@ -86,6 +91,24 @@ const Index = () => {
                   <p className="text-sm text-muted-foreground">From official issuer terms.</p>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Final CTA / Waitlist */}
+        <section className="border-t border-border bg-gradient-to-b from-transparent via-primary/5 to-transparent">
+          <div className="container max-w-2xl mx-auto px-4 py-20 text-center">
+            <div className="mb-6">
+              <Sparkles className="w-10 h-10 text-primary mx-auto mb-4" />
+              <h2 className="text-2xl md:text-3xl font-bold mb-3">
+                Get early access
+              </h2>
+              <p className="text-muted-foreground">
+                Join the waitlist for exclusive updates and early feature access.
+              </p>
+            </div>
+            <div className="max-w-md mx-auto">
+              <WaitlistForm variant="inline" />
             </div>
           </div>
         </section>

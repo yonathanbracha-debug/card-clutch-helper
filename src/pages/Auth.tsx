@@ -159,14 +159,17 @@ const Auth = () => {
       <main className="pt-20 pb-12">
         <div className="container max-w-md mx-auto px-4">
           <div className="text-center mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/10">
+              <Sparkles className="w-7 h-7 text-primary" />
+            </div>
             <h1 className="text-3xl font-bold mb-2">
-              {mode === 'magic-link' ? 'Sign In' : mode === 'login' ? 'Welcome Back' : 'Create Account'}
+              {mode === 'magic-link' ? 'Welcome to CardClutch' : mode === 'login' ? 'Welcome Back' : 'Create Account'}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground max-w-xs mx-auto">
               {mode === 'magic-link' 
-                ? 'Get a magic link sent to your email.'
+                ? 'Sign in to save your cards and unlock personalized recommendations.'
                 : mode === 'login' 
-                  ? 'Sign in to access your wallet.'
+                  ? 'Sign in to access your card vault.'
                   : 'Create an account to save your wallet.'
               }
             </p>
@@ -192,13 +195,13 @@ const Auth = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full gap-2" disabled={loading}>
+              <Button type="submit" className="w-full gap-2 bg-gradient-to-r from-primary to-accent shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all" disabled={loading}>
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" />
-                    Send Magic Link
+                    <Mail className="w-4 h-4" />
+                    Send sign-in link
                   </>
                 )}
               </Button>

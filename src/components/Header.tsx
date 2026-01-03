@@ -18,10 +18,10 @@ import {
 
 const navLinks = [
   { href: '/', label: 'Home', icon: Home },
-  { href: '/features', label: 'Features', icon: Sparkles },
   { href: '/cards', label: 'Cards', icon: Library },
-  { href: '/privacy', label: 'Privacy', icon: Lock },
+  { href: '/features', label: 'Features', icon: Sparkles },
   { href: '/mission', label: 'Mission', icon: Target },
+  { href: '/privacy', label: 'Privacy', icon: Lock },
 ];
 
 export function Header() {
@@ -95,6 +95,14 @@ export function Header() {
           {/* Right side */}
           <div className="flex items-center gap-2">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            
+            {/* Join Waitlist CTA - visible on md+ */}
+            <Link to="/mission#roadmap" className="hidden md:inline-flex">
+              <Button size="sm" className="gap-1.5 bg-gradient-to-r from-primary to-accent shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-shadow">
+                <Sparkles className="w-3.5 h-3.5" />
+                Join Waitlist
+              </Button>
+            </Link>
             
             {user ? (
               <DropdownMenu>
