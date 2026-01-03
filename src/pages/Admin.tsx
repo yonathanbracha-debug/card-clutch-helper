@@ -12,8 +12,9 @@ import { AdminUrlHealthChecker } from '@/components/admin/AdminUrlHealthChecker'
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { AdminReportsManager } from '@/components/admin/AdminReportsManager';
 import { AdminDataHealth } from '@/components/admin/AdminDataHealth';
+import { AdminCatalogQA } from '@/components/admin/AdminCatalogQA';
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { Shield, CreditCard, Store, ClipboardList, Loader2, LinkIcon, LayoutDashboard, AlertCircle, HeartPulse } from 'lucide-react';
+import { Shield, CreditCard, Store, ClipboardList, Loader2, LinkIcon, LayoutDashboard, AlertCircle, HeartPulse, FileCheck } from 'lucide-react';
 
 export default function Admin() {
   const { user, loading: authLoading } = useAuth();
@@ -89,6 +90,10 @@ export default function Admin() {
                 <HeartPulse className="w-4 h-4" />
                 Data Health
               </TabsTrigger>
+              <TabsTrigger value="catalog-qa" className="gap-2">
+                <FileCheck className="w-4 h-4" />
+                Catalog QA
+              </TabsTrigger>
               <TabsTrigger value="cards" className="gap-2">
                 <CreditCard className="w-4 h-4" />
                 Cards
@@ -117,6 +122,10 @@ export default function Admin() {
 
             <TabsContent value="data-health">
               <AdminDataHealth />
+            </TabsContent>
+
+            <TabsContent value="catalog-qa">
+              <AdminCatalogQA />
             </TabsContent>
 
             <TabsContent value="cards">

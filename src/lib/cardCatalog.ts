@@ -36,14 +36,34 @@ export interface Card {
   artwork: CardArtwork;
   foreign_tx_fee_percent: number | null;
   credits_summary?: string;
-  // New fields for V2
+  // V2 URL fields
   learnMoreUrl?: string;
   applyUrl?: string;
   issuerDomainAllowlist?: string[];
+  // V2 Verification fields
   dataConfidence: DataConfidence;
   needsVerification: boolean;
   baseEarning: string;
   valueType: ValueType;
+  // V2 Image fields
+  imageUrl?: string | null;
+  imageAlt?: string;
+}
+
+// Helper function to get best multiplier for a category
+export function getBestMultiplierForCategory(card: Card, category: string): number {
+  const normalizedCategory = category.toLowerCase().trim();
+  
+  for (const reward of card.rewards) {
+    const rewardCategory = reward.category.toLowerCase().trim();
+    if (rewardCategory.includes(normalizedCategory) || normalizedCategory.includes(rewardCategory)) {
+      return reward.multiplier;
+    }
+  }
+  
+  // Fallback to base earning (try to parse the multiplier)
+  const baseMatch = card.baseEarning.match(/(\d+\.?\d*)/);
+  return baseMatch ? parseFloat(baseMatch[1]) : 1;
 }
 
 export const cardCatalog: Card[] = [
