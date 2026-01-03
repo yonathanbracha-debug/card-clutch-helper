@@ -201,13 +201,10 @@ export function SeeItInActionAnimatedDemo() {
               }}
               transition={{ duration: 0.08 }}
             >
-              <motion.div 
-                className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 cursor-pointer"
-                animate={{
-                  backgroundColor: isButtonHovered 
-                    ? 'hsl(var(--primary) / 0.9)' 
-                    : 'hsl(var(--primary))',
-                }}
+              <div 
+                className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2 cursor-pointer transition-opacity ${
+                  isButtonHovered ? 'bg-primary/90' : 'bg-primary'
+                } text-primary-foreground`}
               >
                 {isLoading ? (
                   <>
@@ -217,7 +214,7 @@ export function SeeItInActionAnimatedDemo() {
                 ) : (
                   'Analyze'
                 )}
-              </motion.div>
+              </div>
             </motion.div>
           </div>
         </div>
