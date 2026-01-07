@@ -5,3 +5,9 @@ verify_jwt = true
 
 [functions.url-health-check]
 verify_jwt = true
+
+[functions.waitlist-submit]
+verify_jwt = false
+
+[functions.event-log]
+verify_jwt = false
