@@ -404,6 +404,36 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          blocked_until: string | null
+          bucket: string
+          count: number
+          id: string
+          scope: string
+          updated_at: string
+          window_start: string
+        }
+        Insert: {
+          blocked_until?: string | null
+          bucket: string
+          count?: number
+          id?: string
+          scope: string
+          updated_at?: string
+          window_start?: string
+        }
+        Update: {
+          blocked_until?: string | null
+          bucket?: string
+          count?: number
+          id?: string
+          scope?: string
+          updated_at?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       recommendation_logs: {
         Row: {
           category_slug: string | null
@@ -526,6 +556,33 @@ export type Database = {
           event_payload?: Json
           event_type?: string
           id?: string
+        }
+        Relationships: []
+      }
+      security_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          ip_hash: string | null
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          ip_hash?: string | null
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          ip_hash?: string | null
+          metadata?: Json | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -659,6 +716,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_rate_limits: { Args: never; Returns: number }
       get_active_reward_rules: {
         Args: { p_card_id: string }
         Returns: {
