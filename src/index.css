@@ -1,103 +1,116 @@
-/* Fonts - Inter as primary, IBM Plex Mono for structural accents */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
-
+/* Premium System Fonts - Ramp-like */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* CardClutch Light Theme - Institutional, Calm */
-    --background: 220 14% 96%;
-    --foreground: 220 25% 10%;
+    /* Ramp-inspired Light Theme - Premium, Clean, Enterprise */
+    --background: 210 20% 98%;
+    --foreground: 220 25% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 25% 10%;
+    --card-foreground: 220 25% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 10%;
+    --popover-foreground: 220 25% 8%;
 
-    /* Muted slate-blue accent - institutional, not playful */
-    --primary: 210 40% 45%;
-    --primary-foreground: 0 0% 100%;
+    /* Premium lime accent (Ramp-like) - toned for accessibility */
+    --primary: 72 100% 40%;
+    --primary-foreground: 220 25% 8%;
 
-    --secondary: 220 14% 92%;
-    --secondary-foreground: 220 25% 10%;
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 220 25% 8%;
 
-    --muted: 220 14% 90%;
-    --muted-foreground: 220 10% 50%;
+    --muted: 210 16% 93%;
+    --muted-foreground: 215 14% 40%;
 
-    --accent: 210 40% 45%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 72 100% 40%;
+    --accent-foreground: 220 25% 8%;
 
-    --destructive: 0 55% 50%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 14% 86%;
-    --input: 220 14% 90%;
-    --ring: 210 40% 45%;
+    --border: 214 20% 90%;
+    --input: 214 20% 92%;
+    --ring: 72 100% 40%;
 
-    --radius: 0.375rem;
+    /* Premium radii - large and soft like Ramp */
+    --radius: 1rem;
+    --radius-sm: 0.625rem;
+    --radius-lg: 1.25rem;
+    --radius-xl: 1.5rem;
+    --radius-2xl: 2rem;
+    --radius-full: 9999px;
 
-    /* Refined shadows */
-    --shadow-sm: 0 1px 2px hsl(220 25% 10% / 0.04);
-    --shadow-md: 0 4px 12px hsl(220 25% 10% / 0.06);
-    --shadow-lg: 0 12px 32px hsl(220 25% 10% / 0.08);
+    /* Subtle shadows */
+    --shadow-sm: 0 1px 2px hsl(220 25% 8% / 0.03);
+    --shadow-md: 0 4px 12px hsl(220 25% 8% / 0.05);
+    --shadow-lg: 0 12px 40px hsl(220 25% 8% / 0.08);
+    --shadow-xl: 0 20px 60px hsl(220 25% 8% / 0.1);
+
+    /* Surface elevations */
+    --surface: 0 0% 100%;
+    --surface-elevated: 0 0% 100%;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 25% 10%;
-    --sidebar-primary: 210 40% 45%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 94%;
-    --sidebar-accent-foreground: 220 25% 10%;
-    --sidebar-border: 220 14% 88%;
-    --sidebar-ring: 210 40% 45%;
+    --sidebar-foreground: 220 25% 8%;
+    --sidebar-primary: 72 100% 40%;
+    --sidebar-primary-foreground: 220 25% 8%;
+    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent-foreground: 220 25% 8%;
+    --sidebar-border: 214 20% 90%;
+    --sidebar-ring: 72 100% 40%;
   }
 
   .dark {
-    /* CardClutch Dark Theme - Deep neutral gray, not pure black */
-    --background: 220 16% 9%;
-    --foreground: 220 10% 92%;
+    /* Premium Dark Theme - Deep slate, not pure black */
+    --background: 222 25% 8%;
+    --foreground: 210 20% 95%;
 
-    --card: 220 14% 12%;
-    --card-foreground: 220 10% 92%;
+    --card: 222 20% 11%;
+    --card-foreground: 210 20% 95%;
 
-    --popover: 220 14% 12%;
-    --popover-foreground: 220 10% 92%;
+    --popover: 222 20% 11%;
+    --popover-foreground: 210 20% 95%;
 
-    /* Muted slate-blue accent - institutional, not playful */
-    --primary: 200 45% 50%;
-    --primary-foreground: 220 16% 9%;
+    /* Premium lime accent for dark mode */
+    --primary: 72 100% 50%;
+    --primary-foreground: 222 25% 8%;
 
-    --secondary: 220 14% 16%;
-    --secondary-foreground: 220 10% 92%;
+    --secondary: 222 18% 14%;
+    --secondary-foreground: 210 20% 95%;
 
-    --muted: 220 14% 16%;
-    --muted-foreground: 220 8% 55%;
+    --muted: 222 18% 16%;
+    --muted-foreground: 215 14% 55%;
 
-    --accent: 200 45% 50%;
-    --accent-foreground: 220 16% 9%;
+    --accent: 72 100% 50%;
+    --accent-foreground: 222 25% 8%;
 
-    --destructive: 0 50% 50%;
-    --destructive-foreground: 220 10% 92%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 20% 95%;
 
-    --border: 220 14% 18%;
-    --input: 220 14% 14%;
-    --ring: 200 45% 50%;
+    --border: 222 18% 18%;
+    --input: 222 18% 14%;
+    --ring: 72 100% 50%;
 
-    /* Refined shadows */
+    /* Surface elevations */
+    --surface: 222 20% 11%;
+    --surface-elevated: 222 18% 14%;
+
     --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.2);
-    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.3);
-    --shadow-lg: 0 12px 32px hsl(0 0% 0% / 0.4);
+    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.25);
+    --shadow-lg: 0 12px 40px hsl(0 0% 0% / 0.35);
+    --shadow-xl: 0 20px 60px hsl(0 0% 0% / 0.45);
 
-    --sidebar-background: 220 14% 10%;
-    --sidebar-foreground: 220 10% 92%;
-    --sidebar-primary: 200 45% 50%;
-    --sidebar-primary-foreground: 220 16% 9%;
-    --sidebar-accent: 220 14% 16%;
-    --sidebar-accent-foreground: 220 10% 92%;
-    --sidebar-border: 220 14% 18%;
-    --sidebar-ring: 200 45% 50%;
+    --sidebar-background: 222 20% 10%;
+    --sidebar-foreground: 210 20% 95%;
+    --sidebar-primary: 72 100% 50%;
+    --sidebar-primary-foreground: 222 25% 8%;
+    --sidebar-accent: 222 18% 14%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 222 18% 18%;
+    --sidebar-ring: 72 100% 50%;
   }
 }
 
@@ -112,20 +125,24 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-    line-height: 1.7;
+    line-height: 1.6;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply tracking-tight font-medium;
-    font-family: 'Inter', system-ui, sans-serif;
-    line-height: 1.2;
+    @apply tracking-tight font-semibold;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.15;
   }
 
-  /* Improved typography for legibility */
   p {
-    line-height: 1.75;
+    line-height: 1.7;
+  }
+
+  /* Focus ring styles for accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
 
@@ -134,42 +151,57 @@
     text-wrap: balance;
   }
 
-  /* Surface styles - minimal elevation */
-  .surface-base {
-    @apply bg-card border border-border;
-  }
-
-  .surface-elevated {
-    @apply bg-card border border-border;
+  /* Premium card surface */
+  .surface-card {
+    @apply bg-card rounded-2xl border border-border;
     box-shadow: var(--shadow-sm);
   }
 
-  /* Structural mono font for labels and system text */
-  .font-mono-system {
-    font-family: 'IBM Plex Mono', 'SF Mono', monospace;
-    font-weight: 400;
-    letter-spacing: 0.02em;
+  .surface-elevated {
+    @apply bg-card rounded-2xl border border-border;
+    box-shadow: var(--shadow-md);
   }
 
-  /* Section container - max width and consistent padding */
-  .section-container {
-    @apply max-w-3xl mx-auto px-6;
+  /* Mono labels */
+  .font-mono-label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
   }
 
-  /* Vertical rhythm spacing */
-  .section-spacing {
-    @apply py-20 md:py-28;
+  /* Container with consistent max-width */
+  .container-main {
+    @apply max-w-6xl mx-auto px-6 lg:px-8;
+  }
+
+  /* Gradient panel background (Ramp-style) */
+  .gradient-panel {
+    @apply rounded-3xl;
+    background: linear-gradient(135deg, hsl(210 40% 96%) 0%, hsl(220 30% 94%) 100%);
+  }
+
+  .dark .gradient-panel {
+    background: linear-gradient(135deg, hsl(222 20% 14%) 0%, hsl(222 25% 12%) 100%);
+  }
+
+  /* Theme transition smoothing */
+  .theme-transition {
+    @apply transition-colors duration-200 ease-out;
   }
 }
 
 @layer utilities {
-  /* Minimal, controlled animations */
   .animate-fade-in {
-    animation: fade-in 0.25s ease-out;
+    animation: fade-in 0.3s ease-out;
   }
 
   .animate-slide-up {
-    animation: slide-up 0.3s ease-out;
+    animation: slide-up 0.4s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.25s ease-out;
   }
 }
 
@@ -181,11 +213,22 @@
 @keyframes slide-up {
   from { 
     opacity: 0; 
-    transform: translateY(6px); 
+    transform: translateY(12px); 
   }
   to { 
     opacity: 1; 
     transform: translateY(0); 
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -208,11 +251,32 @@
 /* Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,
-  .animate-slide-up {
+  .animate-slide-up,
+  .animate-scale-in {
     animation: none;
   }
   
   * {
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
 }
