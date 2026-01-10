@@ -1,5 +1,10 @@
+/**
+ * Privacy Page - Trust Anchor
+ * Clear, readable, trust-building
+ */
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { motion } from 'framer-motion';
 import { Shield, Lock, Eye, Database, AlertTriangle, Check } from 'lucide-react';
 
 const collectItems = [
@@ -33,110 +38,162 @@ const Privacy = () => {
       <main className="pt-20 pb-16">
         <div className="container-main py-12">
           {/* Header */}
-          <section className="py-16 max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium mb-6">
-              <Shield className="w-3 h-3" />
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="py-16 max-w-3xl"
+          >
+            <span className="pill-secondary mb-6">
+              <Shield className="w-3.5 h-3.5" />
               Privacy Policy
-            </div>
+            </span>
             <h1 className="text-4xl md:text-5xl font-semibold text-foreground mb-4">
               Your data, your control
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground font-mono text-sm">
               Last updated: December 2024
             </p>
-          </section>
+          </motion.section>
 
           <div className="max-w-3xl space-y-12">
             {/* What We Collect */}
-            <section className="py-8 border-t border-border">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <motion.section 
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="py-8 border-t border-border"
+            >
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Eye className="w-5 h-5 text-primary" />
                 </div>
                 <h2 className="text-2xl font-semibold text-foreground">What we collect</h2>
               </div>
               <div className="space-y-4">
                 {collectItems.map((item, index) => (
-                  <div 
+                  <motion.div 
                     key={index}
-                    className="p-5 rounded-2xl border border-border bg-card"
+                    initial={{ opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: index * 0.1 }}
+                    className="p-6 rounded-2xl border border-border bg-card shadow-soft-sm"
                   >
-                    <p className="text-sm">
+                    <p className="text-sm leading-relaxed">
                       <span className="font-semibold text-foreground">{item.label}:</span>{' '}
                       <span className="text-muted-foreground">{item.description}</span>
                     </p>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
-            </section>
+            </motion.section>
 
             {/* What We Don't Collect */}
-            <section className="py-8 border-t border-border">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <motion.section 
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="py-8 border-t border-border"
+            >
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Lock className="w-5 h-5 text-primary" />
                 </div>
                 <h2 className="text-2xl font-semibold text-foreground">What we don't collect</h2>
               </div>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid sm:grid-cols-2 gap-4">
                 {dontCollectItems.map((item, i) => (
-                  <div key={i} className="flex items-start gap-3 p-4 rounded-2xl bg-secondary/50">
+                  <motion.div 
+                    key={i}
+                    initial={{ opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: i * 0.08 }}
+                    className="flex items-start gap-3 p-5 rounded-2xl bg-secondary/50 border border-border/50"
+                  >
                     <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm text-muted-foreground">{item}</span>
-                  </div>
+                    <span className="text-sm text-muted-foreground leading-relaxed">{item}</span>
+                  </motion.div>
                 ))}
               </div>
-            </section>
+            </motion.section>
 
             {/* Data Storage & Security */}
-            <section className="py-8 border-t border-border">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <motion.section 
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="py-8 border-t border-border"
+            >
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Database className="w-5 h-5 text-primary" />
                 </div>
                 <h2 className="text-2xl font-semibold text-foreground">Data storage &amp; security</h2>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div className="p-5 rounded-2xl border border-border bg-card">
-                  <h3 className="font-semibold text-foreground mb-2">Encryption</h3>
-                  <p className="text-sm text-muted-foreground">
+                <div className="p-6 rounded-2xl border border-border bg-card shadow-soft-sm">
+                  <h3 className="font-semibold text-foreground mb-3">Encryption</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     All data is stored securely with encryption at rest and in transit. 
                     We use Row Level Security to ensure you can only access your own data.
                   </p>
                 </div>
-                <div className="p-5 rounded-2xl border border-border bg-card">
-                  <h3 className="font-semibold text-foreground mb-2">Guest mode</h3>
-                  <p className="text-sm text-muted-foreground">
+                <div className="p-6 rounded-2xl border border-border bg-card shadow-soft-sm">
+                  <h3 className="font-semibold text-foreground mb-3">Guest mode</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     Guest users can use the analyzer without any data being stored. 
                     Selections are kept in your browser's local storage only.
                   </p>
                 </div>
               </div>
-            </section>
+            </motion.section>
 
             {/* Data Sharing */}
-            <section className="py-8 border-t border-border">
+            <motion.section 
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="py-8 border-t border-border"
+            >
               <h2 className="text-2xl font-semibold text-foreground mb-4">Data sharing</h2>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground leading-relaxed text-lg">
                 We do not sell, rent, or share your personal information with third parties for 
                 marketing purposes. Period.
               </p>
-            </section>
+            </motion.section>
 
             {/* Your Rights */}
-            <section className="py-8 border-t border-border">
+            <motion.section 
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="py-8 border-t border-border"
+            >
               <h2 className="text-2xl font-semibold text-foreground mb-4">Your rights</h2>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground leading-relaxed text-lg">
                 You can delete your account and all associated data at any time. 
                 Contact us if you need help with data export or deletion.
               </p>
-            </section>
+            </motion.section>
 
             {/* Disclaimer */}
-            <section className="py-8 border-t border-border">
-              <div className="p-6 rounded-2xl border border-border bg-card">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
+            <motion.section 
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="py-8 border-t border-border"
+            >
+              <div className="p-6 rounded-2xl border border-border bg-card shadow-soft-sm">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-11 h-11 rounded-xl bg-secondary flex items-center justify-center">
                     <AlertTriangle className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <h2 className="text-xl font-semibold text-foreground">Disclaimer</h2>
@@ -148,7 +205,7 @@ const Privacy = () => {
                   This is not financial advice.
                 </p>
               </div>
-            </section>
+            </motion.section>
           </div>
         </div>
       </main>
