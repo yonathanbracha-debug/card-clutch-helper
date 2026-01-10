@@ -1,13 +1,12 @@
 import { useState, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { AmbientBackground } from '@/components/marketing/AmbientBackground';
 import { CardImage } from '@/components/CardImage';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { CardInfoDrawer } from '@/components/CardInfoDrawer';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, ChevronRight, X, ExternalLink } from 'lucide-react';
+import { Search, ChevronRight, X, ExternalLink, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCreditCards, CreditCardDB } from '@/hooks/useCreditCards';
 import { Link } from 'react-router-dom';
@@ -70,18 +69,17 @@ const Cards = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <AmbientBackground />
         <Header />
-        <main className="pt-14 pb-12 relative z-10">
-          <div className="max-w-4xl mx-auto px-6 py-16">
-            <div className="mb-8">
-              <Skeleton className="h-8 w-48 mb-2 bg-secondary" />
-              <Skeleton className="h-5 w-64 bg-secondary" />
+        <main className="pt-20 pb-12">
+          <div className="container-main py-12">
+            <div className="mb-10">
+              <Skeleton className="h-8 w-48 mb-2 rounded-xl bg-secondary" />
+              <Skeleton className="h-5 w-64 rounded-xl bg-secondary" />
             </div>
-            <Skeleton className="h-11 w-full mb-8 bg-secondary" />
-            <div className="space-y-3">
+            <Skeleton className="h-12 w-full mb-8 rounded-xl bg-secondary" />
+            <div className="space-y-4">
               {[1, 2, 3, 4, 5].map(i => (
-                <Skeleton key={i} className="h-24 w-full bg-secondary" />
+                <Skeleton key={i} className="h-24 w-full rounded-2xl bg-secondary" />
               ))}
             </div>
           </div>
@@ -93,7 +91,6 @@ const Cards = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <AmbientBackground />
       <Header />
 
       <CardInfoDrawer 
@@ -102,17 +99,18 @@ const Cards = () => {
         onOpenChange={setDrawerOpen}
       />
       
-      <main className="pt-14 pb-12 relative z-10">
-        <div className="max-w-4xl mx-auto px-6 py-16">
-          {/* Header */}
+      <main className="pt-20 pb-12">
+        <div className="container-main py-12">
+          {/* Page Header */}
           <div className="mb-10">
-            <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium mb-4">
+              <CreditCard className="w-3 h-3" />
               Card Catalog
-            </p>
-            <h1 className="text-3xl font-light text-foreground mb-3">
+            </div>
+            <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-3">
               {cards.length} credit cards
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-lg max-w-xl">
               Verified reward details. Search and filter to find what you need.
             </p>
           </div>
@@ -121,20 +119,20 @@ const Cards = () => {
           <div className="mb-8 space-y-4">
             <div className="flex flex-col lg:flex-row gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by name, issuer, or rewards..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-11"
+                  className="pl-11 h-12 rounded-xl"
                 />
               </div>
               <div className="flex flex-wrap gap-2">
                 <Select value={issuerFilter} onValueChange={setIssuerFilter}>
-                  <SelectTrigger className="w-36 h-11">
+                  <SelectTrigger className="w-36 h-12 rounded-xl">
                     <SelectValue placeholder="Issuer" />
                   </SelectTrigger>
-                  <SelectContent className="bg-card border-border">
+                  <SelectContent className="bg-card border-border rounded-xl">
                     <SelectItem value="all">All Issuers</SelectItem>
                     {issuers.map(issuer => (
                       <SelectItem key={issuer} value={issuer}>{issuer}</SelectItem>
@@ -142,10 +140,10 @@ const Cards = () => {
                   </SelectContent>
                 </Select>
                 <Select value={networkFilter} onValueChange={setNetworkFilter}>
-                  <SelectTrigger className="w-32 h-11">
+                  <SelectTrigger className="w-32 h-12 rounded-xl">
                     <SelectValue placeholder="Network" />
                   </SelectTrigger>
-                  <SelectContent className="bg-card border-border">
+                  <SelectContent className="bg-card border-border rounded-xl">
                     <SelectItem value="all">All Networks</SelectItem>
                     {networks.map(network => (
                       <SelectItem key={network} value={network.toLowerCase()}>
@@ -155,10 +153,10 @@ const Cards = () => {
                   </SelectContent>
                 </Select>
                 <Select value={feeFilter} onValueChange={setFeeFilter}>
-                  <SelectTrigger className="w-32 h-11">
+                  <SelectTrigger className="w-32 h-12 rounded-xl">
                     <SelectValue placeholder="Fee" />
                   </SelectTrigger>
-                  <SelectContent className="bg-card border-border">
+                  <SelectContent className="bg-card border-border rounded-xl">
                     <SelectItem value="all">All Fees</SelectItem>
                     <SelectItem value="free">No Fee</SelectItem>
                     <SelectItem value="under100">Under $100</SelectItem>
@@ -170,7 +168,7 @@ const Cards = () => {
 
             {hasActiveFilters && (
               <div className="flex items-center gap-3">
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {filteredCards.length} of {cards.length} cards
                 </span>
                 <button
@@ -184,15 +182,15 @@ const Cards = () => {
             )}
           </div>
 
-          {/* Cards List */}
-          <div className="space-y-3">
+          {/* Cards Grid */}
+          <div className="grid gap-4">
             {filteredCards.map(card => {
               const annualFee = card.annual_fee_cents / 100;
               return (
                 <Link
                   key={card.id}
                   to={`/cards/${card.id}`}
-                  className="group block p-4 rounded border border-border bg-card hover:bg-secondary transition-colors"
+                  className="group block p-5 rounded-2xl border border-border bg-card hover:bg-secondary/50 hover:border-muted-foreground/20 transition-all"
                 >
                   <div className="flex items-center gap-4">
                     <CardImage 
@@ -204,7 +202,7 @@ const Cards = () => {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium text-foreground truncate">
+                        <h3 className="font-semibold text-foreground truncate">
                           {card.name}
                         </h3>
                         <VerificationBadge 
@@ -212,8 +210,8 @@ const Cards = () => {
                         />
                       </div>
                       <p className="text-sm text-muted-foreground">{card.issuer_name}</p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="font-mono text-xs text-muted-foreground uppercase">
+                      <div className="flex items-center gap-3 mt-1.5">
+                        <span className="text-xs text-muted-foreground uppercase px-2 py-0.5 rounded-full bg-secondary">
                           {card.network}
                         </span>
                         <span className="text-xs text-muted-foreground">
@@ -227,12 +225,12 @@ const Cards = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                        className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-xl hover:bg-secondary"
                         title="View terms"
                       >
                         <ExternalLink className="w-4 h-4" />
                       </a>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
                     </div>
                   </div>
                 </Link>
@@ -242,10 +240,13 @@ const Cards = () => {
 
           {filteredCards.length === 0 && (
             <div className="text-center py-16">
-              <p className="text-muted-foreground">No cards match your criteria.</p>
+              <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4">
+                <Search className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground mb-4">No cards match your criteria.</p>
               <button
                 onClick={clearFilters}
-                className="mt-4 text-sm text-primary hover:underline"
+                className="text-sm text-primary hover:underline"
               >
                 Clear filters
               </button>
