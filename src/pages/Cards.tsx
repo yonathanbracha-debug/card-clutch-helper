@@ -1,13 +1,12 @@
 import { useState, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { AmbientBackground } from '@/components/marketing/AmbientBackground';
 import { CardImage } from '@/components/CardImage';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { CardInfoDrawer } from '@/components/CardInfoDrawer';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GlowingEffect } from '@/components/ui/glowing-effect';
 import { Search, ChevronRight, Filter, X, Info, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCreditCards, CreditCardDB } from '@/hooks/useCreditCards';
@@ -70,18 +69,19 @@ const Cards = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background dark">
+        <AmbientBackground />
         <Header />
-        <main className="pt-20 pb-12">
+        <main className="pt-20 pb-12 relative z-10">
           <div className="container max-w-6xl mx-auto px-4">
             <div className="mb-8">
-              <Skeleton className="h-9 w-48 mb-2" />
-              <Skeleton className="h-5 w-64" />
+              <Skeleton className="h-9 w-48 mb-2 bg-card" />
+              <Skeleton className="h-5 w-64 bg-card" />
             </div>
-            <Skeleton className="h-12 w-full mb-8" />
+            <Skeleton className="h-12 w-full mb-8 bg-card" />
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map(i => (
-                <Skeleton key={i} className="h-48 w-full" />
+                <Skeleton key={i} className="h-48 w-full bg-card" />
               ))}
             </div>
           </div>
@@ -92,7 +92,8 @@ const Cards = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background dark">
+      <AmbientBackground />
       <Header />
 
       <CardInfoDrawer 
@@ -101,12 +102,18 @@ const Cards = () => {
         onOpenChange={setDrawerOpen}
       />
       
-      <main className="pt-20 pb-12">
+      <main className="pt-20 pb-12 relative z-10">
         <div className="container max-w-6xl mx-auto px-4">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Card Library</h1>
-            <p className="text-muted-foreground">
-              Browse {cards.length} credit cards with verified reward details. Earn more. Stress less.
+          {/* Header */}
+          <div className="mb-10">
+            <span className="font-mono-accent text-xs uppercase tracking-widest text-primary mb-4 block">
+              Card Catalog
+            </span>
+            <h1 className="text-3xl md:text-4xl font-light text-foreground mb-3">
+              Browse {cards.length} credit cards
+            </h1>
+            <p className="text-muted-foreground max-w-lg">
+              Verified reward details. Earn more. Stress less.
             </p>
           </div>
 
@@ -114,20 +121,20 @@ const Cards = () => {
           <div className="mb-8 space-y-4">
             <div className="flex flex-col lg:flex-row gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search cards by name, issuer, or rewards..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-11 h-11 bg-card/30 border-border rounded-lg"
                 />
               </div>
               <div className="flex flex-wrap gap-2">
                 <Select value={issuerFilter} onValueChange={setIssuerFilter}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-40 h-11 bg-card/30 border-border rounded-lg">
                     <SelectValue placeholder="All Issuers" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-card border-border">
                     <SelectItem value="all">All Issuers</SelectItem>
                     {issuers.map(issuer => (
                       <SelectItem key={issuer} value={issuer}>{issuer}</SelectItem>
@@ -135,10 +142,10 @@ const Cards = () => {
                   </SelectContent>
                 </Select>
                 <Select value={networkFilter} onValueChange={setNetworkFilter}>
-                  <SelectTrigger className="w-36">
+                  <SelectTrigger className="w-36 h-11 bg-card/30 border-border rounded-lg">
                     <SelectValue placeholder="All Networks" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-card border-border">
                     <SelectItem value="all">All Networks</SelectItem>
                     {networks.map(network => (
                       <SelectItem key={network} value={network.toLowerCase()}>
@@ -148,10 +155,10 @@ const Cards = () => {
                   </SelectContent>
                 </Select>
                 <Select value={feeFilter} onValueChange={setFeeFilter}>
-                  <SelectTrigger className="w-36">
+                  <SelectTrigger className="w-36 h-11 bg-card/30 border-border rounded-lg">
                     <SelectValue placeholder="All Fees" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-card border-border">
                     <SelectItem value="all">All Fees</SelectItem>
                     <SelectItem value="free">No Annual Fee</SelectItem>
                     <SelectItem value="under100">Under $100</SelectItem>
@@ -162,14 +169,14 @@ const Cards = () => {
             </div>
 
             {hasActiveFilters && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <Filter className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
                   Showing {filteredCards.length} of {cards.length} cards
                 </span>
                 <button
                   onClick={clearFilters}
-                  className="ml-2 flex items-center gap-1 text-sm text-primary hover:underline"
+                  className="flex items-center gap-1 text-sm text-primary hover:underline"
                 >
                   <X className="w-3 h-3" />
                   Clear filters
@@ -183,18 +190,11 @@ const Cards = () => {
             {filteredCards.map(card => {
               const annualFee = card.annual_fee_cents / 100;
               return (
-                <div key={card.id} className="relative rounded-xl">
-                  <GlowingEffect
-                    spread={40}
-                    glow={true}
-                    disabled={false}
-                    proximity={64}
-                    inactiveZone={0.01}
-                  />
-                  <Link
-                    to={`/cards/${card.id}`}
-                    className="relative group block p-4 rounded-xl border border-border bg-card hover:border-primary/50 transition-all"
-                  >
+                <Link
+                  key={card.id}
+                  to={`/cards/${card.id}`}
+                  className="group block p-5 rounded-lg border border-border bg-card/30 hover:bg-card/50 hover:border-border/80 transition-all"
+                >
                   <div className="flex items-start gap-4">
                     <CardImage 
                       issuer={card.issuer_name}
@@ -204,14 +204,14 @@ const Cards = () => {
                       size="md"
                     />
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
+                      <h3 className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
                         {card.name}
                       </h3>
                       <p className="text-sm text-muted-foreground">{card.issuer_name}</p>
                       <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="outline" className="text-xs">
-                          {card.network.toUpperCase()}
-                        </Badge>
+                        <span className="text-xs text-muted-foreground font-mono-accent uppercase">
+                          {card.network}
+                        </span>
                         <VerificationBadge 
                           status={card.verification_status === 'verified' ? 'verified' : 'unverified'} 
                           className="scale-90" 
@@ -221,7 +221,7 @@ const Cards = () => {
                     <div className="flex flex-col items-end gap-2">
                       <button
                         onClick={(e) => handleOpenDrawer(card, e)}
-                        className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                        className="p-1.5 rounded-md hover:bg-card transition-colors"
                         title="Quick view"
                       >
                         <Info className="w-4 h-4 text-muted-foreground" />
@@ -233,7 +233,7 @@ const Cards = () => {
                   <div className="mt-4 pt-4 border-t border-border space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Annual Fee</span>
-                      <span className="font-medium">
+                      <span className="font-medium text-foreground">
                         {annualFee === 0 ? 'Free' : `$${annualFee}/year`}
                       </span>
                     </div>
@@ -242,24 +242,22 @@ const Cards = () => {
                     </p>
                   </div>
 
-                    {/* Source link */}
-                    <div className="mt-3 flex items-center gap-2">
-                      <a
-                        href={card.source_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        View terms
-                      </a>
-                      <span className="text-xs text-muted-foreground">
-                        · Verified {new Date(card.last_verified_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </Link>
-                </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <a
+                      href={card.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      View terms
+                    </a>
+                    <span className="text-xs text-muted-foreground/60 font-mono-accent">
+                      · Verified {new Date(card.last_verified_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </Link>
               );
             })}
           </div>
