@@ -25,12 +25,17 @@ import { Link } from 'react-router-dom';
 
 interface AskAIMetrics {
   totalQuestions: number;
+  totalQuestions24h: number;
   deterministicCount: number;
   ragCount: number;
   hybridCount: number;
   errorCount: number;
   deterministicPercent: number;
+  ragPercent: number;
+  hybridPercent: number;
+  errorPercent: number;
   avgLatencyMs: number;
+  avgTokensPerQuery: number;
   totalEstimatedCostUsd: number;
   costPerQuestion: number;
 }
@@ -232,7 +237,7 @@ export function AdminDashboard() {
           e.created_at >= oneDayAgo
         ).length;
 
-        // Calculate Ask AI metrics
+        // Calculate Ask AI metrics from rag_queries with new metrics shape
         const ragQueries = ragQueriesResult.data || [];
         let deterministicCount = 0;
         let ragCount = 0;
@@ -240,29 +245,47 @@ export function AdminDashboard() {
         let errorCount = 0;
         let totalLatency = 0;
         let totalCost = 0;
+        let totalTokens = 0;
+        let queries24h = 0;
 
         ragQueries.forEach((q: any) => {
           const metrics = q.retrieved_chunks?.metrics;
+          const createdAt = new Date(q.created_at || 0);
+          const isLast24h = createdAt >= new Date(oneDayAgo);
+          
+          if (isLast24h) queries24h++;
+          
+          // Use new metrics shape with route field
           if (metrics?.route === 'deterministic') deterministicCount++;
           else if (metrics?.route === 'rag') ragCount++;
           else if (metrics?.route === 'hybrid') hybridCount++;
-          else if (metrics?.route === 'error' || q.confidence === 0) errorCount++;
+          else if (metrics?.route === 'error' || q.error) errorCount++;
           else if (q.model === 'internal_rules') deterministicCount++;
           else ragCount++;
 
           totalLatency += q.latency_ms || 0;
-          totalCost += metrics?.estimated_cost_usd || 0;
+          totalCost += metrics?.cost_estimate_usd || 0;
+          
+          // Sum tokens from new metrics shape
+          const embeddingTokens = metrics?.embedding_tokens || 0;
+          const chatTokens = metrics?.chat_tokens || 0;
+          totalTokens += embeddingTokens + chatTokens;
         });
 
         const totalQuestions = ragQueries.length;
         const askAI: AskAIMetrics = {
           totalQuestions,
+          totalQuestions24h: queries24h,
           deterministicCount,
           ragCount,
           hybridCount,
           errorCount,
           deterministicPercent: totalQuestions > 0 ? Math.round((deterministicCount / totalQuestions) * 100) : 0,
+          ragPercent: totalQuestions > 0 ? Math.round((ragCount / totalQuestions) * 100) : 0,
+          hybridPercent: totalQuestions > 0 ? Math.round((hybridCount / totalQuestions) * 100) : 0,
+          errorPercent: totalQuestions > 0 ? Math.round((errorCount / totalQuestions) * 100) : 0,
           avgLatencyMs: totalQuestions > 0 ? Math.round(totalLatency / totalQuestions) : 0,
+          avgTokensPerQuery: totalQuestions > 0 ? Math.round(totalTokens / totalQuestions) : 0,
           totalEstimatedCostUsd: Math.round(totalCost * 10000) / 10000,
           costPerQuestion: totalQuestions > 0 ? Math.round((totalCost / totalQuestions) * 10000) / 10000 : 0,
         };
@@ -389,6 +412,69 @@ export function AdminDashboard() {
           variant="success"
         />
       </div>
+
+      {/* Ask AI Cost & Routing Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Brain className="w-5 h-5 text-primary" />
+            Ask AI Cost & Routing (7 days)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-2xl font-bold">{metrics.askAI.totalQuestions}</p>
+              <p className="text-xs text-muted-foreground">Total Questions (7d)</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-2xl font-bold">{metrics.askAI.totalQuestions24h}</p>
+              <p className="text-xs text-muted-foreground">Questions (24h)</p>
+            </div>
+            <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+              <p className="text-2xl font-bold text-emerald-600">{metrics.askAI.deterministicPercent}%</p>
+              <p className="text-xs text-muted-foreground">Deterministic</p>
+            </div>
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <p className="text-2xl font-bold text-amber-600">{metrics.askAI.hybridPercent}%</p>
+              <p className="text-xs text-muted-foreground">Hybrid</p>
+            </div>
+            <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+              <p className="text-2xl font-bold text-blue-600">{metrics.askAI.ragPercent}%</p>
+              <p className="text-xs text-muted-foreground">RAG</p>
+            </div>
+            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+              <p className="text-2xl font-bold text-destructive">{metrics.askAI.errorPercent}%</p>
+              <p className="text-xs text-muted-foreground">Error Rate</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xl font-bold">{metrics.askAI.avgLatencyMs}ms</p>
+              <p className="text-xs text-muted-foreground">Avg Latency</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xl font-bold">{metrics.askAI.avgTokensPerQuery}</p>
+              <p className="text-xs text-muted-foreground">Avg Tokens/Query</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-1">
+                <DollarSign className="w-4 h-4 text-muted-foreground" />
+                <p className="text-xl font-bold">{metrics.askAI.totalEstimatedCostUsd.toFixed(4)}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">Est. Cost (7d)</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-1">
+                <DollarSign className="w-4 h-4 text-muted-foreground" />
+                <p className="text-xl font-bold">{metrics.askAI.costPerQuestion.toFixed(4)}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">Cost/Question</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Conversion Funnel */}
       <Card>

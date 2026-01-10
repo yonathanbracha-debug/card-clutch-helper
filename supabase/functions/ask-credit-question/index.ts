@@ -67,18 +67,17 @@ interface Citation {
   relevance: number;
 }
 
-// Metrics for cost tracking
+// Metrics for cost tracking - MANDATORY fields for Admin Dashboard
 interface RequestMetrics {
   route: "deterministic" | "rag" | "hybrid" | "clarify" | "error";
+  intent: string;
+  deterministic_hit: boolean;
+  embedding_tokens: number | null;
+  chat_tokens: number | null;
+  pinecone_hits: number;
   latency_ms: number;
-  embedding_calls: number;
-  chat_calls: number;
-  estimated_cost_usd: number;
-  tokens_estimated?: {
-    embedding?: number;
-    chat_input?: number;
-    chat_output?: number;
-  };
+  model: string;
+  cost_estimate_usd: number | null;
 }
 
 // Intent classification keywords
@@ -1420,13 +1419,17 @@ Deno.serve(async (req) => {
 
   const startTime = Date.now();
 
-  // Initialize metrics
+  // Initialize metrics - MANDATORY fields for Admin Dashboard
   const metrics: RequestMetrics = {
     route: "error",
+    intent: "unknown",
+    deterministic_hit: false,
+    embedding_tokens: null,
+    chat_tokens: null,
+    pinecone_hits: 0,
     latency_ms: 0,
-    embedding_calls: 0,
-    chat_calls: 0,
-    estimated_cost_usd: 0,
+    model: "none",
+    cost_estimate_usd: null,
   };
 
   // Helper to create error responses
@@ -1534,13 +1537,18 @@ Deno.serve(async (req) => {
       // Increment rate limit
       await incrementRateLimit(supabase, bucket, "ask_credit_question");
       
+      // Populate metrics - deterministic path = zero AI tokens
       metrics.route = "deterministic";
+      metrics.intent = "credit_education";
+      metrics.deterministic_hit = true;
+      metrics.embedding_tokens = null;
+      metrics.chat_tokens = null;
+      metrics.pinecone_hits = 0;
       metrics.latency_ms = Date.now() - startTime;
-      metrics.embedding_calls = 0;
-      metrics.chat_calls = 0;
-      metrics.estimated_cost_usd = 0;
+      metrics.model = "internal_rules";
+      metrics.cost_estimate_usd = 0;
       
-      // Log query for audit
+      // Log query for audit with complete metrics
       try {
         await supabase.from("rag_queries").insert({
           user_id: userId,
@@ -1587,6 +1595,9 @@ Deno.serve(async (req) => {
       let supplementAnswer = "";
       let citations: Citation[] = [];
       let hybridConfidence = matchingRule.confidence;
+      let pineconeHits = 0;
+      let embeddingTokens: number | null = null;
+      let chatTokens: number | null = null;
 
       // Try to get RAG supplement
       let embedding: number[] | null = null;
@@ -1595,10 +1606,7 @@ Deno.serve(async (req) => {
       if (pineconeHost && pineconeKey) {
         try {
           embedding = await getEmbedding(question, openaiKey);
-          metrics.embedding_calls = 1;
-          metrics.tokens_estimated = {
-            embedding: estimateTokens(question),
-          };
+          embeddingTokens = estimateTokens(question);
         } catch (e) {
           const err = e as Error & { httpCode?: number };
           if (err.httpCode === 402 || err.httpCode === 503) {
@@ -1612,6 +1620,7 @@ Deno.serve(async (req) => {
         if (embedding) {
           try {
             const matches = await queryPinecone(embedding, pineconeHost, pineconeKey);
+            pineconeHits = matches.length;
             const result = buildContextFromMatches(matches);
             context = result.context;
             citations = result.citations;
@@ -1624,19 +1633,9 @@ Deno.serve(async (req) => {
         if (context) {
           try {
             supplementAnswer = await generateAnswer(question, context, intent, openaiKey, true);
-            metrics.chat_calls = 1;
             const chatInputTokens = estimateTokens(question + context);
             const chatOutputTokens = estimateTokens(supplementAnswer);
-            metrics.tokens_estimated = {
-              ...metrics.tokens_estimated,
-              chat_input: chatInputTokens,
-              chat_output: chatOutputTokens,
-            };
-            metrics.estimated_cost_usd = calculateCost(
-              metrics.tokens_estimated?.embedding || 0,
-              chatInputTokens,
-              chatOutputTokens
-            );
+            chatTokens = chatInputTokens + chatOutputTokens;
           } catch (e) {
             const err = e as Error & { httpCode?: number };
             console.error("Chat error in hybrid (continuing with core only):", err.message);
@@ -1651,8 +1650,20 @@ Deno.serve(async (req) => {
 
       await incrementRateLimit(supabase, bucket, "ask_credit_question");
 
+      // Populate metrics for hybrid path
       metrics.route = "hybrid";
+      metrics.intent = intent;
+      metrics.deterministic_hit = true; // Hybrid still has deterministic core
+      metrics.embedding_tokens = embeddingTokens;
+      metrics.chat_tokens = chatTokens;
+      metrics.pinecone_hits = pineconeHits;
       metrics.latency_ms = Date.now() - startTime;
+      metrics.model = context ? `internal_rules+${OPENAI_CHAT_MODEL}` : "internal_rules";
+      metrics.cost_estimate_usd = calculateCost(
+        embeddingTokens || 0,
+        chatTokens ? chatTokens * 0.6 : 0, // Approximate input
+        chatTokens ? chatTokens * 0.4 : 0  // Approximate output
+      );
 
       const finalAnswer = coreAnswer + (supplementAnswer ? "\n\n---\n\n" + supplementAnswer : "");
 
@@ -1669,7 +1680,7 @@ Deno.serve(async (req) => {
           },
           answer: finalAnswer,
           confidence: hybridConfidence,
-          model: context ? `internal_rules+${OPENAI_CHAT_MODEL}` : "internal_rules",
+          model: metrics.model,
           latency_ms: metrics.latency_ms,
           include_citations: include_citations || false,
         });
@@ -1708,13 +1719,14 @@ Deno.serve(async (req) => {
     let embedding: number[] | null = null;
     let context = "";
     let citations: Citation[] = [];
+    let pineconeHits = 0;
+    let embeddingTokens: number | null = null;
+    let chatInputTokens = 0;
+    let chatOutputTokens = 0;
 
     try {
       embedding = await getEmbedding(question, openaiKey);
-      metrics.embedding_calls = 1;
-      metrics.tokens_estimated = {
-        embedding: estimateTokens(question),
-      };
+      embeddingTokens = estimateTokens(question);
     } catch (e) {
       const err = e as Error & { httpCode?: number };
       if (err.httpCode === 402 || err.httpCode === 503) {
@@ -1726,6 +1738,7 @@ Deno.serve(async (req) => {
     if (embedding && pineconeHost && pineconeKey) {
       try {
         const matches = await queryPinecone(embedding, pineconeHost, pineconeKey);
+        pineconeHits = matches.length;
         const result = buildContextFromMatches(matches);
         context = result.context;
         citations = result.citations;
@@ -1737,19 +1750,8 @@ Deno.serve(async (req) => {
     let answer: string;
     try {
       answer = await generateAnswer(question, context, intent, openaiKey);
-      metrics.chat_calls = 1;
-      const chatInputTokens = estimateTokens(question + context);
-      const chatOutputTokens = estimateTokens(answer);
-      metrics.tokens_estimated = {
-        ...metrics.tokens_estimated,
-        chat_input: chatInputTokens,
-        chat_output: chatOutputTokens,
-      };
-      metrics.estimated_cost_usd = calculateCost(
-        metrics.tokens_estimated?.embedding || 0,
-        chatInputTokens,
-        chatOutputTokens
-      );
+      chatInputTokens = estimateTokens(question + context);
+      chatOutputTokens = estimateTokens(answer);
     } catch (e) {
       const err = e as Error & { httpCode?: number };
       if (err.httpCode) {
@@ -1772,8 +1774,20 @@ Deno.serve(async (req) => {
 
     await incrementRateLimit(supabase, bucket, "ask_credit_question");
 
+    // Populate metrics for RAG path
     metrics.route = "rag";
+    metrics.intent = intent;
+    metrics.deterministic_hit = false;
+    metrics.embedding_tokens = embeddingTokens;
+    metrics.chat_tokens = chatInputTokens + chatOutputTokens;
+    metrics.pinecone_hits = pineconeHits;
     metrics.latency_ms = Date.now() - startTime;
+    metrics.model = OPENAI_CHAT_MODEL;
+    metrics.cost_estimate_usd = calculateCost(
+      embeddingTokens || 0,
+      chatInputTokens,
+      chatOutputTokens
+    );
 
     try {
       await supabase.from("rag_queries").insert({
@@ -1829,8 +1843,13 @@ Deno.serve(async (req) => {
     const httpCode = err.httpCode || 500;
     const message = err.message || "An unexpected error occurred. Please try again.";
 
+    // Populate error metrics
     metrics.route = "error";
+    metrics.intent = "error";
+    metrics.deterministic_hit = false;
     metrics.latency_ms = Date.now() - startTime;
+    metrics.model = "none";
+    metrics.cost_estimate_usd = 0;
 
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -1849,10 +1868,13 @@ Deno.serve(async (req) => {
       console.error("Failed to log error:", logError);
     }
 
+    // NEVER return 500 for user-facing errors - map to friendly codes
+    const userFacingCode = httpCode === 500 ? 503 : httpCode;
+
     return new Response(
       JSON.stringify({ error: message }),
       { 
-        status: httpCode, 
+        status: userFacingCode, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       }
     );
