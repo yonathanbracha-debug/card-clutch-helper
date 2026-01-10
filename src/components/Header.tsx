@@ -7,7 +7,6 @@ import { useThemeContext } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { Button } from '@/components/ui/button';
-import { motion } from 'framer-motion';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,23 +32,23 @@ export function Header() {
   const { isAdmin } = useIsAdmin();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
-      <div className="container max-w-6xl mx-auto px-4">
-        <div className="flex items-center h-16">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+      <div className="max-w-5xl mx-auto px-6">
+        <div className="flex items-center h-14">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 group shrink-0">
+          <Link to="/" className="flex items-center gap-2 shrink-0">
             <img 
               src="/favicon.png" 
               alt="CardClutch" 
-              className="w-7 h-7 rounded-md group-hover:scale-105 transition-transform"
+              className="w-6 h-6 rounded"
             />
-            <span className="text-base font-medium tracking-tight hidden sm:inline text-foreground">
+            <span className="text-sm font-medium text-foreground hidden sm:inline">
               CardClutch
             </span>
           </Link>
 
-          {/* Desktop Navigation - Centered style matching reference */}
-          <nav className="hidden md:flex items-center gap-1 ml-10">
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-1 ml-8">
             {navLinks.map((link) => {
               const isActive = location.pathname === link.href || 
                 (link.href !== '/' && location.pathname.startsWith(link.href));
@@ -58,21 +57,14 @@ export function Header() {
                 <NavLink
                   key={link.href}
                   to={link.href}
-                  className="relative px-3 py-1.5"
-                >
-                  {isActive && (
-                    <motion.div
-                      layoutId="nav-indicator"
-                      className="absolute inset-0 bg-card border border-border rounded-full"
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    />
+                  className={cn(
+                    "px-3 py-1.5 text-sm transition-colors rounded",
+                    isActive 
+                      ? "text-foreground font-medium" 
+                      : "text-muted-foreground hover:text-foreground"
                   )}
-                  <span className={cn(
-                    "relative z-10 text-sm font-medium transition-colors",
-                    isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}>
-                    {link.label}
-                  </span>
+                >
+                  {link.label}
                 </NavLink>
               );
             })}
@@ -82,17 +74,15 @@ export function Header() {
           <div className="flex-1" />
 
           {/* Right side */}
-          <div className="flex items-center gap-3">
-            <div className="transition-colors duration-200">
-              <ThemeToggle theme={theme} onToggle={toggleTheme} />
-            </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
             
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-foreground hover:bg-card rounded-full px-3">
+                  <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-sm">
                     <User className="w-4 h-4" />
-                    <span className="max-w-24 truncate text-sm">{user.email?.split('@')[0]}</span>
+                    <span className="max-w-20 truncate">{user.email?.split('@')[0]}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-card border-border">
@@ -108,7 +98,7 @@ export function Header() {
                       <DropdownMenuItem asChild className="cursor-pointer">
                         <Link to="/admin" className="flex items-center">
                           <Shield className="w-4 h-4 mr-2" />
-                          Admin Console
+                          Admin
                         </Link>
                       </DropdownMenuItem>
                     </>
@@ -122,9 +112,9 @@ export function Header() {
               </DropdownMenu>
             ) : (
               <Link to="/auth">
-                <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-card rounded-full px-3">
+                <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
                   <LogIn className="w-4 h-4" />
-                  <span className="text-sm">Sign in</span>
+                  Sign in
                 </Button>
               </Link>
             )}
@@ -132,7 +122,7 @@ export function Header() {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-card transition-colors"
+              className="md:hidden p-2 text-muted-foreground hover:text-foreground"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -142,7 +132,7 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-border/50 animate-fade-in">
+          <nav className="md:hidden py-4 border-t border-border animate-fade-in">
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => {
                 const isActive = location.pathname === link.href || 
@@ -153,23 +143,23 @@ export function Header() {
                     to={link.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      "flex items-center px-3 py-3 rounded-lg text-sm transition-colors",
+                      "px-3 py-2.5 rounded text-sm transition-colors",
                       isActive
-                        ? "bg-card text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                        ? "bg-secondary text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     {link.label}
                   </Link>
                 );
               })}
-              <div className="border-t border-border/50 mt-2 pt-2">
+              <div className="border-t border-border mt-2 pt-2">
                 {user ? (
                   <>
                     <Link
                       to="/dashboard"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card/50"
+                      className="flex items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground"
                     >
                       <LayoutDashboard className="w-4 h-4" />
                       Dashboard
@@ -178,10 +168,10 @@ export function Header() {
                       <Link
                         to="/admin"
                         onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card/50"
+                        className="flex items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground"
                       >
                         <Shield className="w-4 h-4" />
-                        Admin Console
+                        Admin
                       </Link>
                     )}
                     <button
@@ -189,7 +179,7 @@ export function Header() {
                         signOut();
                         setMobileMenuOpen(false);
                       }}
-                      className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card/50 w-full"
+                      className="flex items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground w-full"
                     >
                       <LogOut className="w-4 h-4" />
                       Sign out
@@ -199,7 +189,7 @@ export function Header() {
                   <Link
                     to="/auth"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card/50"
+                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground"
                   >
                     <LogIn className="w-4 h-4" />
                     Sign in

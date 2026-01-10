@@ -1,6 +1,6 @@
 /**
- * WaitlistForm - Email signup with spam protection and robust error handling
- * Never causes black screen - always provides clear feedback
+ * WaitlistForm - Email signup with spam protection
+ * Clean, calm design
  */
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,14 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Mail, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import confetti from 'canvas-confetti';
 
 interface WaitlistFormProps {
   className?: string;
   variant?: 'default' | 'inline';
 }
 
-// Rate limit: 1 submit per 60 seconds
 const RATE_LIMIT_KEY = 'waitlist_last_submit';
 const RATE_LIMIT_MS = 60000;
 
@@ -26,36 +24,6 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const honeypotRef = useRef<HTMLInputElement>(null);
-
-  const triggerConfetti = useCallback(() => {
-    const duration = 2000;
-    const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 25, spread: 360, ticks: 50, zIndex: 9999 };
-
-    const randomInRange = (min: number, max: number) =>
-      Math.random() * (max - min) + min;
-
-    const interval = window.setInterval(() => {
-      const timeLeft = animationEnd - Date.now();
-      if (timeLeft <= 0) {
-        return clearInterval(interval);
-      }
-
-      const particleCount = 40 * (timeLeft / duration);
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.2, 0.4), y: Math.random() - 0.2 },
-        colors: ['hsl(160, 84%, 39%)', 'hsl(158, 64%, 52%)', 'hsl(161, 94%, 30%)'],
-      });
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.6, 0.8), y: Math.random() - 0.2 },
-        colors: ['hsl(160, 84%, 39%)', 'hsl(158, 64%, 52%)', 'hsl(161, 94%, 30%)'],
-      });
-    }, 200);
-  }, []);
 
   const checkRateLimit = (): boolean => {
     try {
@@ -70,7 +38,6 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
       }
       return true;
     } catch {
-      // localStorage not available, allow submission
       return true;
     }
   };
@@ -79,7 +46,7 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
     try {
       localStorage.setItem(RATE_LIMIT_KEY, Date.now().toString());
     } catch {
-      // Ignore localStorage errors
+      // Ignore
     }
   };
 
@@ -87,20 +54,18 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
     e.preventDefault();
     setError(null);
     
-    // Honeypot check - if filled, silently "succeed" (bot trap)
+    // Honeypot check
     if (honeypotRef.current?.value) {
       setSuccess(true);
       return;
     }
 
-    // Validate email
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail || !trimmedEmail.includes('@') || !trimmedEmail.includes('.')) {
       setError('Please enter a valid email address');
       return;
     }
 
-    // Rate limit check
     if (!checkRateLimit()) {
       return;
     }
@@ -108,7 +73,6 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
     setLoading(true);
 
     try {
-      // Get UTM params from URL
       const urlParams = new URLSearchParams(window.location.search);
       const utm_source = urlParams.get('utm_source');
       const utm_campaign = urlParams.get('utm_campaign');
@@ -125,23 +89,20 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
 
       if (insertError) {
         if (insertError.code === '23505') {
-          // Duplicate - still a success from UX perspective
-          toast.success("You're already on the list! 🎉");
+          toast.success("You're already on the list!");
           setSuccess(true);
-          triggerConfetti();
         } else {
           throw insertError;
         }
       } else {
         setSuccess(true);
         setRateLimitTimestamp();
-        toast.success('Welcome to the waitlist! 🎉');
-        triggerConfetti();
+        toast.success('Welcome to the waitlist!');
       }
     } catch (err) {
       console.error('Waitlist signup failed:', err);
       setError('Something went wrong. Please try again.');
-      toast.error('Something went wrong. Please try again.');
+      toast.error('Something went wrong.');
     } finally {
       setLoading(false);
     }
@@ -150,13 +111,13 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
   if (success) {
     return (
       <div className={cn(
-        "flex items-center gap-3 p-4 rounded-xl bg-primary/10 border border-primary/20",
+        "flex items-center gap-3 p-4 rounded border border-primary/20 bg-primary/5",
         className
       )}>
         <CheckCircle className="w-5 h-5 text-primary shrink-0" />
         <div>
-          <p className="font-medium text-primary">You're on the list!</p>
-          <p className="text-sm text-muted-foreground">We'll notify you when we launch.</p>
+          <p className="font-medium text-primary text-sm">You're on the list!</p>
+          <p className="text-xs text-muted-foreground">We'll notify you when we launch.</p>
         </div>
       </div>
     );
@@ -166,7 +127,6 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
     return (
       <form onSubmit={handleSubmit} className={cn("space-y-2", className)}>
         <div className="flex gap-2">
-          {/* Honeypot - hidden from humans */}
           <input
             ref={honeypotRef}
             type="text"
@@ -183,17 +143,17 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
               placeholder="Enter your email"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setError(null); }}
-              className={cn("pl-10", error && "border-destructive")}
+              className={cn("pl-10 h-10", error && "border-destructive")}
               disabled={loading}
               aria-invalid={!!error}
             />
           </div>
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading} size="default">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Join'}
           </Button>
         </div>
         {error && (
-          <p className="text-sm text-destructive flex items-center gap-1">
+          <p className="text-xs text-destructive flex items-center gap-1">
             <AlertCircle className="w-3 h-3" />
             {error}
           </p>
@@ -204,7 +164,6 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
 
   return (
     <form onSubmit={handleSubmit} className={cn("space-y-3", className)}>
-      {/* Honeypot - hidden from humans */}
       <input
         ref={honeypotRef}
         type="text"
@@ -221,13 +180,13 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
           placeholder="Enter your email"
           value={email}
           onChange={(e) => { setEmail(e.target.value); setError(null); }}
-          className={cn("pl-10", error && "border-destructive")}
+          className={cn("pl-10 h-11", error && "border-destructive")}
           disabled={loading}
           aria-invalid={!!error}
         />
       </div>
       {error && (
-        <p className="text-sm text-destructive flex items-center gap-1">
+        <p className="text-xs text-destructive flex items-center gap-1">
           <AlertCircle className="w-3 h-3" />
           {error}
         </p>
@@ -242,7 +201,7 @@ export function WaitlistForm({ className, variant = 'default' }: WaitlistFormPro
           'Join the Waitlist'
         )}
       </Button>
-      <p className="text-xs text-muted-foreground text-center">
+      <p className="font-mono text-xs text-muted-foreground text-center">
         No spam. Unsubscribe anytime.
       </p>
     </form>

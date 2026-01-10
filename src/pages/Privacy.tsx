@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 const collectItems = [
   {
     label: 'Account data',
-    description: 'If you create an account, we store your email address and encrypted password. That\'s it.'
+    description: 'If you create an account, we store your email address and encrypted password.'
   },
   {
     label: 'Wallet selections',
@@ -15,7 +15,7 @@ const collectItems = [
   },
   {
     label: 'Recommendation history',
-    description: 'URLs you analyze are logged (for your history only) — we don\'t share or sell this data.'
+    description: 'URLs you analyze are logged for your history only. We do not share or sell this data.'
   },
 ];
 
@@ -29,36 +29,36 @@ const dontCollectItems = [
 
 const Privacy = () => {
   return (
-    <div className="min-h-screen bg-background dark">
+    <div className="min-h-screen bg-background">
       <AmbientBackground />
       <Header />
       
-      <main className="pt-20 pb-16 relative z-10">
-        <div className="container max-w-3xl mx-auto px-4">
+      <main className="pt-14 pb-16 relative z-10">
+        <div className="max-w-2xl mx-auto px-6">
           {/* Header */}
-          <section className="py-16">
-            <span className="font-mono-accent text-xs uppercase tracking-widest text-primary mb-6 block">
+          <section className="py-20">
+            <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-6">
               Privacy Policy
-            </span>
-            <h1 className="text-3xl md:text-4xl font-light text-foreground mb-4">
+            </p>
+            <h1 className="text-3xl font-light text-foreground mb-4">
               Your data, your control
             </h1>
-            <p className="text-sm text-muted-foreground font-mono-accent">
+            <p className="font-mono text-xs text-muted-foreground">
               Last updated: December 2024
             </p>
           </section>
 
           {/* What We Collect */}
-          <section className="py-10 border-t border-border">
+          <section className="py-12 border-t border-border">
             <div className="flex items-center gap-3 mb-6">
               <Eye className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-medium text-foreground">What We Collect</h2>
+              <h2 className="text-lg font-medium text-foreground">What we collect</h2>
             </div>
             <div className="space-y-4">
               {collectItems.map((item, index) => (
                 <div 
                   key={index}
-                  className="p-4 rounded-lg border border-border bg-card/30"
+                  className="p-4 rounded border border-border bg-card"
                 >
                   <p className="text-sm">
                     <span className="font-medium text-foreground">{item.label}:</span>{' '}
@@ -70,10 +70,10 @@ const Privacy = () => {
           </section>
 
           {/* What We Don't Collect */}
-          <section className="py-10 border-t border-border">
+          <section className="py-12 border-t border-border">
             <div className="flex items-center gap-3 mb-6">
               <Lock className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-medium text-foreground">What We Don't Collect</h2>
+              <h2 className="text-lg font-medium text-foreground">What we don't collect</h2>
             </div>
             <ul className="space-y-3">
               {dontCollectItems.map((item, i) => (
@@ -86,39 +86,39 @@ const Privacy = () => {
           </section>
 
           {/* Data Storage & Security */}
-          <section className="py-10 border-t border-border">
+          <section className="py-12 border-t border-border">
             <div className="flex items-center gap-3 mb-6">
               <Database className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-medium text-foreground">Data Storage & Security</h2>
+              <h2 className="text-lg font-medium text-foreground">Data storage &amp; security</h2>
             </div>
             <div className="space-y-4">
-              <div className="p-4 rounded-lg border border-border bg-card/30">
+              <div className="p-4 rounded border border-border bg-card">
                 <p className="text-sm text-muted-foreground">
                   All data is stored securely with encryption at rest and in transit. 
-                  We use Row Level Security (RLS) to ensure you can only access your own data.
+                  We use Row Level Security to ensure you can only access your own data.
                 </p>
               </div>
-              <div className="p-4 rounded-lg border border-border bg-card/30">
+              <div className="p-4 rounded border border-border bg-card">
                 <p className="text-sm text-muted-foreground">
-                  Guest users can use the analyzer without any data being stored — 
-                  selections are kept in your browser's local storage only.
+                  Guest users can use the analyzer without any data being stored. 
+                  Selections are kept in your browser's local storage only.
                 </p>
               </div>
             </div>
           </section>
 
           {/* Data Sharing */}
-          <section className="py-10 border-t border-border">
-            <h2 className="text-xl font-medium text-foreground mb-4">Data Sharing</h2>
+          <section className="py-12 border-t border-border">
+            <h2 className="text-lg font-medium text-foreground mb-4">Data sharing</h2>
             <p className="text-sm text-muted-foreground">
               We do not sell, rent, or share your personal information with third parties for 
-              marketing purposes. Period.
+              marketing purposes.
             </p>
           </section>
 
           {/* Your Rights */}
-          <section className="py-10 border-t border-border">
-            <h2 className="text-xl font-medium text-foreground mb-4">Your Rights</h2>
+          <section className="py-12 border-t border-border">
+            <h2 className="text-lg font-medium text-foreground mb-4">Your rights</h2>
             <p className="text-sm text-muted-foreground">
               You can delete your account and all associated data at any time. 
               Contact us if you need help with data export or deletion.
@@ -126,11 +126,11 @@ const Privacy = () => {
           </section>
 
           {/* Disclaimer */}
-          <section className="py-10 border-t border-border">
-            <div className="p-5 rounded-lg border border-amber-500/30 bg-amber-500/5">
+          <section className="py-12 border-t border-border">
+            <div className="p-5 rounded border border-border bg-card">
               <div className="flex items-center gap-3 mb-3">
-                <AlertTriangle className="w-5 h-5 text-amber-500" />
-                <h2 className="text-lg font-medium text-foreground">Disclaimer</h2>
+                <AlertTriangle className="w-5 h-5 text-muted-foreground" />
+                <h2 className="font-medium text-foreground">Disclaimer</h2>
               </div>
               <p className="text-sm text-muted-foreground">
                 CardClutch provides information for educational purposes only. 

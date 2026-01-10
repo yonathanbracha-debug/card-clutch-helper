@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 interface ConfidenceMeterProps {
-  confidence: number; // 0-1
+  confidence: number; // 0-100 or 0-1
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
   className?: string;
@@ -13,21 +13,16 @@ export function ConfidenceMeter({
   showLabel = true,
   className 
 }: ConfidenceMeterProps) {
-  const percentage = Math.round(confidence * 100);
+  // Normalize to 0-100
+  const percentage = confidence > 1 ? Math.round(confidence) : Math.round(confidence * 100);
   
   const getLevel = () => {
-    if (confidence >= 0.8) return 'high';
-    if (confidence >= 0.5) return 'medium';
+    if (percentage >= 80) return 'high';
+    if (percentage >= 50) return 'medium';
     return 'low';
   };
   
   const level = getLevel();
-  
-  const colors = {
-    high: 'bg-emerald-500',
-    medium: 'bg-amber-500',
-    low: 'bg-red-500',
-  };
 
   const labels = {
     high: 'High',
@@ -36,29 +31,24 @@ export function ConfidenceMeter({
   };
 
   const sizeClasses = {
-    sm: 'h-1.5',
-    md: 'h-2',
-    lg: 'h-3',
+    sm: 'h-1',
+    md: 'h-1.5',
+    lg: 'h-2',
   };
 
   return (
-    <div className={cn("space-y-1", className)}>
+    <div className={cn("space-y-1.5", className)}>
       {showLabel && (
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Confidence</span>
-          <span className={cn(
-            "font-medium",
-            level === 'high' && 'text-emerald-500',
-            level === 'medium' && 'text-amber-500',
-            level === 'low' && 'text-red-500'
-          )}>
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-xs text-muted-foreground">Confidence</span>
+          <span className="font-mono text-xs text-foreground">
             {labels[level]} ({percentage}%)
           </span>
         </div>
       )}
-      <div className={cn("w-full bg-muted rounded-full overflow-hidden", sizeClasses[size])}>
+      <div className={cn("w-full bg-secondary rounded-full overflow-hidden", sizeClasses[size])}>
         <div 
-          className={cn("h-full rounded-full transition-all duration-500", colors[level])}
+          className="h-full bg-primary rounded-full transition-all duration-300"
           style={{ width: `${percentage}%` }}
         />
       </div>
