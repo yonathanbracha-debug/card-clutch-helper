@@ -1,4 +1,4 @@
-import { Menu, X, LogIn, LogOut, User, Shield, LayoutDashboard, Home, Sparkles, Library, Lock, Target, MessageSquare } from 'lucide-react';
+import { Menu, X, LogIn, LogOut, User, Shield, LayoutDashboard } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { Link, useLocation, NavLink } from 'react-router-dom';
 import { useState } from 'react';
@@ -17,12 +17,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const navLinks = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/analyze', label: 'Analyzer', icon: Sparkles },
-  { href: '/ask', label: 'Ask', icon: MessageSquare },
-  { href: '/cards', label: 'Cards', icon: Library },
-  { href: '/mission', label: 'Mission', icon: Target },
-  { href: '/privacy', label: 'Privacy', icon: Lock },
+  { href: '/', label: 'Home' },
+  { href: '/analyze', label: 'Analyzer' },
+  { href: '/ask', label: 'Ask' },
+  { href: '/cards', label: 'Cards' },
+  { href: '/mission', label: 'Mission' },
+  { href: '/privacy', label: 'Privacy' },
 ];
 
 export function Header() {
@@ -33,25 +33,24 @@ export function Header() {
   const { isAdmin } = useIsAdmin();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-border/50">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
       <div className="container max-w-6xl mx-auto px-4">
         <div className="flex items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group shrink-0">
+          <Link to="/" className="flex items-center gap-2.5 group shrink-0">
             <img 
               src="/favicon.png" 
               alt="CardClutch" 
-              className="w-8 h-8 rounded-lg group-hover:scale-105 transition-transform"
+              className="w-7 h-7 rounded-md group-hover:scale-105 transition-transform"
             />
-            <span className="text-lg font-semibold tracking-tight hidden sm:inline text-foreground">
+            <span className="text-base font-medium tracking-tight hidden sm:inline text-foreground">
               CardClutch
             </span>
           </Link>
 
-          {/* Desktop Navigation - Horizontal centered next to logo */}
-          <nav className="hidden md:flex items-center gap-1 ml-8">
+          {/* Desktop Navigation - Centered style matching reference */}
+          <nav className="hidden md:flex items-center gap-1 ml-10">
             {navLinks.map((link) => {
-              const Icon = link.icon;
               const isActive = location.pathname === link.href || 
                 (link.href !== '/' && location.pathname.startsWith(link.href));
               
@@ -59,32 +58,21 @@ export function Header() {
                 <NavLink
                   key={link.href}
                   to={link.href}
-                  className="relative px-3 py-2 flex items-center gap-1.5"
+                  className="relative px-3 py-1.5"
                 >
                   {isActive && (
                     <motion.div
-                      layoutId="tubelight-bg"
-                      className="absolute inset-0 bg-primary/10 rounded-lg"
-                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                      layoutId="nav-indicator"
+                      className="absolute inset-0 bg-card border border-border rounded-full"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                   )}
-                  <Icon className={cn(
-                    "w-4 h-4 relative z-10 transition-colors",
-                    isActive ? "text-primary" : "text-muted-foreground"
-                  )} />
                   <span className={cn(
-                    "text-sm font-medium transition-colors relative z-10",
-                    isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                    "relative z-10 text-sm font-medium transition-colors",
+                    isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                   )}>
                     {link.label}
                   </span>
-                  {isActive && (
-                    <motion.div
-                      layoutId="tubelight-glow"
-                      className="absolute inset-x-2 -bottom-px h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent"
-                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                    />
-                  )}
                 </NavLink>
               );
             })}
@@ -94,7 +82,7 @@ export function Header() {
           <div className="flex-1" />
 
           {/* Right side */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="transition-colors duration-200">
               <ThemeToggle theme={theme} onToggle={toggleTheme} />
             </div>
@@ -102,27 +90,21 @@ export function Header() {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-foreground hover:bg-card">
+                  <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-foreground hover:bg-card rounded-full px-3">
                     <User className="w-4 h-4" />
-                    <span className="max-w-24 truncate">{user.email?.split('@')[0]}</span>
+                    <span className="max-w-24 truncate text-sm">{user.email?.split('@')[0]}</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="glass-panel">
+                <DropdownMenuContent align="end" className="bg-card border-border">
                   <DropdownMenuItem asChild className="cursor-pointer">
                     <Link to="/dashboard" className="flex items-center">
                       <LayoutDashboard className="w-4 h-4 mr-2" />
                       Dashboard
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link to="/analyze" className="flex items-center">
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Analyzer
-                    </Link>
-                  </DropdownMenuItem>
                   {isAdmin && (
                     <>
-                      <DropdownMenuSeparator />
+                      <DropdownMenuSeparator className="bg-border" />
                       <DropdownMenuItem asChild className="cursor-pointer">
                         <Link to="/admin" className="flex items-center">
                           <Shield className="w-4 h-4 mr-2" />
@@ -131,7 +113,7 @@ export function Header() {
                       </DropdownMenuItem>
                     </>
                   )}
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem onClick={signOut} className="cursor-pointer">
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign out
@@ -140,14 +122,14 @@ export function Header() {
               </DropdownMenu>
             ) : (
               <Link to="/auth">
-                <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-foreground hover:bg-card">
+                <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-card rounded-full px-3">
                   <LogIn className="w-4 h-4" />
-                  Sign in
+                  <span className="text-sm">Sign in</span>
                 </Button>
               </Link>
             )}
             
-            {/* Mobile menu button - only show below md */}
+            {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-card transition-colors"
@@ -158,12 +140,11 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile Navigation - only show below md */}
+        {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <nav className="md:hidden py-4 border-t border-border/50 animate-fade-in">
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => {
-                const Icon = link.icon;
                 const isActive = location.pathname === link.href || 
                   (link.href !== '/' && location.pathname.startsWith(link.href));
                 return (
@@ -172,62 +153,53 @@ export function Header() {
                     to={link.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-colors",
+                      "flex items-center px-3 py-3 rounded-lg text-sm transition-colors",
                       isActive
-                        ? "bg-primary/10 text-primary font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-card"
+                        ? "bg-card text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-card/50"
                     )}
                   >
-                    <Icon className="w-4 h-4" />
                     {link.label}
                   </Link>
                 );
               })}
               <div className="border-t border-border/50 mt-2 pt-2">
-                <Link
-                  to="/analyze"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-primary font-medium hover:bg-primary/10"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  Try Analyzer
-                </Link>
-                {user && (
-                  <Link
-                    to="/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card"
-                  >
-                    <LayoutDashboard className="w-4 h-4" />
-                    Dashboard
-                  </Link>
-                )}
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card"
-                  >
-                    <Shield className="w-4 h-4" />
-                    Admin Console
-                  </Link>
-                )}
                 {user ? (
-                  <button
-                    onClick={() => {
-                      signOut();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card w-full"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign out
-                  </button>
+                  <>
+                    <Link
+                      to="/dashboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card/50"
+                    >
+                      <LayoutDashboard className="w-4 h-4" />
+                      Dashboard
+                    </Link>
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card/50"
+                      >
+                        <Shield className="w-4 h-4" />
+                        Admin Console
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => {
+                        signOut();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card/50 w-full"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign out
+                    </button>
+                  </>
                 ) : (
                   <Link
                     to="/auth"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card"
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card/50"
                   >
                     <LogIn className="w-4 h-4" />
                     Sign in

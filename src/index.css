@@ -55,50 +55,50 @@
   }
 
   .dark {
-    /* CardClutch Dark Theme - Professional Fintech (muted teal, slate) */
-    --background: 220 20% 5%;
-    --foreground: 220 10% 92%;
+    /* CardClutch Dark Theme - Matching reference: deep black, muted accents */
+    --background: 220 20% 4%;
+    --foreground: 220 10% 94%;
 
-    --card: 220 18% 7%;
-    --card-foreground: 220 10% 92%;
-    --card-hover: 220 16% 10%;
+    --card: 220 18% 6%;
+    --card-foreground: 220 10% 94%;
+    --card-hover: 220 16% 9%;
 
-    --popover: 220 18% 7%;
-    --popover-foreground: 220 10% 92%;
+    --popover: 220 18% 6%;
+    --popover-foreground: 220 10% 94%;
 
-    /* Muted teal primary - more mature */
-    --primary: 175 45% 42%;
-    --primary-foreground: 220 20% 5%;
+    /* Muted teal primary - institutional feel */
+    --primary: 172 40% 45%;
+    --primary-foreground: 220 20% 4%;
 
-    --secondary: 220 15% 11%;
-    --secondary-foreground: 220 10% 92%;
+    --secondary: 220 15% 10%;
+    --secondary-foreground: 220 10% 94%;
 
-    --muted: 220 15% 12%;
-    --muted-foreground: 220 8% 50%;
+    --muted: 220 15% 10%;
+    --muted-foreground: 220 8% 48%;
 
-    --accent: 175 45% 42%;
-    --accent-foreground: 220 20% 5%;
+    --accent: 172 40% 45%;
+    --accent-foreground: 220 20% 4%;
 
     --destructive: 0 60% 50%;
-    --destructive-foreground: 220 10% 92%;
+    --destructive-foreground: 220 10% 94%;
 
-    --border: 220 15% 14%;
-    --input: 220 15% 10%;
-    --ring: 175 45% 42%;
+    --border: 220 15% 12%;
+    --input: 220 15% 9%;
+    --ring: 172 40% 45%;
 
     /* Refined tokens */
-    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.25);
-    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.35);
-    --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.45);
+    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.4);
+    --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.5);
 
-    --sidebar-background: 220 18% 7%;
-    --sidebar-foreground: 220 10% 92%;
-    --sidebar-primary: 175 45% 42%;
-    --sidebar-primary-foreground: 220 20% 5%;
-    --sidebar-accent: 220 15% 11%;
-    --sidebar-accent-foreground: 220 10% 92%;
-    --sidebar-border: 220 15% 14%;
-    --sidebar-ring: 175 45% 42%;
+    --sidebar-background: 220 18% 5%;
+    --sidebar-foreground: 220 10% 94%;
+    --sidebar-primary: 172 40% 45%;
+    --sidebar-primary-foreground: 220 20% 4%;
+    --sidebar-accent: 220 15% 10%;
+    --sidebar-accent-foreground: 220 10% 94%;
+    --sidebar-border: 220 15% 12%;
+    --sidebar-ring: 172 40% 45%;
   }
 }
 
