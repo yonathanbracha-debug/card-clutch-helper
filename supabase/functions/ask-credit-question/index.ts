@@ -1,7 +1,7 @@
 /**
  * Ask Credit Question Edge Function
- * RAG-powered credit question answering with rate limiting and audit logging
- * Uses Pinecone for vector search and OpenAI for embeddings + completion
+ * AI-powered credit question answering with rate limiting and audit logging
+ * Uses Lovable AI Gateway for completions
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
@@ -9,6 +9,9 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Lovable AI Gateway
+const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 // Rate limits
 const RATE_LIMITS = {
@@ -27,18 +30,6 @@ interface AskQuestionRequest {
   user_context?: {
     cards?: string[];
     preferences?: Record<string, unknown>;
-  };
-}
-
-interface ChunkResult {
-  id: string;
-  score: number;
-  metadata: {
-    chunk_text: string;
-    source_url: string;
-    source_title: string;
-    category: string;
-    trust_tier: number;
   };
 }
 
@@ -163,90 +154,32 @@ function classifyIntent(question: string): string {
   return "general";
 }
 
-async function getEmbedding(text: string, openaiKey: string): Promise<number[]> {
-  const response = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${openaiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "text-embedding-3-small",
-      input: text,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenAI embedding error: ${response.status} ${errorText}`);
-  }
-
-  const data = await response.json();
-  return data.data[0].embedding;
-}
-
-async function queryPinecone(
-  embedding: number[],
-  pineconeHost: string,
-  pineconeKey: string,
-  topK: number = 6
-): Promise<ChunkResult[]> {
-  const response = await fetch(`${pineconeHost}/query`, {
-    method: "POST",
-    headers: {
-      "Api-Key": pineconeKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      vector: embedding,
-      topK,
-      includeMetadata: true,
-      filter: {
-        trust_tier: { "$lte": 3 },
-        status: { "$eq": "active" },
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Pinecone query error: ${response.status} ${errorText}`);
-  }
-
-  const data = await response.json();
-  return data.matches || [];
-}
-
 async function generateAnswer(
   question: string,
-  context: string,
-  citations: ChunkResult[],
-  openaiKey: string,
-  includeCitations: boolean
+  lovableApiKey: string,
+  intent: string
 ): Promise<{ answer: string; confidence: number }> {
   const systemPrompt = `You are CardClutch's credit expert assistant. You provide accurate, helpful information about credit cards, credit scores, and personal finance.
 
 RULES:
-1. NEVER hallucinate or make up information. If you don't know, say so.
+1. NEVER hallucinate or make up specific numbers, rates, or product details. If you don't know exact details, say so.
 2. Be conservative and safe with financial advice. Use phrases like "generally" and "typically".
-3. Do NOT provide legal, tax, or investment advice. Suggest consulting professionals.
-4. If the context doesn't contain enough information, acknowledge uncertainty.
-5. Keep answers concise but complete (2-4 paragraphs max).
-6. If you need clarification, ask 1-2 specific follow-up questions.
+3. Do NOT provide legal, tax, or investment advice. Suggest consulting professionals for specific situations.
+4. Keep answers concise but complete (2-4 paragraphs max).
+5. If you need clarification, ask 1-2 specific follow-up questions.
+6. Focus on general credit education and best practices.
+7. For card-specific questions, recommend the user check issuer websites for current terms.
 
-CONTEXT FROM KNOWLEDGE BASE:
-${context}
+INTENT CONTEXT: The user's question is classified as "${intent}".`;
 
-${includeCitations ? "Include source citations in your answer when referencing specific information." : ""}`;
-
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch(LOVABLE_AI_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${openaiKey}`,
+      "Authorization": `Bearer ${lovableApiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: question },
@@ -258,17 +191,30 @@ ${includeCitations ? "Include source citations in your answer when referencing s
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`OpenAI completion error: ${response.status} ${errorText}`);
+    
+    // Handle rate limiting from Lovable AI
+    if (response.status === 429) {
+      throw new Error("AI service is busy. Please try again in a moment.");
+    }
+    if (response.status === 402) {
+      throw new Error("AI service quota exceeded. Please try again later.");
+    }
+    
+    throw new Error(`AI completion error: ${response.status} ${errorText}`);
   }
 
   const data = await response.json();
-  const answer = data.choices[0]?.message?.content || "I'm sorry, I couldn't generate an answer.";
+  const answer = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate an answer.";
   
-  // Calculate confidence based on context quality
-  const avgScore = citations.length > 0
-    ? citations.reduce((sum, c) => sum + c.score, 0) / citations.length
-    : 0.3;
-  const confidence = Math.min(0.95, Math.max(0.3, avgScore));
+  // Calculate confidence based on intent match
+  let confidence = 0.75; // Default confidence
+  if (intent === "credit_education") {
+    confidence = 0.85; // Higher confidence for education questions
+  } else if (intent === "card_rewards") {
+    confidence = 0.7; // Lower for specific card questions without RAG
+  } else if (intent === "issuer_policy") {
+    confidence = 0.6; // Lower for issuer-specific questions
+  }
 
   return { answer, confidence };
 }
@@ -349,13 +295,11 @@ Deno.serve(async (req) => {
     // Get environment variables
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
-    const pineconeKey = Deno.env.get("PINECONE_API_KEY");
-    const pineconeHost = Deno.env.get("PINECONE_HOST");
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     const rateLimitSalt = Deno.env.get("RATE_LIMIT_SALT") || "default-salt";
 
-    if (!openaiKey || !pineconeKey || !pineconeHost) {
-      console.error("Missing required API keys");
+    if (!lovableApiKey) {
+      console.error("Missing LOVABLE_API_KEY");
       return new Response(
         JSON.stringify({ error: "Service configuration error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -431,29 +375,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { question, include_citations, user_context } = validation.data;
+    const { question, include_citations } = validation.data;
 
     // Classify intent
     const intent = classifyIntent(question);
 
-    // Get embedding for question
-    const embedding = await getEmbedding(question, openaiKey);
-
-    // Query Pinecone for relevant chunks
-    const chunks = await queryPinecone(embedding, pineconeHost, pineconeKey, 6);
-
-    // Build context from retrieved chunks
-    const context = chunks
-      .map((c, i) => `[${i + 1}] ${c.metadata.chunk_text}\n(Source: ${c.metadata.source_title})`)
-      .join("\n\n");
-
-    // Generate answer
+    // Generate answer using Lovable AI
     const { answer, confidence } = await generateAnswer(
       question,
-      context || "No specific information found in knowledge base.",
-      chunks,
-      openaiKey,
-      include_citations || false
+      lovableApiKey,
+      intent
     );
 
     // Increment rate limit
@@ -467,15 +398,10 @@ Deno.serve(async (req) => {
       ip_hash: ipHash,
       question,
       intent,
-      retrieved_chunks: chunks.map(c => ({
-        id: c.id,
-        score: c.score,
-        source_url: c.metadata.source_url,
-        source_title: c.metadata.source_title,
-      })),
+      retrieved_chunks: [], // No RAG retrieval in this version
       answer,
       confidence,
-      model: "gpt-4o-mini",
+      model: "google/gemini-2.5-flash",
       latency_ms: latencyMs,
       include_citations: include_citations || false,
     });
@@ -488,17 +414,8 @@ Deno.serve(async (req) => {
       latency_ms: latencyMs,
     };
 
-    if (include_citations) {
-      response.citations = chunks.map(c => ({
-        title: c.metadata.source_title,
-        url: c.metadata.source_url,
-        category: c.metadata.category,
-        relevance: c.score,
-      }));
-    }
-
     // Suggest follow-up questions based on intent
-    const followups = [];
+    const followups: string[] = [];
     if (intent === "credit_education") {
       followups.push(
         "How can I improve my credit score?",
@@ -522,6 +439,8 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Ask question error:", error);
     
+    const startTimeForLog = Date.now();
+    
     // Log error
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -539,10 +458,14 @@ Deno.serve(async (req) => {
       console.error("Failed to log error:", logError);
     }
 
+    // Return user-friendly error
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
     return new Response(
       JSON.stringify({ 
-        error: "Failed to process your question. Please try again.",
-        details: error instanceof Error ? error.message : undefined,
+        error: errorMessage.includes("busy") || errorMessage.includes("quota") 
+          ? errorMessage 
+          : "Failed to process your question. Please try again.",
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
