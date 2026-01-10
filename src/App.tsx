@@ -24,6 +24,7 @@ import Features from "./pages/Features";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Dashboard from "./pages/Dashboard";
+import Ask from "./pages/Ask";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -73,6 +74,7 @@ const App = () => (
               <Route path="/trust" element={<Trust />} />
               <Route path="/features" element={<Features />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/ask" element={<Ask />} />
               
               {/* Admin route (protected by component) */}
               <Route path="/admin" element={<Admin />} />
