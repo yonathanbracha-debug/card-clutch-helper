@@ -10,15 +10,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { 
   Send, 
-  Sparkles, 
-  MessageCircle, 
   ChevronDown, 
   ExternalLink,
   AlertCircle,
   Loader2,
-  HelpCircle
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
 const ASK_DEMO_KEY = 'cardclutch_ask_demo';
@@ -48,7 +44,6 @@ const EXAMPLE_PROMPTS = [
   "How does credit utilization affect my score?",
   "When should I pay my balance to avoid interest?",
   "What's the difference between a hard and soft credit pull?",
-  "How do I dispute an error on my credit report?",
   "Should I close old credit cards I don't use?",
 ];
 
@@ -71,7 +66,7 @@ export default function Ask() {
           setDemoState(JSON.parse(stored));
         }
       } catch {
-        // Ignore parse errors
+        // Ignore
       }
     }
   }, []);
@@ -125,29 +120,19 @@ export default function Ask() {
         let errorMsg = 'Something went wrong. Please try again.';
         const errStr = error.message?.toLowerCase() || '';
         if (errStr.includes('429') || errStr.includes('rate')) {
-          errorMsg = 'You\'re asking questions too quickly. Please wait a moment and try again.';
+          errorMsg = 'Too many requests. Please wait a moment.';
         } else if (errStr.includes('402') || errStr.includes('quota')) {
-          errorMsg = 'AI service is temporarily unavailable. Please try again later.';
-        } else if (errStr.includes('503') || errStr.includes('busy')) {
-          errorMsg = 'AI service is busy. Please try again in a moment.';
+          errorMsg = 'Service temporarily unavailable.';
         }
         throw new Error(errorMsg);
       }
 
       if (data?.error) {
-        let errorMsg = data.error;
-        if (data.error === 'rate_limited') {
-          errorMsg = data.message || 'Rate limited. Please wait and try again.';
-        } else if (typeof data.error === 'string' && data.error.includes('quota')) {
-          errorMsg = 'AI service is temporarily unavailable. Please try again later.';
-        } else if (typeof data.error === 'string' && data.error.includes('busy')) {
-          errorMsg = 'AI service is busy. Please try again in a moment.';
-        }
-        throw new Error(errorMsg);
+        throw new Error(data.message || data.error);
       }
 
       if (!data?.answer) {
-        throw new Error('No response received. Please try again.');
+        throw new Error('No response received.');
       }
 
       const assistantMessage: Message = {
@@ -172,7 +157,7 @@ export default function Ask() {
         role: 'assistant',
         content: err instanceof Error 
           ? err.message 
-          : 'I encountered an issue processing your question. Please try again.',
+          : 'An error occurred. Please try again.',
         timestamp: new Date(),
         isError: true,
       };
@@ -201,73 +186,59 @@ export default function Ask() {
     });
   };
 
-  const handleExampleClick = (prompt: string) => {
-    setInputValue(prompt);
-    textareaRef.current?.focus();
-  };
-
   return (
-    <div className="min-h-screen bg-background dark flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <AmbientBackground />
       <Header />
       
-      <main className="flex-1 pt-20 pb-6 relative z-10">
-        <div className="container max-w-3xl mx-auto px-4 h-full flex flex-col">
-          {/* Header section */}
+      <main className="flex-1 pt-14 pb-6 relative z-10">
+        <div className="max-w-2xl mx-auto px-6 h-full flex flex-col py-8">
+          {/* Header */}
           <div className="mb-8">
-            <span className="font-mono-accent text-xs uppercase tracking-widest text-primary mb-4 block">
-              Ask Credit AI
-            </span>
-            <h1 className="text-3xl md:text-4xl font-light text-foreground mb-3">
-              Get answers about credit
+            <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-4">
+              Credit Q&amp;A
+            </p>
+            <h1 className="text-3xl font-light text-foreground mb-3">
+              Ask about credit
             </h1>
-            <p className="text-muted-foreground max-w-lg">
-              Reliable answers about credit scores, cards, and personal finance backed by trusted sources.
+            <p className="text-muted-foreground">
+              Get answers about credit scores, cards, and personal finance.
             </p>
             {!isLoggedIn && remaining > 0 && remaining !== Infinity && (
-              <p className="text-sm text-muted-foreground mt-3 font-mono-accent">
+              <p className="font-mono text-xs text-muted-foreground mt-3">
                 {remaining} free question{remaining !== 1 ? 's' : ''} remaining
               </p>
             )}
           </div>
 
-          {/* Messages area */}
+          {/* Messages */}
           <div className="flex-1 overflow-y-auto space-y-4 mb-4 min-h-[300px]">
             {messages.length === 0 ? (
               <div className="space-y-6">
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 rounded-full border border-border bg-card/30 flex items-center justify-center mx-auto mb-4">
-                    <MessageCircle className="w-8 h-8 text-primary" />
-                  </div>
-                  <p className="text-muted-foreground mb-6">
-                    Ask anything about credit. Here are some ideas:
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Ask anything about credit. Some ideas:
+                </p>
                 
-                <div className="grid gap-2">
+                <div className="space-y-2">
                   {EXAMPLE_PROMPTS.map((prompt, i) => (
                     <button
                       key={i}
-                      onClick={() => handleExampleClick(prompt)}
-                      className="text-left px-4 py-3 rounded-lg border border-border bg-card/30 hover:bg-card/50 hover:border-border/80 transition-all text-sm group"
+                      onClick={() => {
+                        setInputValue(prompt);
+                        textareaRef.current?.focus();
+                      }}
+                      className="w-full text-left px-4 py-3 rounded border border-border bg-card hover:bg-secondary transition-colors text-sm text-muted-foreground hover:text-foreground"
                     >
-                      <div className="flex items-center gap-3">
-                        <HelpCircle className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                        <span className="text-muted-foreground group-hover:text-foreground transition-colors">{prompt}</span>
-                      </div>
+                      {prompt}
                     </button>
                   ))}
                 </div>
               </div>
             ) : (
-              <AnimatePresence mode="popLayout">
+              <>
                 {messages.map((message) => (
-                  <motion.div
+                  <div
                     key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
                     className={cn(
                       "flex",
                       message.role === 'user' ? 'justify-end' : 'justify-start'
@@ -275,12 +246,12 @@ export default function Ask() {
                   >
                     <div
                       className={cn(
-                        "max-w-[85%] rounded-lg px-4 py-3",
+                        "max-w-[85%] rounded px-4 py-3",
                         message.role === 'user'
                           ? 'bg-foreground text-background'
                           : message.isError
                           ? 'bg-destructive/10 border border-destructive/20'
-                          : 'bg-card/50 border border-border'
+                          : 'bg-card border border-border'
                       )}
                     >
                       {message.isError && (
@@ -304,7 +275,7 @@ export default function Ask() {
                           )}
                           
                           {message.citations && message.citations.length > 0 && (
-                            <div className="border-t border-border/50 pt-3">
+                            <div className="border-t border-border pt-3">
                               <button
                                 onClick={() => toggleCitations(message.id)}
                                 className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -318,63 +289,46 @@ export default function Ask() {
                                 {expandedCitations.has(message.id) ? 'Hide' : 'Show'} sources ({message.citations.length})
                               </button>
                               
-                              <AnimatePresence>
-                                {expandedCitations.has(message.id) && (
-                                  <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="overflow-hidden"
-                                  >
-                                    <div className="mt-2 space-y-2">
-                                      {message.citations.map((citation, i) => (
-                                        <a
-                                          key={i}
-                                          href={citation.url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-2 text-xs text-primary hover:underline"
-                                        >
-                                          <ExternalLink className="w-3 h-3" />
-                                          <span className="truncate">{citation.title}</span>
-                                          <span className="text-muted-foreground">
-                                            ({Math.round(citation.relevance * 100)}%)
-                                          </span>
-                                        </a>
-                                      ))}
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
+                              {expandedCitations.has(message.id) && (
+                                <div className="mt-2 space-y-2">
+                                  {message.citations.map((citation, i) => (
+                                    <a
+                                      key={i}
+                                      href={citation.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 text-xs text-primary hover:underline"
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                      <span className="truncate">{citation.title}</span>
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                       )}
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
                 
                 {isLoading && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex justify-start"
-                  >
-                    <div className="bg-card/50 border border-border rounded-lg px-4 py-3">
+                  <div className="flex justify-start">
+                    <div className="bg-card border border-border rounded px-4 py-3">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Loader2 className="w-4 h-4 animate-spin" />
                         <span className="text-sm">Thinking...</span>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 )}
-              </AnimatePresence>
+              </>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input area */}
+          {/* Input */}
           <div className="sticky bottom-0 bg-transparent pt-2">
             <div className="relative">
               <textarea
@@ -382,13 +336,13 @@ export default function Ask() {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about credit scores, cards, interest, disputes..."
+                placeholder="Ask about credit..."
                 disabled={isLoading}
                 rows={1}
                 className={cn(
-                  "w-full resize-none rounded-lg border border-border bg-card/50 px-4 py-3 pr-12",
+                  "w-full resize-none rounded border border-border bg-card px-4 py-3 pr-12",
                   "text-sm placeholder:text-muted-foreground text-foreground",
-                  "focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50",
+                  "focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
                   "min-h-[48px] max-h-[200px]"
                 )}
@@ -406,13 +360,13 @@ export default function Ask() {
                 size="icon"
                 onClick={() => handleSubmit(inputValue)}
                 disabled={!inputValue.trim() || isLoading}
-                className="absolute right-2 bottom-2 h-8 w-8 rounded-lg bg-foreground text-background hover:bg-foreground/90"
+                className="absolute right-2 bottom-2 h-8 w-8 rounded"
               >
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground/60 text-center mt-3 font-mono-accent">
-              Responses are AI-generated. Verify important information independently.
+            <p className="font-mono text-xs text-muted-foreground text-center mt-3">
+              AI-generated. Verify important information independently.
             </p>
           </div>
         </div>

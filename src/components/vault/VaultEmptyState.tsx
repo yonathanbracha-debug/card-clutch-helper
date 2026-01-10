@@ -8,21 +8,21 @@ interface VaultEmptyStateProps {
 
 export function VaultEmptyState({ onOpenVault, onLoadDemo }: VaultEmptyStateProps) {
   return (
-    <div className="p-6 rounded-xl border border-dashed border-border bg-muted/30 text-center">
-      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-        <CreditCard className="w-6 h-6 text-muted-foreground" />
+    <div className="p-5 rounded border border-dashed border-border bg-secondary/50 text-center">
+      <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center mx-auto mb-3">
+        <CreditCard className="w-5 h-5 text-muted-foreground" />
       </div>
-      <h3 className="font-semibold mb-2">No cards in your vault yet</h3>
-      <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-        Add your cards once. We'll recommend the best one at checkout.
+      <h3 className="font-medium text-sm text-foreground mb-1">No cards selected</h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        Add your cards to get personalized recommendations.
       </p>
       <div className="flex flex-col sm:flex-row gap-2 justify-center">
-        <Button onClick={onOpenVault}>
-          Choose your cards
+        <Button onClick={onOpenVault} size="sm">
+          Add cards
         </Button>
-        <Button variant="outline" onClick={onLoadDemo} className="gap-2">
-          <Sparkles className="w-4 h-4" />
-          Try demo vault
+        <Button variant="outline" onClick={onLoadDemo} size="sm" className="gap-2">
+          <Sparkles className="w-3 h-3" />
+          Use demo cards
         </Button>
       </div>
     </div>

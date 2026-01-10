@@ -4,43 +4,43 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
   
   return (
-    <footer className="py-16 px-4 border-t border-border relative z-10">
-      <div className="container max-w-5xl mx-auto">
+    <footer className="py-16 px-6 border-t border-border relative z-10">
+      <div className="max-w-3xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <Link to="/" className="text-lg font-medium text-foreground hover:text-primary transition-colors">
+            <Link to="/" className="text-sm font-medium text-foreground">
               CardClutch
             </Link>
-            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+            <p className="mt-2 text-sm text-muted-foreground">
               Credit decisions, simplified.
             </p>
           </div>
           
           {/* Product */}
           <div>
-            <h4 className="font-mono-accent text-xs uppercase tracking-widest text-muted-foreground/60 mb-4">
+            <h4 className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-3">
               Product
             </h4>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <Link to="/analyze" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Analyzer
               </Link>
               <Link to="/ask" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Ask Credit AI
+                Ask
               </Link>
               <Link to="/cards" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Card Catalog
+                Cards
               </Link>
             </div>
           </div>
           
           {/* Company */}
           <div>
-            <h4 className="font-mono-accent text-xs uppercase tracking-widest text-muted-foreground/60 mb-4">
+            <h4 className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-3">
               Company
             </h4>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <Link to="/mission" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Mission
               </Link>
@@ -48,17 +48,17 @@ export function Footer() {
                 Roadmap
               </Link>
               <Link to="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Privacy Policy
+                Privacy
               </Link>
             </div>
           </div>
           
           {/* Connect */}
           <div>
-            <h4 className="font-mono-accent text-xs uppercase tracking-widest text-muted-foreground/60 mb-4">
-              Connect
+            <h4 className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-3">
+              Account
             </h4>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <Link to="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Sign In
               </Link>
@@ -67,11 +67,11 @@ export function Footer() {
         </div>
         
         {/* Bottom bar */}
-        <div className="pt-8 border-t border-border/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <span className="font-mono-accent text-xs text-muted-foreground/40">
+        <div className="pt-8 border-t border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          <span className="font-mono text-xs text-muted-foreground">
             © {currentYear} CardClutch
           </span>
-          <span className="font-mono-accent text-xs text-muted-foreground/40">
+          <span className="font-mono text-xs text-muted-foreground">
             Informational only. Not financial advice.
           </span>
         </div>
