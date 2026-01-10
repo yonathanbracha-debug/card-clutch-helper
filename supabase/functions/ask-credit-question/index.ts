@@ -1,6 +1,9 @@
 /**
  * Ask Credit Question Edge Function
- * AI-powered credit question answering with OpenAI embeddings + Pinecone RAG
+ * AI-powered credit question answering with:
+ * 1. DETERMINISTIC ROUTER - Universal credit concepts answered instantly (0 tokens)
+ * 2. RAG PATH - Issuer-specific/complex questions use OpenAI embeddings + Pinecone
+ * 
  * Rate limited, audit logged, quota-safe
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
@@ -172,6 +175,242 @@ async function incrementRateLimit(
   }
 }
 
+// ============= Deterministic Credit Knowledge =============
+
+interface DeterministicAnswer {
+  answer: string;
+  confidence: number;
+  intent: string;
+}
+
+// Topics that can be answered WITHOUT RAG or LLM
+function isDeterministicCreditTopic(q: string): boolean {
+  const s = q.toLowerCase();
+  return (
+    s.includes("credit utilization") ||
+    s.includes("utilization rate") ||
+    s.includes("utilization ratio") ||
+    s.includes("how does utilization") ||
+    (s.includes("statement") && s.includes("balance")) ||
+    (s.includes("statement") && s.includes("due date")) ||
+    (s.includes("pay") && s.includes("statement") && s.includes("close")) ||
+    s.includes("minimum payment") ||
+    s.includes("grace period") ||
+    (s.includes("apr") && !s.includes("which card") && !s.includes("best")) ||
+    (s.includes("interest") && s.includes("work")) ||
+    (s.includes("interest") && s.includes("charge")) ||
+    (s.includes("interest") && s.includes("avoid")) ||
+    (s.includes("credit score") && s.includes("affect")) ||
+    (s.includes("credit score") && s.includes("impact")) ||
+    (s.includes("multiple cards") && s.includes("utilization")) ||
+    s.includes("statement closing date") ||
+    s.includes("billing cycle")
+  );
+}
+
+// Return deterministic answer for universal credit concepts (NO OpenAI, NO Pinecone)
+function getDeterministicAnswer(q: string): DeterministicAnswer | null {
+  const s = q.toLowerCase();
+
+  // Credit Utilization
+  if (s.includes("credit utilization") || s.includes("utilization rate") || s.includes("utilization ratio") || s.includes("how does utilization")) {
+    return {
+      answer: `Credit utilization is the percentage of your available credit that you're currently using, and it's one of the most important factors in your credit score (typically ~30% of your FICO score).
+
+**How it's calculated:**
+\`(Current Balance ÷ Credit Limit) × 100\`
+
+**Guidelines:**
+• **Under 10%**: Excellent – optimal for credit score
+• **10–30%**: Good – generally safe range
+• **30–50%**: Fair – may start to hurt your score
+• **Above 50%**: Poor – significant negative impact
+
+**Key insight:** Utilization is typically reported based on your **statement balance**, not your balance on the due date. To optimize your score, pay down your balance **before** your statement closes, not just before the due date.`,
+      confidence: 0.95,
+      intent: "credit_education",
+    };
+  }
+
+  // Statement balance vs due date
+  if ((s.includes("statement") && s.includes("due date")) || (s.includes("pay") && s.includes("statement") && s.includes("close"))) {
+    return {
+      answer: `Your **statement balance** and **due date** serve different purposes:
+
+**Statement Balance:**
+• This is what gets **reported to credit bureaus**
+• It's the balance when your billing cycle closes
+• Affects your credit utilization ratio
+
+**Due Date:**
+• This is the deadline to **avoid interest charges**
+• Typically 21-25 days after the statement closes
+• Missing it incurs late fees and potential APR increases
+
+**To optimize both credit score AND avoid interest:**
+1. Pay down your balance **before the statement closes** → lowers reported utilization
+2. Pay the remaining statement balance **by the due date** → avoids interest
+
+These strategies work together. You can make multiple payments per month to achieve both goals.`,
+      confidence: 0.95,
+      intent: "credit_education",
+    };
+  }
+
+  // Minimum payment
+  if (s.includes("minimum payment")) {
+    return {
+      answer: `The **minimum payment** is the smallest amount you must pay by your due date to keep your account in good standing. However, paying only the minimum is costly:
+
+**What happens if you pay only the minimum:**
+• You **avoid late fees** and penalties
+• You **still get charged interest** on the remaining balance
+• Debt compounds and can take years (even decades) to pay off
+• A $5,000 balance at 20% APR paying minimums could take 20+ years to pay off
+
+**Best practices:**
+• **Pay in full** each month if possible → no interest charges
+• If you can't pay in full, pay **as much as you can** above the minimum
+• Set up autopay for at least the minimum to avoid late fees
+
+**Credit score impact:** Paying on time (even the minimum) is good for your score, but high balances hurt your utilization ratio.`,
+      confidence: 0.95,
+      intent: "credit_education",
+    };
+  }
+
+  // Grace period
+  if (s.includes("grace period")) {
+    return {
+      answer: `The **grace period** is the time between your statement closing date and your payment due date when you can pay your balance **without incurring interest**.
+
+**Key points:**
+• Typically **21-25 days** (required by law to be at least 21 days)
+• **Only applies if you paid your previous balance in full**
+• If you carry a balance from the previous month, there is **no grace period** – interest accrues immediately on new purchases
+
+**How to maintain your grace period:**
+1. Pay your statement balance in full by the due date every month
+2. Once you carry a balance, you lose the grace period until you pay in full for a complete billing cycle
+
+**Pro tip:** If you've lost your grace period, make a payment equal to your full statement balance to restore it for the next cycle.`,
+      confidence: 0.95,
+      intent: "credit_education",
+    };
+  }
+
+  // APR / Interest mechanics
+  if ((s.includes("apr") || s.includes("interest")) && (s.includes("work") || s.includes("charge") || s.includes("avoid") || s.includes("calculated"))) {
+    return {
+      answer: `**APR (Annual Percentage Rate)** is the yearly interest rate charged on carried balances. Here's how it works:
+
+**How interest is calculated:**
+• **Daily Periodic Rate** = APR ÷ 365
+• Interest accrues daily on your average daily balance
+• Example: 24% APR = 0.0657% per day
+
+**When you're charged interest:**
+• Only on balances you **carry past the due date**
+• If you pay in full by the due date, **no interest** (thanks to the grace period)
+• If you carry a balance, interest starts accruing on **new purchases immediately**
+
+**How to avoid interest:**
+1. Pay your statement balance in full every month
+2. Use cards with 0% intro APR offers for large purchases (if needed)
+3. Never pay only the minimum if you can help it
+
+**Types of APR:** Purchase APR, Balance Transfer APR, Cash Advance APR (often highest), and Penalty APR (triggered by missed payments).`,
+      confidence: 0.95,
+      intent: "credit_education",
+    };
+  }
+
+  // Multiple cards utilization
+  if ((s.includes("multiple cards") || s.includes("several cards")) && s.includes("utilization")) {
+    return {
+      answer: `When you have **multiple credit cards**, utilization is calculated in two ways:
+
+**1. Overall Utilization (most important):**
+\`Total Balance Across All Cards ÷ Total Credit Limit Across All Cards\`
+
+**2. Per-Card Utilization:**
+Each card's individual utilization also matters, though less than overall.
+
+**Example:**
+• Card A: $500 balance, $5,000 limit (10%)
+• Card B: $2,000 balance, $5,000 limit (40%)
+• **Overall:** $2,500 ÷ $10,000 = **25%** ✓
+
+**Strategy tips:**
+• Keep overall utilization under 30% (under 10% is optimal)
+• Avoid maxing out any single card, even if overall is low
+• Spreading balances across cards is better than concentrating on one
+• Opening a new card increases total credit limit, which can lower overall utilization`,
+      confidence: 0.95,
+      intent: "credit_education",
+    };
+  }
+
+  // Statement closing date / billing cycle
+  if (s.includes("statement closing date") || s.includes("billing cycle")) {
+    return {
+      answer: `Your **billing cycle** and **statement closing date** are key to understanding your credit card:
+
+**Billing Cycle:**
+• Typically **28-31 days** depending on the issuer
+• All purchases within this period appear on your statement
+• Starts the day after your previous statement closed
+
+**Statement Closing Date:**
+• The last day of your billing cycle
+• Your **balance on this day is reported to credit bureaus**
+• This is the date that determines your utilization ratio
+
+**Key dates timeline:**
+1. **Statement closes** → Balance is reported to bureaus
+2. **Statement generated** → You receive your bill
+3. **Due date** (21-25 days later) → Deadline to pay to avoid interest
+
+**Pro tip:** To lower your reported utilization, make a payment a few days **before** your statement closing date.`,
+      confidence: 0.95,
+      intent: "credit_education",
+    };
+  }
+
+  // Credit score impact/affect (general question)
+  if ((s.includes("credit score") && (s.includes("affect") || s.includes("impact"))) && !s.includes("which card") && !s.includes("issuer")) {
+    return {
+      answer: `Your **credit score** is affected by five main factors (FICO model):
+
+**1. Payment History (35%)**
+• Pay on time, every time
+• Even one 30-day late payment can drop your score significantly
+
+**2. Credit Utilization (30%)**
+• Keep balances below 30% of your credit limits
+• Under 10% is optimal for the highest scores
+
+**3. Length of Credit History (15%)**
+• Average age of your accounts matters
+• Don't close old cards unnecessarily
+
+**4. Credit Mix (10%)**
+• Having different types of credit (cards, loans, mortgage) helps
+• Don't open accounts just for mix – let it develop naturally
+
+**5. New Credit (10%)**
+• Hard inquiries temporarily lower your score (~5-10 points)
+• Opening several accounts in a short period is risky
+
+**Quick wins:** Pay on time, keep utilization low, don't close old accounts, and limit new applications.`,
+      confidence: 0.95,
+      intent: "credit_education",
+    };
+  }
+
+  return null;
+}
+
 // ============= Intent Classification =============
 
 function classifyIntent(question: string): string {
@@ -254,12 +493,12 @@ CONTEXT FROM TRUSTED SOURCES:
 ${context || "No relevant context available."}
 
 RULES:
-1. ONLY use information from the provided context. If the context doesn't contain relevant information, say "I don't have enough information to answer that accurately" and ask ONE clarifying question.
-2. NEVER hallucinate or make up specific numbers, rates, or product details.
-3. Be conservative and safe with financial advice. Use phrases like "generally" and "typically".
-4. Do NOT provide legal, tax, or investment advice.
-5. Keep answers concise but complete (2-4 paragraphs max).
-6. For card-specific questions without context, recommend checking issuer websites.
+1. For UNIVERSALLY ESTABLISHED credit concepts (utilization, payment timing, interest mechanics, score factors), provide confident answers even without context. These are well-documented facts.
+2. For ISSUER-SPECIFIC details (specific card terms, current rates, specific policies), ONLY use the provided context. If context is insufficient, say "I don't have specific details about that" and recommend checking the issuer's website.
+3. NEVER hallucinate or make up specific numbers, rates, or product details.
+4. Be conservative and safe with financial advice. Use phrases like "generally" and "typically".
+5. Do NOT provide legal, tax, or investment advice.
+6. Keep answers concise but complete (2-4 paragraphs max).
 7. Cite your sources when possible using the source titles from context.
 
 INTENT: ${intent}`;
@@ -522,6 +761,59 @@ Deno.serve(async (req) => {
     }
 
     const { question, include_citations } = validation.data;
+
+    // =====================================================================
+    // STEP 1: Check for DETERMINISTIC answer FIRST (NO OpenAI, NO Pinecone)
+    // This saves tokens and guarantees accurate answers for basic concepts
+    // =====================================================================
+    if (isDeterministicCreditTopic(question)) {
+      const deterministicResult = getDeterministicAnswer(question);
+      
+      if (deterministicResult) {
+        // Increment rate limit (still counts as a question)
+        await incrementRateLimit(supabase, bucket, "ask_credit_question");
+        
+        const latencyMs = Date.now() - startTime;
+        
+        // Log query for audit (source: internal_rules)
+        try {
+          await supabase.from("rag_queries").insert({
+            user_id: userId,
+            ip_hash: ipHash,
+            question,
+            intent: deterministicResult.intent,
+            retrieved_chunks: [], // No external sources used
+            answer: deterministicResult.answer,
+            confidence: deterministicResult.confidence,
+            model: "internal_rules", // No LLM used
+            latency_ms: latencyMs,
+            include_citations: include_citations || false,
+          });
+        } catch (logError) {
+          console.error("Failed to log deterministic query:", logError);
+        }
+
+        // Return immediately - no tokens spent!
+        return new Response(
+          JSON.stringify({
+            answer: deterministicResult.answer,
+            confidence: deterministicResult.confidence,
+            intent: deterministicResult.intent,
+            source: "internal_rules",
+            latency_ms: latencyMs,
+            followups: [
+              "How do hard inquiries affect my score?",
+              "What's the best way to build credit?",
+            ],
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // =====================================================================
+    // STEP 2: RAG path for issuer-specific or complex questions
+    // =====================================================================
 
     // Classify intent
     const intent = classifyIntent(question);
