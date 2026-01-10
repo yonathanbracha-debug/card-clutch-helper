@@ -304,6 +304,146 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_chunks: {
+        Row: {
+          chunk_index: number
+          chunk_text: string
+          created_at: string
+          doc_id: string
+          id: string
+          pinecone_vector_id: string
+          source_id: string
+          token_count: number | null
+        }
+        Insert: {
+          chunk_index: number
+          chunk_text: string
+          created_at?: string
+          doc_id: string
+          id?: string
+          pinecone_vector_id: string
+          source_id: string
+          token_count?: number | null
+        }
+        Update: {
+          chunk_index?: number
+          chunk_text?: string
+          created_at?: string
+          doc_id?: string
+          id?: string
+          pinecone_vector_id?: string
+          source_id?: string
+          token_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_chunks_doc_id_fkey"
+            columns: ["doc_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_chunks_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_documents: {
+        Row: {
+          content_hash: string
+          error: string | null
+          fetched_at: string
+          http_status: number | null
+          id: string
+          raw_html: string | null
+          raw_text: string
+          source_id: string
+        }
+        Insert: {
+          content_hash: string
+          error?: string | null
+          fetched_at?: string
+          http_status?: number | null
+          id?: string
+          raw_html?: string | null
+          raw_text: string
+          source_id: string
+        }
+        Update: {
+          content_hash?: string
+          error?: string | null
+          fetched_at?: string
+          http_status?: number | null
+          id?: string
+          raw_html?: string | null
+          raw_text?: string
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_documents_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_sources: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          issuer: string | null
+          last_fetched_at: string | null
+          last_ingested_at: string | null
+          notes: string | null
+          refresh_interval_days: number
+          status: string
+          title: string
+          trust_tier: number
+          url: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          issuer?: string | null
+          last_fetched_at?: string | null
+          last_ingested_at?: string | null
+          notes?: string | null
+          refresh_interval_days?: number
+          status?: string
+          title: string
+          trust_tier?: number
+          url: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          issuer?: string | null
+          last_fetched_at?: string | null
+          last_ingested_at?: string | null
+          notes?: string | null
+          refresh_interval_days?: number
+          status?: string
+          title?: string
+          trust_tier?: number
+          url?: string
+        }
+        Relationships: []
+      }
       merchant_exclusions: {
         Row: {
           card_id: string
@@ -401,6 +541,54 @@ export type Database = {
           email?: string | null
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      rag_queries: {
+        Row: {
+          answer: string
+          confidence: number
+          created_at: string
+          error: string | null
+          id: string
+          include_citations: boolean
+          intent: string | null
+          ip_hash: string | null
+          latency_ms: number | null
+          model: string | null
+          question: string
+          retrieved_chunks: Json
+          user_id: string | null
+        }
+        Insert: {
+          answer: string
+          confidence?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          include_citations?: boolean
+          intent?: string | null
+          ip_hash?: string | null
+          latency_ms?: number | null
+          model?: string | null
+          question: string
+          retrieved_chunks?: Json
+          user_id?: string | null
+        }
+        Update: {
+          answer?: string
+          confidence?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          include_citations?: boolean
+          intent?: string | null
+          ip_hash?: string | null
+          latency_ms?: number | null
+          model?: string | null
+          question?: string
+          retrieved_chunks?: Json
+          user_id?: string | null
         }
         Relationships: []
       }
