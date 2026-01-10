@@ -11,3 +11,15 @@ verify_jwt = false
 
 [functions.event-log]
 verify_jwt = false
+
+[functions.ask-credit-question]
+verify_jwt = false
+
+[functions.ingest-source]
+verify_jwt = true
+
+[functions.refresh-stale-sources]
+verify_jwt = true
+
+[functions.health-rag]
+verify_jwt = true

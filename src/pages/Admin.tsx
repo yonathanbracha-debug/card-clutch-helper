@@ -16,8 +16,9 @@ import { AdminCatalogQA } from '@/components/admin/AdminCatalogQA';
 import { AdminMerchantReview } from '@/components/admin/AdminMerchantReview';
 import { AdminUsersManager } from '@/components/admin/AdminUsersManager';
 import { AdminWaitlistManager } from '@/components/admin/AdminWaitlistManager';
+import { AdminKnowledgeManager } from '@/components/admin/AdminKnowledgeManager';
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { Shield, CreditCard, Store, ClipboardList, Loader2, LinkIcon, LayoutDashboard, AlertCircle, HeartPulse, FileCheck, Brain, Users, Mail } from 'lucide-react';
+import { Shield, CreditCard, Store, ClipboardList, Loader2, LinkIcon, LayoutDashboard, AlertCircle, HeartPulse, FileCheck, Brain, Users, Mail, BookOpen } from 'lucide-react';
 
 export default function Admin() {
   const { user, loading: authLoading } = useAuth();
@@ -121,6 +122,10 @@ export default function Admin() {
                 <Mail className="w-4 h-4" />
                 Waitlist
               </TabsTrigger>
+              <TabsTrigger value="knowledge" className="gap-2">
+                <BookOpen className="w-4 h-4" />
+                Knowledge
+              </TabsTrigger>
               <TabsTrigger value="logs" className="gap-2">
                 <ClipboardList className="w-4 h-4" />
                 Audit Logs
@@ -165,6 +170,10 @@ export default function Admin() {
 
             <TabsContent value="waitlist">
               <AdminWaitlistManager />
+            </TabsContent>
+
+            <TabsContent value="knowledge">
+              <AdminKnowledgeManager />
             </TabsContent>
 
             <TabsContent value="logs">
