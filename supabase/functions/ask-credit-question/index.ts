@@ -39,6 +39,9 @@ const MIN_RELEVANCE_SCORE = 0.65;
 // Experience levels for response adaptation
 type ExperienceLevel = "beginner" | "intermediate" | "advanced";
 
+// Answer modes for response focus
+type AnswerMode = "quick" | "mechanics" | "action" | "risk";
+
 // Score impact classification
 type ScoreImpact = "none" | "temporary" | "long_term" | "unknown";
 
@@ -49,6 +52,7 @@ interface AskQuestionRequest {
   question: string;
   include_citations?: boolean;
   experience_level?: ExperienceLevel;
+  answer_mode?: AnswerMode;
   user_context?: {
     cards?: string[];
     preferences?: Record<string, unknown>;
@@ -1325,8 +1329,33 @@ async function generateAnswer(
   intent: string,
   openaiKey: string,
   experienceLevel: ExperienceLevel = "intermediate",
+  answerMode: AnswerMode = "quick",
   isHybridSupplement: boolean = false
 ): Promise<string> {
+  // Answer mode-specific instructions
+  const answerModeInstructions: Record<AnswerMode, string> = {
+    quick: `FOCUS: Direct answer only
+- Give the shortest correct answer (1-2 sentences)
+- Skip extended explanations
+- Only include essential actionable advice`,
+    mechanics: `FOCUS: Explain how it works
+- Start with the direct answer
+- Then explain the underlying system rule or mechanism
+- Use plain English, no jargon
+- Explain WHY this happens`,
+    action: `FOCUS: What to do
+- Start with the direct answer
+- Then provide specific, time-based action steps
+- Be concrete: dates, percentages, sequences
+- Prioritize the most impactful action first`,
+    risk: `FOCUS: Full risk analysis
+- Start with the direct answer
+- Explain score impact and timeline
+- Cover edge cases and issuer variations
+- Describe what could go wrong
+- Include tradeoffs and considerations`,
+  };
+
   // CardClutch Master System Prompt - Vertical AI
   const cardclutchSystemPrompt = `You are CardClutch, a deterministic credit-decision engine.
 
@@ -1347,6 +1376,9 @@ USER EXPERIENCE LEVEL: ${experienceLevel.toUpperCase()}
 ${experienceLevel === "beginner" ? "- Use short sentences, no jargon, concrete examples" : ""}
 ${experienceLevel === "intermediate" ? "- Explain full mechanics, introduce terminology" : ""}
 ${experienceLevel === "advanced" ? "- Assume knowledge, include issuer behavior and edge cases" : ""}
+
+ANSWER MODE: ${answerMode.toUpperCase()}
+${answerModeInstructions[answerMode]}
 
 RESPONSE ARCHITECTURE (MANDATORY):
 Structure EVERY answer in this exact format:
@@ -1520,6 +1552,24 @@ function validateRequest(body: unknown): { valid: true; data: AskQuestionRequest
   // include_citations validation
   const includeCitations = req.include_citations === true;
 
+  // experience_level validation
+  let experienceLevel: ExperienceLevel = "intermediate";
+  if (req.experience_level && typeof req.experience_level === "string") {
+    const validLevels: ExperienceLevel[] = ["beginner", "intermediate", "advanced"];
+    if (validLevels.includes(req.experience_level as ExperienceLevel)) {
+      experienceLevel = req.experience_level as ExperienceLevel;
+    }
+  }
+
+  // answer_mode validation
+  let answerMode: AnswerMode = "quick";
+  if (req.answer_mode && typeof req.answer_mode === "string") {
+    const validModes: AnswerMode[] = ["quick", "mechanics", "action", "risk"];
+    if (validModes.includes(req.answer_mode as AnswerMode)) {
+      answerMode = req.answer_mode as AnswerMode;
+    }
+  }
+
   // user_context validation
   let userContext: AskQuestionRequest["user_context"] = undefined;
   if (req.user_context && typeof req.user_context === "object") {
@@ -1546,6 +1596,8 @@ function validateRequest(body: unknown): { valid: true; data: AskQuestionRequest
     data: {
       question,
       include_citations: includeCitations,
+      experience_level: experienceLevel,
+      answer_mode: answerMode,
       user_context: userContext,
     },
   };
@@ -1667,7 +1719,7 @@ Deno.serve(async (req) => {
       return errorResponse(400, validation.error);
     }
 
-    const { question, include_citations } = validation.data;
+    const { question, include_citations, experience_level, answer_mode } = validation.data;
     const intent = classifyIntent(question);
 
     // =====================================================================
@@ -1788,7 +1840,7 @@ Deno.serve(async (req) => {
         // Generate supplement if we have context
         if (context) {
           try {
-            supplementAnswer = await generateAnswer(question, context, intent, openaiKey, "intermediate", true);
+            supplementAnswer = await generateAnswer(question, context, intent, openaiKey, "intermediate", "quick", true);
             const chatInputTokens = estimateTokens(question + context);
             const chatOutputTokens = estimateTokens(supplementAnswer);
             chatTokens = chatInputTokens + chatOutputTokens;
@@ -1905,7 +1957,7 @@ Deno.serve(async (req) => {
 
     let answer: string;
     try {
-      answer = await generateAnswer(question, context, intent, openaiKey, "intermediate", false);
+      answer = await generateAnswer(question, context, intent, openaiKey, experience_level || "intermediate", answer_mode || "quick", false);
       chatInputTokens = estimateTokens(question + context);
       chatOutputTokens = estimateTokens(answer);
     } catch (e) {

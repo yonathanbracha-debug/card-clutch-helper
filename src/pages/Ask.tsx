@@ -1,6 +1,7 @@
 /**
  * Ask Page - Credit Q&A
  * Trust-first, calm experience for credit questions
+ * CardClutch Vertical AI System
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Header } from '@/components/Header';
@@ -26,14 +27,24 @@ import {
   TrendingDown,
   Minus,
   Shield,
+  Zap,
+  Cog,
+  ListChecks,
+  AlertOctagon,
+  User,
+  GraduationCap,
+  Briefcase,
 } from 'lucide-react';
 
 const ASK_DEMO_KEY = 'cardclutch_ask_demo';
 const MAX_ASK_DEMO = 3;
+const ASK_EXPERIENCE_KEY = 'cardclutch_experience_level';
 
 // Score impact types
 type ScoreImpact = 'none' | 'temporary' | 'long_term' | 'unknown';
 type ConfidenceLevel = 'high' | 'issuer_dependent' | 'situational' | 'insufficient_data';
+type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
+type AnswerMode = 'quick' | 'mechanics' | 'action' | 'risk';
 
 interface Message {
   id: string;
@@ -54,6 +65,21 @@ interface Message {
   isMyth?: boolean;
   mythCorrection?: string | null;
 }
+
+// Answer Mode configurations
+const ANSWER_MODES: { id: AnswerMode; label: string; icon: typeof Zap; description: string }[] = [
+  { id: 'quick', label: 'Quick Answer', icon: Zap, description: 'Direct answer only' },
+  { id: 'mechanics', label: 'Explain Mechanics', icon: Cog, description: 'How it works' },
+  { id: 'action', label: 'What To Do', icon: ListChecks, description: 'Actionable steps' },
+  { id: 'risk', label: 'Risk Analysis', icon: AlertOctagon, description: 'Full risk breakdown' },
+];
+
+// Experience Level configurations
+const EXPERIENCE_LEVELS: { id: ExperienceLevel; label: string; icon: typeof User }[] = [
+  { id: 'beginner', label: 'Beginner', icon: User },
+  { id: 'intermediate', label: 'Intermediate', icon: GraduationCap },
+  { id: 'advanced', label: 'Advanced', icon: Briefcase },
+];
 
 // Score Impact Badge Component
 function ScoreImpactBadge({ impact }: { impact: ScoreImpact }) {
@@ -129,9 +155,12 @@ export default function Ask() {
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [demoState, setDemoState] = useState<AskDemoState>({ count: 0 });
   const [expandedCitations, setExpandedCitations] = useState<Set<string>>(new Set());
+  const [answerMode, setAnswerMode] = useState<AnswerMode>('quick');
+  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('beginner');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Load demo state
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -145,11 +174,33 @@ export default function Ask() {
     }
   }, []);
 
+  // Load persisted experience level
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(ASK_EXPERIENCE_KEY);
+        if (stored && ['beginner', 'intermediate', 'advanced'].includes(stored)) {
+          setExperienceLevel(stored as ExperienceLevel);
+        }
+      } catch {
+        // Ignore
+      }
+    }
+  }, []);
+
+  // Persist demo state
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(ASK_DEMO_KEY, JSON.stringify(demoState));
     }
   }, [demoState]);
+
+  // Persist experience level
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(ASK_EXPERIENCE_KEY, experienceLevel);
+    }
+  }, [experienceLevel]);
 
   const isLoggedIn = !!user;
   const canAsk = isLoggedIn || demoState.count < MAX_ASK_DEMO;
@@ -187,6 +238,8 @@ export default function Ask() {
         body: {
           question: question.trim(),
           include_citations: true,
+          experience_level: experienceLevel,
+          answer_mode: answerMode,
         },
       });
 
@@ -280,7 +333,7 @@ export default function Ask() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-            className="mb-8"
+            className="mb-6"
           >
             <span className="pill-secondary mb-4">
               <MessageSquare className="w-3.5 h-3.5" />
@@ -298,6 +351,69 @@ export default function Ask() {
                 {remaining} free question{remaining !== 1 ? 's' : ''} remaining
               </p>
             )}
+          </motion.div>
+
+          {/* Controls Panel */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="mb-6 space-y-4"
+          >
+            {/* Experience Level Selector */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                Experience:
+              </span>
+              <div className="flex items-center gap-1.5">
+                {EXPERIENCE_LEVELS.map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => setExperienceLevel(id)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
+                      experienceLevel === id
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="w-3 h-3" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Answer Mode Toggle */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                Mode:
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {ANSWER_MODES.map(({ id, label, icon: Icon, description }) => (
+                  <button
+                    key={id}
+                    onClick={() => setAnswerMode(id)}
+                    title={description}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
+                      answerMode === id
+                        ? "bg-accent text-accent-foreground"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="w-3 h-3" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Conservative Mode Indicator */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Shield className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Conservative Mode Active — We avoid aggressive strategies.</span>
+            </div>
           </motion.div>
 
           {/* Messages */}
