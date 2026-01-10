@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PageViewTracker } from "@/hooks/usePageView";
+import { Suspense, lazy } from "react";
 import Index from "./pages/Index";
 import Vault from "./pages/Vault";
 import WalletGated from "./pages/WalletGated";
@@ -27,6 +28,9 @@ import Dashboard from "./pages/Dashboard";
 import Ask from "./pages/Ask";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "@/contexts/AuthContext";
+
+// Lazy load the heavy Lab page (3D)
+const Lab = lazy(() => import("./pages/Lab"));
 
 const queryClient = new QueryClient();
 
@@ -76,6 +80,19 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/ask" element={<Ask />} />
               
+              {/* Lab route (lazy loaded for 3D experiments) */}
+              <Route 
+                path="/lab/hero" 
+                element={
+                  <Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-background">
+                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  }>
+                    <Lab />
+                  </Suspense>
+                } 
+              />
               {/* Admin route (protected by component) */}
               <Route path="/admin" element={<Admin />} />
               

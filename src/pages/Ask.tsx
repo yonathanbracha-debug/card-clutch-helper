@@ -5,6 +5,7 @@ import { AmbientBackground } from '@/components/marketing/AmbientBackground';
 import { Button } from '@/components/ui/button';
 import { ConfidenceMeter } from '@/components/ConfidenceMeter';
 import { DemoLimitModal } from '@/components/DemoLimitModal';
+import { AIVoiceInput } from '@/components/ui/ai-voice-input';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -186,6 +187,11 @@ export default function Ask() {
     });
   };
 
+  const handleVoiceTranscript = (text: string) => {
+    setInputValue(text);
+    textareaRef.current?.focus();
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <AmbientBackground />
@@ -328,7 +334,15 @@ export default function Ask() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
+          {/* Voice Input */}
+          <div className="mb-3">
+            <AIVoiceInput 
+              onTranscript={handleVoiceTranscript} 
+              disabled={isLoading}
+            />
+          </div>
+
+          {/* Text Input */}
           <div className="sticky bottom-0 bg-transparent pt-2">
             <div className="relative">
               <textarea
