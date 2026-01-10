@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { ConfidenceMeter } from '@/components/ConfidenceMeter';
 import { DemoLimitModal } from '@/components/DemoLimitModal';
 import { AIVoiceInput } from '@/components/ui/ai-voice-input';
+import { CalibrationQuestions, CalibrationResult } from '@/components/ask/CalibrationQuestions';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,8 @@ import {
 const ASK_DEMO_KEY = 'cardclutch_ask_demo';
 const MAX_ASK_DEMO = 3;
 const ASK_EXPERIENCE_KEY = 'cardclutch_experience_level';
+const ASK_CALIBRATION_KEY = 'cardclutch_calibration_complete';
+const ASK_MYTH_FLAGS_KEY = 'cardclutch_myth_flags';
 
 // Score impact types
 type ScoreImpact = 'none' | 'temporary' | 'long_term' | 'unknown';
@@ -157,6 +160,8 @@ export default function Ask() {
   const [expandedCitations, setExpandedCitations] = useState<Set<string>>(new Set());
   const [answerMode, setAnswerMode] = useState<AnswerMode>('quick');
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('beginner');
+  const [calibrationComplete, setCalibrationComplete] = useState(false);
+  const [mythFlags, setMythFlags] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -174,13 +179,23 @@ export default function Ask() {
     }
   }, []);
 
-  // Load persisted experience level
+  // Load persisted experience level and calibration state
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem(ASK_EXPERIENCE_KEY);
         if (stored && ['beginner', 'intermediate', 'advanced'].includes(stored)) {
           setExperienceLevel(stored as ExperienceLevel);
+        }
+        
+        const calibrationDone = localStorage.getItem(ASK_CALIBRATION_KEY);
+        if (calibrationDone === 'true') {
+          setCalibrationComplete(true);
+        }
+        
+        const storedMythFlags = localStorage.getItem(ASK_MYTH_FLAGS_KEY);
+        if (storedMythFlags) {
+          setMythFlags(JSON.parse(storedMythFlags));
         }
       } catch {
         // Ignore
@@ -201,6 +216,27 @@ export default function Ask() {
       localStorage.setItem(ASK_EXPERIENCE_KEY, experienceLevel);
     }
   }, [experienceLevel]);
+
+  // Handle calibration completion
+  const handleCalibrationComplete = (result: CalibrationResult) => {
+    setExperienceLevel(result.experienceLevel);
+    setMythFlags(result.mythFlags);
+    setCalibrationComplete(true);
+    
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(ASK_CALIBRATION_KEY, 'true');
+      localStorage.setItem(ASK_EXPERIENCE_KEY, result.experienceLevel);
+      localStorage.setItem(ASK_MYTH_FLAGS_KEY, JSON.stringify(result.mythFlags));
+    }
+  };
+
+  const handleCalibrationSkip = () => {
+    setCalibrationComplete(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(ASK_CALIBRATION_KEY, 'true');
+    }
+  };
 
   const isLoggedIn = !!user;
   const canAsk = isLoggedIn || demoState.count < MAX_ASK_DEMO;
@@ -321,6 +357,24 @@ export default function Ask() {
     setInputValue(text);
     textareaRef.current?.focus();
   };
+
+  // Show calibration for first-time users
+  if (!calibrationComplete && messages.length === 0) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <main className="flex-1 pt-20 pb-6">
+          <div className="container-main py-12">
+            <CalibrationQuestions 
+              onComplete={handleCalibrationComplete}
+              onSkip={handleCalibrationSkip}
+            />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
