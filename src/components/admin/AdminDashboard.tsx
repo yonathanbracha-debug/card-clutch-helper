@@ -17,9 +17,23 @@ import {
   UserPlus,
   BarChart3,
   AlertTriangle,
-  ExternalLink
+  ExternalLink,
+  Brain,
+  DollarSign
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+interface AskAIMetrics {
+  totalQuestions: number;
+  deterministicCount: number;
+  ragCount: number;
+  hybridCount: number;
+  errorCount: number;
+  deterministicPercent: number;
+  avgLatencyMs: number;
+  totalEstimatedCostUsd: number;
+  costPerQuestion: number;
+}
 
 interface DashboardMetrics {
   totalUsers: number;
@@ -55,6 +69,7 @@ interface DashboardMetrics {
       issues: string[];
     }>;
   };
+  askAI: AskAIMetrics;
 }
 
 export function AdminDashboard() {
@@ -76,6 +91,7 @@ export function AdminDashboard() {
           openReportsResult,
           resolvedReportsResult,
           cardsResult,
+          ragQueriesResult,
         ] = await Promise.all([
           // Total users
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
@@ -103,6 +119,12 @@ export function AdminDashboard() {
             .from('credit_cards')
             .select('id, name, annual_fee_cents, last_verified_at, image_url, terms_url, source_url')
             .eq('is_active', true),
+          
+          // RAG queries for Ask AI metrics (last 7 days)
+          supabase
+            .from('rag_queries')
+            .select('model, latency_ms, confidence, retrieved_chunks')
+            .gte('created_at', sevenDaysAgo),
         ]);
 
         const events = allEventsResult.data || [];
@@ -210,6 +232,41 @@ export function AdminDashboard() {
           e.created_at >= oneDayAgo
         ).length;
 
+        // Calculate Ask AI metrics
+        const ragQueries = ragQueriesResult.data || [];
+        let deterministicCount = 0;
+        let ragCount = 0;
+        let hybridCount = 0;
+        let errorCount = 0;
+        let totalLatency = 0;
+        let totalCost = 0;
+
+        ragQueries.forEach((q: any) => {
+          const metrics = q.retrieved_chunks?.metrics;
+          if (metrics?.route === 'deterministic') deterministicCount++;
+          else if (metrics?.route === 'rag') ragCount++;
+          else if (metrics?.route === 'hybrid') hybridCount++;
+          else if (metrics?.route === 'error' || q.confidence === 0) errorCount++;
+          else if (q.model === 'internal_rules') deterministicCount++;
+          else ragCount++;
+
+          totalLatency += q.latency_ms || 0;
+          totalCost += metrics?.estimated_cost_usd || 0;
+        });
+
+        const totalQuestions = ragQueries.length;
+        const askAI: AskAIMetrics = {
+          totalQuestions,
+          deterministicCount,
+          ragCount,
+          hybridCount,
+          errorCount,
+          deterministicPercent: totalQuestions > 0 ? Math.round((deterministicCount / totalQuestions) * 100) : 0,
+          avgLatencyMs: totalQuestions > 0 ? Math.round(totalLatency / totalQuestions) : 0,
+          totalEstimatedCostUsd: Math.round(totalCost * 10000) / 10000,
+          costPerQuestion: totalQuestions > 0 ? Math.round((totalCost / totalQuestions) * 10000) / 10000 : 0,
+        };
+
         setMetrics({
           totalUsers: usersResult.count || 0,
           activeUsersToday: todayVisitors.size,
@@ -234,6 +291,7 @@ export function AdminDashboard() {
             staleCards,
             cardsNeedingAttention,
           },
+          askAI,
         });
       } catch (err) {
         console.error('Failed to fetch metrics:', err);
