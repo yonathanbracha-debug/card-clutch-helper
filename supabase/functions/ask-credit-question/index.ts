@@ -36,13 +36,36 @@ const MAX_CARDS = 20;
 const PINECONE_TOP_K = 6;
 const MIN_RELEVANCE_SCORE = 0.65;
 
+// Experience levels for response adaptation
+type ExperienceLevel = "beginner" | "intermediate" | "advanced";
+
+// Score impact classification
+type ScoreImpact = "none" | "temporary" | "long_term" | "unknown";
+
+// Confidence classification
+type ConfidenceLevel = "high" | "issuer_dependent" | "situational" | "insufficient_data";
+
 interface AskQuestionRequest {
   question: string;
   include_citations?: boolean;
+  experience_level?: ExperienceLevel;
   user_context?: {
     cards?: string[];
     preferences?: Record<string, unknown>;
   };
+}
+
+// Structured response format following 5-layer architecture
+interface StructuredAnswer {
+  direct_answer: string;
+  mechanical_reason: string;
+  action_items: string[];
+  extended_detail?: string;
+  confidence_anchor: string;
+  score_impact: ScoreImpact;
+  confidence_level: ConfidenceLevel;
+  is_myth?: boolean;
+  myth_correction?: string;
 }
 
 interface PineconeMatch {
@@ -97,6 +120,93 @@ const ISSUER_KEYWORDS = [
   "amex", "american express", "chase", "citi", "citibank", "capital one",
   "discover", "wells fargo", "bank of america", "barclays", "us bank",
 ];
+
+// ============= Myth Detection =============
+// Common credit myths that should be corrected proactively
+
+interface MythPattern {
+  id: string;
+  matchers: (q: string) => boolean;
+  myth: string;
+  correction: string;
+}
+
+const CREDIT_MYTHS: MythPattern[] = [
+  {
+    id: "carry_balance",
+    matchers: (q) => {
+      const s = q.toLowerCase();
+      return (
+        (s.includes("carry") && s.includes("balance")) ||
+        (s.includes("keep") && s.includes("balance")) ||
+        (s.includes("need") && s.includes("balance") && s.includes("build")) ||
+        s.includes("balance to build credit")
+      );
+    },
+    myth: "You need to carry a balance to build credit.",
+    correction: "You do not need to carry a balance. Pay in full every month. Interest payments do not help your score.",
+  },
+  {
+    id: "interest_builds_credit",
+    matchers: (q) => {
+      const s = q.toLowerCase();
+      return (
+        (s.includes("paying interest") && s.includes("credit")) ||
+        (s.includes("interest") && s.includes("build")) ||
+        s.includes("interest helps credit")
+      );
+    },
+    myth: "Paying interest builds credit.",
+    correction: "Interest payments have zero effect on your credit score. They only cost you money.",
+  },
+  {
+    id: "closing_always_hurts",
+    matchers: (q) => {
+      const s = q.toLowerCase();
+      return (
+        s.includes("closing") && s.includes("card") && 
+        (s.includes("always") || s.includes("hurt") || s.includes("bad"))
+      );
+    },
+    myth: "Closing a credit card always hurts your score.",
+    correction: "The impact depends on your utilization and average account age. Sometimes closing is the right choice.",
+  },
+  {
+    id: "checking_score_hurts",
+    matchers: (q) => {
+      const s = q.toLowerCase();
+      return (
+        (s.includes("check") && s.includes("score") && s.includes("hurt")) ||
+        (s.includes("check") && s.includes("credit") && s.includes("bad")) ||
+        s.includes("checking my own credit")
+      );
+    },
+    myth: "Checking your own credit score hurts it.",
+    correction: "Checking your own credit is a soft pull. It has zero effect on your score.",
+  },
+  {
+    id: "more_cards_bad",
+    matchers: (q) => {
+      const s = q.toLowerCase();
+      return (
+        (s.includes("too many") && s.includes("card")) ||
+        (s.includes("many cards") && s.includes("bad")) ||
+        (s.includes("number of cards") && s.includes("hurt"))
+      );
+    },
+    myth: "Having too many credit cards is always bad.",
+    correction: "Number of cards matters less than how you use them. More credit can lower utilization, which helps your score.",
+  },
+];
+
+function detectMyth(question: string): MythPattern | null {
+  for (const myth of CREDIT_MYTHS) {
+    if (myth.matchers(question)) {
+      return myth;
+    }
+  }
+  return null;
+}
 
 // ============= Utility Functions =============
 
@@ -1214,12 +1324,62 @@ async function generateAnswer(
   context: string,
   intent: string,
   openaiKey: string,
+  experienceLevel: ExperienceLevel = "intermediate",
   isHybridSupplement: boolean = false
 ): Promise<string> {
-  const basePrompt = isHybridSupplement
-    ? `You are supplementing an already-correct general explanation with issuer-specific or regulatory nuance only.
+  // CardClutch Master System Prompt - Vertical AI
+  const cardclutchSystemPrompt = `You are CardClutch, a deterministic credit-decision engine.
 
-The user has already received a complete answer about the general credit concept. Your job is ONLY to add:
+IDENTITY:
+- You are NOT a chatbot or general assistant
+- You behave like a credit bureau analyst or risk officer
+- Your primary objective is accuracy, predictability, and user trust
+- If there is no optimization, explicitly say so
+
+CORE PHILOSOPHY (NON-NEGOTIABLE):
+- Clarity beats cleverness
+- Conservatism beats optimization  
+- Silence beats speculation
+- Rules beat heuristics
+- Trust beats engagement
+
+USER EXPERIENCE LEVEL: ${experienceLevel.toUpperCase()}
+${experienceLevel === "beginner" ? "- Use short sentences, no jargon, concrete examples" : ""}
+${experienceLevel === "intermediate" ? "- Explain full mechanics, introduce terminology" : ""}
+${experienceLevel === "advanced" ? "- Assume knowledge, include issuer behavior and edge cases" : ""}
+
+RESPONSE ARCHITECTURE (MANDATORY):
+Structure EVERY answer in this exact format:
+
+**Short answer:** [1-2 lines, no hedging, no disclaimers]
+
+**Why this happens:** [Explain the system rule that causes this outcome. Plain English.]
+
+**What to do:** [Specific, time-based when possible, no vague advice]
+
+**Confidence:** [One of: High certainty | Issuer-dependent | Situational | Insufficient data]
+
+CONTEXT FROM TRUSTED SOURCES:
+${context || "No relevant context available."}
+
+RULES:
+1. For UNIVERSAL credit concepts, provide confident answers
+2. For ISSUER-SPECIFIC details, ONLY use provided context
+3. NEVER hallucinate specific numbers, rates, or product details
+4. Be conservative. Use "generally" and "typically" for uncertain cases
+5. Do NOT provide legal, tax, or investment advice
+6. If the best advice is "do nothing", say so explicitly
+7. No emojis, no hype, no motivational language
+
+FAILURE MODES TO AVOID:
+- Over-verbosity
+- Vague optimization ("it depends" without explanation)
+- Generic financial advice
+- Chatbot personality`;
+
+  const hybridSupplementPrompt = `You are supplementing an already-correct general explanation with issuer-specific details only.
+
+The user already received a complete answer. Your job is ONLY to add:
 1. Issuer-specific details that differ from the general rule
 2. Any regulatory nuances that apply
 
@@ -1227,24 +1387,13 @@ CONTEXT FROM TRUSTED SOURCES:
 ${context || "No relevant context available."}
 
 RULES:
-1. Do NOT repeat the general explanation - it's already been provided.
-2. Start with "**Issuer-specific note:**" or similar.
-3. If context is insufficient for issuer-specific details, say "I couldn't verify specific details about [issuer]. Check their website for the most accurate information."
-4. Keep response brief - 1-2 paragraphs max.
-5. Be conservative and don't make up issuer-specific details.`
-    : `You are CardClutch's credit expert assistant. You provide accurate, helpful information about credit cards, credit scores, and personal finance.
+1. Do NOT repeat the general explanation
+2. Start with "**Issuer-specific:**" 
+3. If context is insufficient, say "I couldn't verify specific details about this issuer."
+4. Keep response to 1-2 paragraphs max
+5. Be conservative - don't make up issuer-specific details`;
 
-CONTEXT FROM TRUSTED SOURCES:
-${context || "No relevant context available."}
-
-RULES:
-1. For UNIVERSALLY ESTABLISHED credit concepts (utilization, payment timing, interest mechanics, score factors), provide confident answers even without context.
-2. For ISSUER-SPECIFIC details (specific card terms, current rates, specific policies), ONLY use the provided context. If context is insufficient, say "I don't have specific details about that" and recommend checking the issuer's website.
-3. NEVER hallucinate or make up specific numbers, rates, or product details.
-4. Be conservative and safe with financial advice. Use phrases like "generally" and "typically".
-5. Do NOT provide legal, tax, or investment advice.
-6. Keep answers concise but complete (2-4 paragraphs max).
-7. Cite your sources when possible using the source titles from context.`;
+  const basePrompt = isHybridSupplement ? hybridSupplementPrompt : cardclutchSystemPrompt;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -1569,14 +1718,21 @@ Deno.serve(async (req) => {
         console.error("Failed to log deterministic query:", logError);
       }
 
+      // Check for myth detection
+      const myth = detectMyth(question);
+      
       return new Response(
         JSON.stringify({
           answer,
           confidence: matchingRule.confidence,
+          confidence_level: "high" as ConfidenceLevel,
+          score_impact: "unknown" as ScoreImpact,
           intent: "credit_education",
           source: "internal_rules",
           latency_ms: metrics.latency_ms,
           route: "deterministic",
+          is_myth: !!myth,
+          myth_correction: myth?.correction || null,
           followups: [
             "How do hard inquiries affect my score?",
             "What's the best way to build credit?",
@@ -1632,7 +1788,7 @@ Deno.serve(async (req) => {
         // Generate supplement if we have context
         if (context) {
           try {
-            supplementAnswer = await generateAnswer(question, context, intent, openaiKey, true);
+            supplementAnswer = await generateAnswer(question, context, intent, openaiKey, "intermediate", true);
             const chatInputTokens = estimateTokens(question + context);
             const chatOutputTokens = estimateTokens(supplementAnswer);
             chatTokens = chatInputTokens + chatOutputTokens;
@@ -1749,7 +1905,7 @@ Deno.serve(async (req) => {
 
     let answer: string;
     try {
-      answer = await generateAnswer(question, context, intent, openaiKey);
+      answer = await generateAnswer(question, context, intent, openaiKey, "intermediate", false);
       chatInputTokens = estimateTokens(question + context);
       chatOutputTokens = estimateTokens(answer);
     } catch (e) {
@@ -1809,12 +1965,25 @@ Deno.serve(async (req) => {
       console.error("Failed to log query:", logError);
     }
 
+    // Detect myth for RAG path as well
+    const myth = detectMyth(question);
+    
+    // Determine confidence level based on confidence score
+    const confidenceLevel: ConfidenceLevel = 
+      confidence >= 0.85 ? "high" :
+      confidence >= 0.7 ? "issuer_dependent" :
+      confidence >= 0.5 ? "situational" : "insufficient_data";
+
     const response: Record<string, unknown> = {
       answer,
       confidence,
+      confidence_level: confidenceLevel,
+      score_impact: "unknown" as ScoreImpact,
       intent,
       latency_ms: metrics.latency_ms,
       route: "rag",
+      is_myth: !!myth,
+      myth_correction: myth?.correction || null,
     };
 
     if (include_citations && citations.length > 0) {
