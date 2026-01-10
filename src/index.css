@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -119,6 +119,18 @@
     @apply tracking-tight font-semibold;
     font-family: 'Inter', system-ui, sans-serif;
   }
+
+  /* Aura dark mode overrides for homepage */
+  .aura-mode {
+    --background: 0 0% 2%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 95%;
+    --card-hover: 0 0% 7%;
+    --border: 0 0% 12%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 55%;
+  }
 }
 
 @layer components {
@@ -134,6 +146,29 @@
   .surface-elevated {
     @apply bg-card border border-border;
     box-shadow: var(--shadow-md);
+  }
+
+  /* Aura glass panel styles */
+  .glass-panel {
+    background: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  .glass-panel-inner {
+    background: hsl(var(--background) / 0.4);
+    border: 1px solid hsl(var(--border) / 0.3);
+  }
+
+  /* Aura base background */
+  .bg-aura-base {
+    background-color: hsl(0 0% 2%);
+  }
+
+  /* Mono accent font */
+  .font-mono-accent {
+    font-family: 'Space Mono', 'JetBrains Mono', monospace;
   }
 }
 
@@ -227,5 +262,25 @@
 @keyframes loader-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Floating animation for hero dashboard mock */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float {
+    animation: none;
   }
 }
