@@ -901,7 +901,51 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      rag_queries_public: {
+        Row: {
+          answer: string | null
+          confidence: number | null
+          created_at: string | null
+          error: string | null
+          id: string | null
+          include_citations: boolean | null
+          intent: string | null
+          latency_ms: number | null
+          model: string | null
+          question: string | null
+          retrieved_chunks: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          answer?: string | null
+          confidence?: number | null
+          created_at?: string | null
+          error?: string | null
+          id?: string | null
+          include_citations?: boolean | null
+          intent?: string | null
+          latency_ms?: number | null
+          model?: string | null
+          question?: string | null
+          retrieved_chunks?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          answer?: string | null
+          confidence?: number | null
+          created_at?: string | null
+          error?: string | null
+          id?: string | null
+          include_citations?: boolean | null
+          intent?: string | null
+          latency_ms?: number | null
+          model?: string | null
+          question?: string | null
+          retrieved_chunks?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       cleanup_old_rate_limits: { Args: never; Returns: number }
