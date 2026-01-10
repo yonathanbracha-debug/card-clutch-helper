@@ -1,6 +1,6 @@
 /**
- * PhilosophySection - Sticky left visual with scroll-right narrative blocks
- * CSS-only abstract visual (gradient + grid + rings)
+ * PhilosophySection - Clean narrative blocks without the big square
+ * Typography-focused with subtle visual accents
  */
 import { cn } from '@/lib/utils';
 import { GlassPanel } from './GlassPanel';
@@ -30,79 +30,43 @@ interface PhilosophySectionProps {
 export function PhilosophySection({ className }: PhilosophySectionProps) {
   return (
     <section className={cn("py-24 border-t border-border", className)}>
-      <div className="container max-w-6xl mx-auto px-4">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16">
-          {/* Left: Sticky abstract visual */}
-          <div className="lg:sticky lg:top-32 lg:self-start">
-            <div className="relative aspect-square max-w-md mx-auto">
-              {/* Grid background */}
-              <div 
-                className="absolute inset-0 opacity-20"
-                style={{
-                  backgroundImage: `
-                    linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
-                    linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)
-                  `,
-                  backgroundSize: '40px 40px',
-                }}
-              />
-              
-              {/* Concentric rings */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-3/4 h-3/4 rounded-full border border-border/30" />
-              </div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-1/2 h-1/2 rounded-full border border-border/40" />
-              </div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-1/4 h-1/4 rounded-full border border-border/50 bg-primary/5" />
-              </div>
-              
-              {/* Center gradient glow */}
-              <div 
-                className="absolute inset-0 flex items-center justify-center"
-                style={{
-                  background: 'radial-gradient(circle at center, hsl(var(--primary) / 0.15) 0%, transparent 50%)'
-                }}
-              />
-              
-              {/* Corner accent lines */}
-              <div className="absolute top-0 left-0 w-16 h-px bg-gradient-to-r from-primary/50 to-transparent" />
-              <div className="absolute top-0 left-0 w-px h-16 bg-gradient-to-b from-primary/50 to-transparent" />
-              <div className="absolute bottom-0 right-0 w-16 h-px bg-gradient-to-l from-primary/50 to-transparent" />
-              <div className="absolute bottom-0 right-0 w-px h-16 bg-gradient-to-t from-primary/50 to-transparent" />
-            </div>
-          </div>
+      <div className="container max-w-4xl mx-auto px-4">
+        {/* Section header - centered */}
+        <div className="text-center mb-16">
+          <span className="font-mono-accent text-xs uppercase tracking-wider text-primary mb-4 block">
+            Philosophy
+          </span>
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+            A different approach to credit
+          </h2>
+        </div>
 
-          {/* Right: Philosophy blocks */}
-          <div className="space-y-8">
-            <div className="mb-12">
-              <span className="font-mono text-xs uppercase tracking-wider text-primary mb-4 block">
-                Philosophy
+        {/* Philosophy blocks - clean vertical stack */}
+        <div className="space-y-6">
+          {philosophyBlocks.map((block, index) => (
+            <div 
+              key={block.number}
+              className={cn(
+                "relative pl-8 md:pl-12 py-6",
+                index !== philosophyBlocks.length - 1 && "border-b border-border/50"
+              )}
+            >
+              {/* Number accent */}
+              <span className="absolute left-0 top-6 font-mono-accent text-sm text-primary/40">
+                {block.number}
               </span>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-                A different approach to credit
-              </h2>
+              
+              {/* Vertical line accent */}
+              <div className="absolute left-5 md:left-7 top-8 bottom-0 w-px bg-gradient-to-b from-primary/20 to-transparent" />
+              
+              <h3 className="text-xl font-semibold text-foreground mb-3">
+                {block.title}
+              </h3>
+              <p className="text-muted-foreground leading-relaxed max-w-2xl">
+                {block.description}
+              </p>
             </div>
-
-            {philosophyBlocks.map((block) => (
-              <GlassPanel key={block.number} hover className="group">
-                <div className="flex gap-4">
-                  <span className="font-mono text-sm text-primary/60 shrink-0">
-                    {block.number}
-                  </span>
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
-                      {block.title}
-                    </h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {block.description}
-                    </p>
-                  </div>
-                </div>
-              </GlassPanel>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
     </section>
