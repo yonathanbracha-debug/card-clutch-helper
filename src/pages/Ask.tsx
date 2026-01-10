@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { AmbientBackground } from '@/components/marketing/AmbientBackground';
 import { Button } from '@/components/ui/button';
 import { ConfidenceMeter } from '@/components/ConfidenceMeter';
 import { DemoLimitModal } from '@/components/DemoLimitModal';
@@ -18,6 +19,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 const ASK_DEMO_KEY = 'cardclutch_ask_demo';
 const MAX_ASK_DEMO = 3;
@@ -61,7 +63,6 @@ export default function Ask() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load demo state from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -75,7 +76,6 @@ export default function Ask() {
     }
   }, []);
 
-  // Save demo state
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(ASK_DEMO_KEY, JSON.stringify(demoState));
@@ -121,11 +121,8 @@ export default function Ask() {
         },
       });
 
-      // Handle function invocation errors
       if (error) {
         let errorMsg = 'Something went wrong. Please try again.';
-        
-        // Parse error message for specific cases
         const errStr = error.message?.toLowerCase() || '';
         if (errStr.includes('429') || errStr.includes('rate')) {
           errorMsg = 'You\'re asking questions too quickly. Please wait a moment and try again.';
@@ -134,15 +131,11 @@ export default function Ask() {
         } else if (errStr.includes('503') || errStr.includes('busy')) {
           errorMsg = 'AI service is busy. Please try again in a moment.';
         }
-        
         throw new Error(errorMsg);
       }
 
-      // Handle error responses in the data body
       if (data?.error) {
         let errorMsg = data.error;
-        
-        // User-friendly messages for specific error types
         if (data.error === 'rate_limited') {
           errorMsg = data.message || 'Rate limited. Please wait and try again.';
         } else if (typeof data.error === 'string' && data.error.includes('quota')) {
@@ -150,11 +143,9 @@ export default function Ask() {
         } else if (typeof data.error === 'string' && data.error.includes('busy')) {
           errorMsg = 'AI service is busy. Please try again in a moment.';
         }
-        
         throw new Error(errorMsg);
       }
 
-      // Validate we got an answer
       if (!data?.answer) {
         throw new Error('No response received. Please try again.');
       }
@@ -171,14 +162,11 @@ export default function Ask() {
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Increment demo counter for non-logged-in users
       if (!isLoggedIn) {
         setDemoState(prev => ({ count: prev.count + 1 }));
       }
     } catch (err) {
       console.error('Ask error:', err);
-      
-      // NEVER blank screen - always show a friendly error message in chat
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -219,23 +207,25 @@ export default function Ask() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background dark flex flex-col">
+      <AmbientBackground />
       <Header />
       
-      <main className="flex-1 pt-20 pb-6">
+      <main className="flex-1 pt-20 pb-6 relative z-10">
         <div className="container max-w-3xl mx-auto px-4 h-full flex flex-col">
           {/* Header section */}
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
-              <Sparkles className="w-4 h-4" />
-              AI-Powered Credit Expert
-            </div>
-            <h1 className="text-3xl font-bold mb-2">Ask CardClutch</h1>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              Get reliable answers about credit scores, cards, and personal finance backed by trusted sources.
+          <div className="mb-8">
+            <span className="font-mono-accent text-xs uppercase tracking-widest text-primary mb-4 block">
+              Ask Credit AI
+            </span>
+            <h1 className="text-3xl md:text-4xl font-light text-foreground mb-3">
+              Get answers about credit
+            </h1>
+            <p className="text-muted-foreground max-w-lg">
+              Reliable answers about credit scores, cards, and personal finance backed by trusted sources.
             </p>
             {!isLoggedIn && remaining > 0 && remaining !== Infinity && (
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-sm text-muted-foreground mt-3 font-mono-accent">
                 {remaining} free question{remaining !== 1 ? 's' : ''} remaining
               </p>
             )}
@@ -246,7 +236,7 @@ export default function Ask() {
             {messages.length === 0 ? (
               <div className="space-y-6">
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 rounded-full border border-border bg-card/30 flex items-center justify-center mx-auto mb-4">
                     <MessageCircle className="w-8 h-8 text-primary" />
                   </div>
                   <p className="text-muted-foreground mb-6">
@@ -259,11 +249,11 @@ export default function Ask() {
                     <button
                       key={i}
                       onClick={() => handleExampleClick(prompt)}
-                      className="text-left px-4 py-3 rounded-lg border border-border bg-card hover:bg-card-hover transition-colors text-sm group"
+                      className="text-left px-4 py-3 rounded-lg border border-border bg-card/30 hover:bg-card/50 hover:border-border/80 transition-all text-sm group"
                     >
                       <div className="flex items-center gap-3">
                         <HelpCircle className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                        <span>{prompt}</span>
+                        <span className="text-muted-foreground group-hover:text-foreground transition-colors">{prompt}</span>
                       </div>
                     </button>
                   ))}
@@ -285,12 +275,12 @@ export default function Ask() {
                   >
                     <div
                       className={cn(
-                        "max-w-[85%] rounded-2xl px-4 py-3",
+                        "max-w-[85%] rounded-lg px-4 py-3",
                         message.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
+                          ? 'bg-foreground text-background'
                           : message.isError
                           ? 'bg-destructive/10 border border-destructive/20'
-                          : 'bg-muted'
+                          : 'bg-card/50 border border-border'
                       )}
                     >
                       {message.isError && (
@@ -371,7 +361,7 @@ export default function Ask() {
                     animate={{ opacity: 1, y: 0 }}
                     className="flex justify-start"
                   >
-                    <div className="bg-muted rounded-2xl px-4 py-3">
+                    <div className="bg-card/50 border border-border rounded-lg px-4 py-3">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Loader2 className="w-4 h-4 animate-spin" />
                         <span className="text-sm">Thinking...</span>
@@ -385,7 +375,7 @@ export default function Ask() {
           </div>
 
           {/* Input area */}
-          <div className="sticky bottom-0 bg-background pt-2">
+          <div className="sticky bottom-0 bg-transparent pt-2">
             <div className="relative">
               <textarea
                 ref={textareaRef}
@@ -396,9 +386,9 @@ export default function Ask() {
                 disabled={isLoading}
                 rows={1}
                 className={cn(
-                  "w-full resize-none rounded-xl border border-border bg-card px-4 py-3 pr-12",
-                  "text-sm placeholder:text-muted-foreground",
-                  "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
+                  "w-full resize-none rounded-lg border border-border bg-card/50 px-4 py-3 pr-12",
+                  "text-sm placeholder:text-muted-foreground text-foreground",
+                  "focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
                   "min-h-[48px] max-h-[200px]"
                 )}
@@ -416,12 +406,12 @@ export default function Ask() {
                 size="icon"
                 onClick={() => handleSubmit(inputValue)}
                 disabled={!inputValue.trim() || isLoading}
-                className="absolute right-2 bottom-2 h-8 w-8 rounded-lg"
+                className="absolute right-2 bottom-2 h-8 w-8 rounded-lg bg-foreground text-background hover:bg-foreground/90"
               >
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground text-center mt-2">
+            <p className="text-xs text-muted-foreground/60 text-center mt-3 font-mono-accent">
               Responses are AI-generated. Verify important information independently.
             </p>
           </div>

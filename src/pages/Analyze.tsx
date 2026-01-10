@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { AmbientBackground } from '@/components/marketing/AmbientBackground';
 import { CardImage } from '@/components/CardImage';
 import { ConfidenceMeter } from '@/components/ConfidenceMeter';
 import { VerificationBadge } from '@/components/VerificationBadge';
@@ -11,11 +12,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Search, 
   ArrowRight, 
-  AlertTriangle, 
   CheckCircle,
   ChevronDown,
-  ExternalLink,
-  Clock,
   Link as LinkIcon,
   Info,
   Sparkles,
@@ -82,7 +80,6 @@ const Analyze = () => {
 
   const handleUrlChange = (value: string) => {
     setUrl(value);
-    // Clear error when user starts typing
     if (urlError) {
       setUrlError(null);
     }
@@ -94,14 +91,12 @@ const Analyze = () => {
       return;
     }
     
-    // Check demo gate
     if (!canAnalyze) {
       trackEvent('demo_limit_reached', { remaining: 0 });
       setShowDemoLimitModal(true);
       return;
     }
     
-    // Validate URL before processing
     const validation = validateUrl(url);
     if (!validation.ok) {
       setUrlError(validation.error || 'Invalid URL');
@@ -109,16 +104,13 @@ const Analyze = () => {
       return;
     }
     
-    // Clear any previous error
     setUrlError(null);
     
-    // Track demo analysis if not logged in
     if (!isLoggedIn) {
       trackEvent('demo_analysis_started', { remaining });
     }
     trackEvent('analyze_started', { domain: getDisplayDomain(url) }, url);
     
-    // Use demo if no cards selected
     if (!hasCards) {
       startWithDemo();
     }
@@ -131,7 +123,6 @@ const Analyze = () => {
     const result = getRecommendationFromDB(url, cardsToUse, allRules, allExclusions);
     setRecommendation(result);
     
-    // Track analytics
     const latency = Date.now() - startTime;
     trackEvent('recommendation_requested', {
       domain: getDisplayDomain(url),
@@ -140,7 +131,6 @@ const Analyze = () => {
     }, url);
     
     if (result) {
-      // Increment demo counter on success
       incrementSuccess();
       
       if (!isLoggedIn) {
@@ -165,7 +155,6 @@ const Analyze = () => {
       });
     }
     
-    // Show save prompt after result if not logged in
     if (!user && result) {
       setTimeout(() => {
         setShowSavePrompt(true);
@@ -193,34 +182,41 @@ const Analyze = () => {
   const dataLoading = walletLoading || rulesLoading || exclusionsLoading;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background dark">
+      <AmbientBackground />
       <Header />
       
-      <main className="pt-20 pb-12">
+      <main className="pt-20 pb-16 relative z-10">
         <div className="container max-w-4xl mx-auto px-4">
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold mb-2">Card Analyzer</h1>
-            <p className="text-muted-foreground">
-              Paste any shopping URL to find the best card to use.
+          {/* Header */}
+          <div className="mb-12">
+            <span className="font-mono-accent text-xs uppercase tracking-widest text-primary mb-4 block">
+              Analyzer
+            </span>
+            <h1 className="text-3xl md:text-4xl font-light text-foreground mb-3">
+              Find your best card
+            </h1>
+            <p className="text-muted-foreground max-w-lg">
+              Paste any shopping URL to see which card earns the most rewards.
             </p>
           </div>
 
-          {/* Demo Banner - show after first analysis but before limit */}
+          {/* Demo Banner */}
           {shouldShowBanner && (
-            <div className="mb-6 p-3 rounded-lg border border-primary/30 bg-primary/5 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
+            <div className="mb-6 p-4 rounded-lg border border-border bg-card/50 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
                 <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-sm">
-                  You have <strong>{remaining}</strong> free {remaining === 1 ? 'analysis' : 'analyses'} left.{' '}
+                <span className="text-sm text-muted-foreground">
+                  <strong className="text-foreground">{remaining}</strong> free {remaining === 1 ? 'analysis' : 'analyses'} left.{' '}
                   <Link to="/auth" className="text-primary hover:underline" onClick={() => trackEvent('signup_clicked', {})}>
-                    Sign in to save your wallet
+                    Sign in to save
                   </Link>
                 </span>
               </div>
             </div>
           )}
 
-          {/* Onboarding Nudge for first-time users */}
+          {/* Onboarding Nudge */}
           <OnboardingNudge 
             hasCards={hasCards}
             onOpenVault={() => setVaultSheetOpen(true)}
@@ -228,22 +224,22 @@ const Analyze = () => {
           />
 
           {/* Card Vault Section */}
-          <div className="mb-6 p-4 rounded-xl border border-border bg-card shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
+          <div className="mb-6 p-5 rounded-lg border border-border bg-card/30">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
                 <CreditCard className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Your Wallet</span>
+                <span className="text-sm font-medium text-foreground">Your Wallet</span>
                 {hasCards && (
-                  <Badge variant="secondary" className="text-xs">
+                  <span className="text-xs text-muted-foreground font-mono-accent">
                     {selectedCardIds.length} card{selectedCardIds.length !== 1 ? 's' : ''}
-                  </Badge>
+                  </span>
                 )}
               </div>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => setVaultSheetOpen(true)}
-                className="gap-2"
+                className="rounded-full px-4"
               >
                 {hasCards ? 'Edit' : 'Add cards'}
               </Button>
@@ -262,25 +258,29 @@ const Analyze = () => {
               />
             )}
 
-            {/* Using demo wallet indicator */}
             {isUsingDemo && hasCards && (
-              <div className="mt-3 p-2 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2">
+              <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/10 flex items-center gap-3">
                 <Info className="w-4 h-4 text-primary" />
-                <span className="text-xs">Demo wallet active. <button onClick={() => setVaultSheetOpen(true)} className="text-primary hover:underline">Customize</button></span>
+                <span className="text-xs text-muted-foreground">
+                  Demo wallet active. <button onClick={() => setVaultSheetOpen(true)} className="text-primary hover:underline">Customize</button>
+                </span>
               </div>
             )}
           </div>
 
           {/* URL Input */}
-          <div className="p-6 rounded-xl border border-border bg-card shadow-sm space-y-4">
+          <div className="p-6 rounded-lg border border-border bg-card/30 space-y-4">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Paste any shopping URL (e.g., amazon.com, target.com)..."
                   value={url}
                   onChange={(e) => handleUrlChange(e.target.value)}
-                  className={cn("pl-10 h-12", urlError && "border-destructive")}
+                  className={cn(
+                    "pl-11 h-12 bg-background/50 border-border rounded-lg",
+                    urlError && "border-destructive"
+                  )}
                   onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
                 />
               </div>
@@ -288,14 +288,13 @@ const Analyze = () => {
                 size="lg" 
                 onClick={handleAnalyze}
                 disabled={!url.trim() || isLoading || dataLoading}
-                className="gap-2 h-12"
+                className="gap-2 h-12 rounded-full px-6 bg-foreground text-background hover:bg-foreground/90"
               >
                 {isLoading ? 'Analyzing...' : 'Analyze'}
                 <Search className="w-4 h-4" />
               </Button>
             </div>
             
-            {/* URL validation error */}
             {urlError && (
               <div className="flex items-center gap-2 text-sm text-destructive">
                 <AlertCircle className="w-4 h-4" />
@@ -304,7 +303,7 @@ const Analyze = () => {
             )}
 
             <div className="flex flex-wrap gap-2 pt-2">
-              <span className="text-xs text-muted-foreground">Try:</span>
+              <span className="text-xs text-muted-foreground font-mono-accent">Try:</span>
               {[
                 { label: 'Amazon', url: 'amazon.com' },
                 { label: 'Uber Eats', url: 'ubereats.com' },
@@ -314,7 +313,7 @@ const Analyze = () => {
                 <button
                   key={example.label}
                   onClick={() => setUrl(example.url)}
-                  className="text-xs px-2 py-1 rounded-full bg-muted hover:bg-muted-foreground/20 transition-colors"
+                  className="text-xs px-3 py-1 rounded-full border border-border bg-card/50 hover:bg-card hover:border-border/80 transition-colors text-muted-foreground hover:text-foreground"
                 >
                   {example.label}
                 </button>
@@ -325,7 +324,7 @@ const Analyze = () => {
           {/* Result */}
           {recommendation && (
             <div className="mt-8 animate-fade-in space-y-6">
-              <div className="p-6 rounded-xl border border-primary/50 bg-gradient-to-br from-primary/5 to-transparent shadow-sm">
+              <div className="p-6 rounded-lg border border-primary/30 bg-card/30">
                 <div className="flex flex-col md:flex-row gap-6">
                   <CardImage 
                     issuer={recommendation.card.issuer_name}
@@ -337,16 +336,18 @@ const Analyze = () => {
                   />
                   <div className="flex-1 space-y-4">
                     <div>
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <Badge className="bg-primary/20 text-primary border-0">Recommended</Badge>
-                        <Badge variant="outline" className="text-xs">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="text-xs font-mono-accent uppercase tracking-widest text-primary">
+                          Recommended
+                        </span>
+                        <span className="text-xs text-muted-foreground">
                           {recommendation.multiplier}x {recommendation.categoryLabel}
-                        </Badge>
+                        </span>
                         <VerificationBadge 
                           status={recommendation.card.verification_status === 'verified' ? 'verified' : 'unverified'} 
                         />
                       </div>
-                      <h2 className="text-2xl font-bold">{recommendation.card.name}</h2>
+                      <h2 className="text-2xl font-medium text-foreground">{recommendation.card.name}</h2>
                       <p className="text-muted-foreground">{recommendation.card.issuer_name}</p>
                       <p className="text-sm text-muted-foreground mt-1">
                         {recommendation.card.annual_fee_cents === 0 
@@ -365,9 +366,9 @@ const Analyze = () => {
                 {/* Reason */}
                 <div className="mt-6 pt-6 border-t border-border">
                   <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                    <CheckCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-medium">Why this card?</p>
+                      <p className="font-medium text-foreground">Why this card?</p>
                       <p className="text-sm text-muted-foreground mt-1">
                         {recommendation.reason}
                       </p>
@@ -382,30 +383,30 @@ const Analyze = () => {
                     View decision details
                   </CollapsibleTrigger>
                   <CollapsibleContent className="pt-4">
-                    <div className="p-4 rounded-lg bg-muted/50 space-y-2 text-sm">
+                    <div className="p-4 rounded-lg bg-card/50 border border-border space-y-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Merchant</span>
-                        <span>{recommendation.merchant?.name || getDisplayDomain(url)}</span>
+                        <span className="text-foreground">{recommendation.merchant?.name || getDisplayDomain(url)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Category</span>
-                        <span>{recommendation.categoryLabel}</span>
+                        <span className="text-foreground">{recommendation.categoryLabel}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Effective Rate</span>
-                        <span>{recommendation.multiplier}x</span>
+                        <span className="text-foreground">{recommendation.multiplier}x</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Confidence</span>
-                        <Badge variant="outline" className="capitalize">{recommendation.confidence}</Badge>
+                        <span className="text-foreground capitalize">{recommendation.confidence}</span>
                       </div>
                       {recommendation.alternatives.length > 0 && (
-                        <div className="pt-2 border-t border-border mt-2">
+                        <div className="pt-3 border-t border-border mt-3">
                           <p className="text-muted-foreground mb-2">Alternatives:</p>
                           {recommendation.alternatives.slice(0, 3).map((alt, i) => (
                             <div key={i} className="flex justify-between text-xs py-1">
-                              <span>{alt.card.name}</span>
-                              <span className={alt.excluded ? 'text-amber-500' : ''}>
+                              <span className="text-muted-foreground">{alt.card.name}</span>
+                              <span className={alt.excluded ? 'text-amber-500' : 'text-foreground'}>
                                 {alt.effectiveMultiplier}x {alt.excluded && '(excluded)'}
                               </span>
                             </div>
@@ -419,16 +420,16 @@ const Analyze = () => {
 
               {/* Save prompt for guests */}
               {showSavePrompt && !user && (
-                <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+                <div className="p-5 rounded-lg border border-border bg-card/30 flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
                   <div>
-                    <p className="font-medium">Want to save your results?</p>
+                    <p className="font-medium text-foreground">Want to save your results?</p>
                     <p className="text-sm text-muted-foreground">
-                      Create a free account to save your wallet and recommendation history.
+                      Create a free account to save your wallet and history.
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <Link to="/auth">
-                      <Button size="sm">Sign in to save</Button>
+                      <Button size="sm" className="rounded-full">Sign in to save</Button>
                     </Link>
                     <Button 
                       size="sm" 
@@ -440,38 +441,34 @@ const Analyze = () => {
                   </div>
                 </div>
               )}
-              {/* Accuracy Section */}
-              <AccuracySection />
             </div>
           )}
 
-          {/* Loading state */}
-          {dataLoading && (
-            <div className="mt-8 space-y-4">
-              <Skeleton className="h-48 w-full" />
+          {/* Accuracy Section */}
+          {!recommendation && (
+            <div className="mt-16">
+              <AccuracySection />
             </div>
           )}
         </div>
       </main>
 
-      <Footer />
-
-      {/* Card Vault Sheet */}
       <CardVaultSheet
         open={vaultSheetOpen}
         onOpenChange={setVaultSheetOpen}
-        allCards={allCards}
         selectedCardIds={selectedCardIds}
         onToggleCard={toggleCard}
-        onClearAll={handleClearVault}
         onSave={handleVaultSave}
+        allCards={allCards}
+        onClearAll={handleClearVault}
       />
 
-      {/* Demo Limit Modal */}
       <DemoLimitModal 
         open={showDemoLimitModal}
         onOpenChange={setShowDemoLimitModal}
       />
+
+      <Footer />
     </div>
   );
 };
