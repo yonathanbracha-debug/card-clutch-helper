@@ -14,12 +14,15 @@ interface CardThumbnailProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 }
 
+// Credit card standard aspect ratio: 85.6mm × 53.98mm = 1.586:1
+const CARD_ASPECT_RATIO = 1.586;
+
 const sizeClasses = {
-  xs: 'w-12 h-8',
-  sm: 'w-16 h-10',
-  md: 'w-24 h-16',
-  lg: 'w-40 h-24',
-  xl: 'w-64 h-40',
+  xs: 'w-12',
+  sm: 'w-16',
+  md: 'w-24',
+  lg: 'w-40',
+  xl: 'w-64',
 };
 
 /**
@@ -70,11 +73,14 @@ export const CardThumbnail = forwardRef<HTMLDivElement, CardThumbnailProps>(({
     <div 
       ref={ref}
       className={cn(
-        'relative overflow-hidden rounded-lg shadow-lg',
+        'relative overflow-hidden shadow-lg',
         sizeClasses[size],
         className
       )}
-      style={{ aspectRatio: '1.586' }}
+      style={{ 
+        aspectRatio: CARD_ASPECT_RATIO,
+        borderRadius: '3.48%', // Physical card radius ~3mm on 85.6mm width
+      }}
     >
       {/* Loading state - show CardArtwork until image loads */}
       {!imageLoaded && (

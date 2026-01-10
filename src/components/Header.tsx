@@ -21,7 +21,6 @@ const navLinks = [
   { href: '/ask', label: 'Ask' },
   { href: '/cards', label: 'Cards' },
   { href: '/mission', label: 'Mission' },
-  { href: '/privacy', label: 'Privacy' },
 ];
 
 // Logo flourish SVG component (Ramp-style accent)
