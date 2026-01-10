@@ -1,4 +1,4 @@
-import { Menu, X, LogIn, LogOut, User, Shield, LayoutDashboard, Home, Sparkles, Library, Lock, Target } from 'lucide-react';
+import { Menu, X, LogIn, LogOut, User, Shield, LayoutDashboard, Home, Sparkles, Library, Lock, Target, MessageSquare } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { Link, useLocation, NavLink } from 'react-router-dom';
 import { useState } from 'react';
@@ -19,6 +19,7 @@ import {
 const navLinks = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/analyze', label: 'Analyzer', icon: Sparkles },
+  { href: '/ask', label: 'Ask', icon: MessageSquare },
   { href: '/cards', label: 'Cards', icon: Library },
   { href: '/mission', label: 'Mission', icon: Target },
   { href: '/privacy', label: 'Privacy', icon: Lock },
@@ -32,7 +33,7 @@ export function Header() {
   const { isAdmin } = useIsAdmin();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+    <header className="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-border/50">
       <div className="container max-w-6xl mx-auto px-4">
         <div className="flex items-center h-16">
           {/* Logo */}
@@ -42,7 +43,7 @@ export function Header() {
               alt="CardClutch" 
               className="w-8 h-8 rounded-lg group-hover:scale-105 transition-transform"
             />
-            <span className="text-lg font-semibold tracking-tight hidden sm:inline">
+            <span className="text-lg font-semibold tracking-tight hidden sm:inline text-foreground">
               CardClutch
             </span>
           </Link>
@@ -96,23 +97,15 @@ export function Header() {
           <div className="flex items-center gap-2">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
             
-            {/* Join Waitlist CTA - visible on md+ */}
-            <Link to="/mission#roadmap" className="hidden md:inline-flex">
-              <Button size="sm" className="gap-1.5 bg-gradient-to-r from-primary to-accent shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-shadow">
-                <Sparkles className="w-3.5 h-3.5" />
-                Join Waitlist
-              </Button>
-            </Link>
-            
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2">
+                  <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-foreground hover:bg-card">
                     <User className="w-4 h-4" />
                     <span className="max-w-24 truncate">{user.email?.split('@')[0]}</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="glass-panel">
                   <DropdownMenuItem asChild className="cursor-pointer">
                     <Link to="/dashboard" className="flex items-center">
                       <LayoutDashboard className="w-4 h-4 mr-2" />
@@ -145,7 +138,7 @@ export function Header() {
               </DropdownMenu>
             ) : (
               <Link to="/auth">
-                <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-foreground hover:bg-card">
                   <LogIn className="w-4 h-4" />
                   Sign in
                 </Button>
@@ -155,7 +148,8 @@ export function Header() {
             {/* Mobile menu button - only show below md */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
+              className="md:hidden p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-card transition-colors"
+              aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -164,7 +158,7 @@ export function Header() {
 
         {/* Mobile Navigation - only show below md */}
         {mobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-border animate-fade-in">
+          <nav className="md:hidden py-4 border-t border-border/50 animate-fade-in">
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => {
                 const Icon = link.icon;
@@ -179,7 +173,7 @@ export function Header() {
                       "flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-colors",
                       isActive
                         ? "bg-primary/10 text-primary font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        : "text-muted-foreground hover:text-foreground hover:bg-card"
                     )}
                   >
                     <Icon className="w-4 h-4" />
@@ -187,7 +181,7 @@ export function Header() {
                   </Link>
                 );
               })}
-              <div className="border-t border-border mt-2 pt-2">
+              <div className="border-t border-border/50 mt-2 pt-2">
                 <Link
                   to="/analyze"
                   onClick={() => setMobileMenuOpen(false)}
@@ -200,7 +194,7 @@ export function Header() {
                   <Link
                     to="/dashboard"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted"
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card"
                   >
                     <LayoutDashboard className="w-4 h-4" />
                     Dashboard
@@ -210,7 +204,7 @@ export function Header() {
                   <Link
                     to="/admin"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted"
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card"
                   >
                     <Shield className="w-4 h-4" />
                     Admin Console
@@ -222,7 +216,7 @@ export function Header() {
                       signOut();
                       setMobileMenuOpen(false);
                     }}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted w-full"
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card w-full"
                   >
                     <LogOut className="w-4 h-4" />
                     Sign out
@@ -231,7 +225,7 @@ export function Header() {
                   <Link
                     to="/auth"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted"
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-card"
                   >
                     <LogIn className="w-4 h-4" />
                     Sign in
