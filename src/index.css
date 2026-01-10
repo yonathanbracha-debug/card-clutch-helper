@@ -1,3 +1,4 @@
+/* Fonts loaded via local setup - Inter, Space Mono, JetBrains Mono */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
@@ -54,49 +55,50 @@
   }
 
   .dark {
-    /* CardClutch Dark Theme - Professional Fintech */
-    --background: 220 15% 6%;
-    --foreground: 220 10% 94%;
+    /* CardClutch Dark Theme - Professional Fintech (muted teal, slate) */
+    --background: 220 20% 5%;
+    --foreground: 220 10% 92%;
 
-    --card: 220 15% 8%;
-    --card-foreground: 220 10% 94%;
-    --card-hover: 220 15% 10%;
+    --card: 220 18% 7%;
+    --card-foreground: 220 10% 92%;
+    --card-hover: 220 16% 10%;
 
-    --popover: 220 15% 8%;
-    --popover-foreground: 220 10% 94%;
+    --popover: 220 18% 7%;
+    --popover-foreground: 220 10% 92%;
 
-    --primary: 168 55% 48%;
-    --primary-foreground: 220 15% 6%;
+    /* Muted teal primary - more mature */
+    --primary: 175 45% 42%;
+    --primary-foreground: 220 20% 5%;
 
-    --secondary: 220 12% 12%;
-    --secondary-foreground: 220 10% 94%;
+    --secondary: 220 15% 11%;
+    --secondary-foreground: 220 10% 92%;
 
-    --muted: 220 12% 14%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 220 15% 12%;
+    --muted-foreground: 220 8% 50%;
 
-    --accent: 168 55% 48%;
-    --accent-foreground: 220 15% 6%;
+    --accent: 175 45% 42%;
+    --accent-foreground: 220 20% 5%;
 
-    --destructive: 0 65% 55%;
-    --destructive-foreground: 220 10% 94%;
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 220 10% 92%;
 
-    --border: 220 12% 16%;
-    --input: 220 12% 12%;
-    --ring: 168 55% 48%;
+    --border: 220 15% 14%;
+    --input: 220 15% 10%;
+    --ring: 175 45% 42%;
 
     /* Refined tokens */
-    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.2);
-    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.3);
-    --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.4);
+    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.25);
+    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.35);
+    --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.45);
 
-    --sidebar-background: 220 15% 8%;
-    --sidebar-foreground: 220 10% 94%;
-    --sidebar-primary: 168 55% 48%;
-    --sidebar-primary-foreground: 220 15% 6%;
-    --sidebar-accent: 220 12% 12%;
-    --sidebar-accent-foreground: 220 10% 94%;
-    --sidebar-border: 220 12% 16%;
-    --sidebar-ring: 168 55% 48%;
+    --sidebar-background: 220 18% 7%;
+    --sidebar-foreground: 220 10% 92%;
+    --sidebar-primary: 175 45% 42%;
+    --sidebar-primary-foreground: 220 20% 5%;
+    --sidebar-accent: 220 15% 11%;
+    --sidebar-accent-foreground: 220 10% 92%;
+    --sidebar-border: 220 15% 14%;
+    --sidebar-ring: 175 45% 42%;
   }
 }
 
@@ -120,17 +122,6 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
-  /* Aura dark mode overrides for homepage */
-  .aura-mode {
-    --background: 0 0% 2%;
-    --foreground: 0 0% 95%;
-    --card: 0 0% 5%;
-    --card-foreground: 0 0% 95%;
-    --card-hover: 0 0% 7%;
-    --border: 0 0% 12%;
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 55%;
-  }
 }
 
 @layer components {
@@ -265,13 +256,13 @@
   }
 }
 
-/* Floating animation for hero dashboard mock */
+/* Floating animation for hero elements */
 @keyframes float {
   0%, 100% {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-8px);
   }
 }
 
@@ -279,8 +270,23 @@
   animation: float 6s ease-in-out infinite;
 }
 
+/* Slow pulse for orb */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-float {
+  .animate-float,
+  .animate-pulse-slow {
     animation: none;
   }
 }

@@ -95,7 +95,9 @@ export function Header() {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
-            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            <div className="transition-colors duration-200">
+              <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            </div>
             
             {user ? (
               <DropdownMenu>
