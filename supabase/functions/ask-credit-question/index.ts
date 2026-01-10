@@ -1,7 +1,7 @@
 /**
  * Ask Credit Question Edge Function
- * AI-powered credit question answering with rate limiting and audit logging
- * Uses Lovable AI Gateway for completions
+ * AI-powered credit question answering with OpenAI embeddings + Pinecone RAG
+ * Rate limited, audit logged, quota-safe
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
@@ -10,8 +10,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Lovable AI Gateway
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+// OpenAI config
+const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small";
+const OPENAI_CHAT_MODEL = "gpt-4o-mini";
 
 // Rate limits
 const RATE_LIMITS = {
@@ -23,6 +24,8 @@ const RATE_LIMITS = {
 const MIN_QUESTION_LENGTH = 5;
 const MAX_QUESTION_LENGTH = 800;
 const MAX_CARDS = 20;
+const PINECONE_TOP_K = 6;
+const MIN_RELEVANCE_SCORE = 0.65;
 
 interface AskQuestionRequest {
   question: string;
@@ -31,6 +34,28 @@ interface AskQuestionRequest {
     cards?: string[];
     preferences?: Record<string, unknown>;
   };
+}
+
+interface PineconeMatch {
+  id: string;
+  score: number;
+  metadata?: {
+    source_id?: string;
+    source_url?: string;
+    source_title?: string;
+    category?: string;
+    trust_tier?: number;
+    status?: string;
+    chunk_text?: string;
+    chunk_index?: number;
+  };
+}
+
+interface Citation {
+  title: string;
+  url: string;
+  category: string;
+  relevance: number;
 }
 
 // Intent classification keywords
@@ -44,6 +69,8 @@ const CREDIT_EDUCATION_KEYWORDS = [
   "report", "fico", "vantage", "hard pull", "soft pull", "inquiry",
   "statement", "balance", "minimum payment", "grace period",
 ];
+
+// ============= Utility Functions =============
 
 async function hashIP(ip: string, salt: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -62,6 +89,12 @@ function getClientIP(req: Request): string {
   if (cfIP) return cfIP.trim();
   return "unknown";
 }
+
+function sanitizeText(text: string): string {
+  return text.replace(/[\x00-\x1F\x7F]/g, "").trim();
+}
+
+// ============= Rate Limiting =============
 
 async function checkRateLimit(
   supabase: any,
@@ -139,6 +172,8 @@ async function incrementRateLimit(
   }
 }
 
+// ============= Intent Classification =============
+
 function classifyIntent(question: string): string {
   const lowerQ = question.toLowerCase();
   
@@ -154,70 +189,182 @@ function classifyIntent(question: string): string {
   return "general";
 }
 
-async function generateAnswer(
-  question: string,
-  lovableApiKey: string,
-  intent: string
-): Promise<{ answer: string; confidence: number }> {
-  const systemPrompt = `You are CardClutch's credit expert assistant. You provide accurate, helpful information about credit cards, credit scores, and personal finance.
+// ============= OpenAI Functions =============
 
-RULES:
-1. NEVER hallucinate or make up specific numbers, rates, or product details. If you don't know exact details, say so.
-2. Be conservative and safe with financial advice. Use phrases like "generally" and "typically".
-3. Do NOT provide legal, tax, or investment advice. Suggest consulting professionals for specific situations.
-4. Keep answers concise but complete (2-4 paragraphs max).
-5. If you need clarification, ask 1-2 specific follow-up questions.
-6. Focus on general credit education and best practices.
-7. For card-specific questions, recommend the user check issuer websites for current terms.
+interface OpenAIError {
+  type: string;
+  code: string;
+  message: string;
+}
 
-INTENT CONTEXT: The user's question is classified as "${intent}".`;
+function parseOpenAIError(status: number, body: string): { httpCode: number; message: string } {
+  try {
+    const parsed = JSON.parse(body);
+    const error = parsed.error as OpenAIError | undefined;
+    
+    if (status === 429 || error?.code === "rate_limit_exceeded") {
+      return { httpCode: 503, message: "AI service is temporarily busy. Please try again in a moment." };
+    }
+    if (status === 402 || error?.code === "insufficient_quota") {
+      return { httpCode: 402, message: "AI service quota exceeded. Please try again later." };
+    }
+    if (error?.message) {
+      return { httpCode: 500, message: `AI error: ${error.message}` };
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return { httpCode: 500, message: "AI service unavailable. Please try again." };
+}
 
-  const response = await fetch(LOVABLE_AI_URL, {
+async function getEmbedding(text: string, openaiKey: string): Promise<number[]> {
+  const response = await fetch("https://api.openai.com/v1/embeddings", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${lovableApiKey}`,
+      "Authorization": `Bearer ${openaiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: question },
-      ],
-      temperature: 0.3,
-      max_tokens: 800,
+      model: OPENAI_EMBEDDING_MODEL,
+      input: text,
     }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    
-    // Handle rate limiting from Lovable AI
-    if (response.status === 429) {
-      throw new Error("AI service is busy. Please try again in a moment.");
-    }
-    if (response.status === 402) {
-      throw new Error("AI service quota exceeded. Please try again later.");
-    }
-    
-    throw new Error(`AI completion error: ${response.status} ${errorText}`);
+    const { httpCode, message } = parseOpenAIError(response.status, errorText);
+    const err = new Error(message);
+    (err as any).httpCode = httpCode;
+    throw err;
   }
 
   const data = await response.json();
-  const answer = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate an answer.";
-  
-  // Calculate confidence based on intent match
-  let confidence = 0.75; // Default confidence
-  if (intent === "credit_education") {
-    confidence = 0.85; // Higher confidence for education questions
-  } else if (intent === "card_rewards") {
-    confidence = 0.7; // Lower for specific card questions without RAG
-  } else if (intent === "issuer_policy") {
-    confidence = 0.6; // Lower for issuer-specific questions
+  return data.data[0].embedding;
+}
+
+async function generateAnswer(
+  question: string,
+  context: string,
+  intent: string,
+  openaiKey: string
+): Promise<string> {
+  const systemPrompt = `You are CardClutch's credit expert assistant. You provide accurate, helpful information about credit cards, credit scores, and personal finance.
+
+CONTEXT FROM TRUSTED SOURCES:
+${context || "No relevant context available."}
+
+RULES:
+1. ONLY use information from the provided context. If the context doesn't contain relevant information, say "I don't have enough information to answer that accurately" and ask ONE clarifying question.
+2. NEVER hallucinate or make up specific numbers, rates, or product details.
+3. Be conservative and safe with financial advice. Use phrases like "generally" and "typically".
+4. Do NOT provide legal, tax, or investment advice.
+5. Keep answers concise but complete (2-4 paragraphs max).
+6. For card-specific questions without context, recommend checking issuer websites.
+7. Cite your sources when possible using the source titles from context.
+
+INTENT: ${intent}`;
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${openaiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: OPENAI_CHAT_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: question },
+      ],
+      temperature: 0.3,
+      max_completion_tokens: 800,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    const { httpCode, message } = parseOpenAIError(response.status, errorText);
+    const err = new Error(message);
+    (err as any).httpCode = httpCode;
+    throw err;
   }
 
-  return { answer, confidence };
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate an answer.";
 }
+
+// ============= Pinecone Functions =============
+
+async function queryPinecone(
+  embedding: number[],
+  pineconeHost: string,
+  pineconeKey: string
+): Promise<PineconeMatch[]> {
+  const response = await fetch(`${pineconeHost}/query`, {
+    method: "POST",
+    headers: {
+      "Api-Key": pineconeKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      vector: embedding,
+      topK: PINECONE_TOP_K,
+      includeMetadata: true,
+      filter: {
+        trust_tier: { "$lte": 3 },
+        status: { "$eq": "active" },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Pinecone query error:", response.status, errorText);
+    // Don't throw - return empty and proceed without RAG
+    return [];
+  }
+
+  const data = await response.json();
+  return data.matches || [];
+}
+
+function buildContextFromMatches(matches: PineconeMatch[]): { context: string; citations: Citation[] } {
+  const relevantMatches = matches.filter(m => m.score >= MIN_RELEVANCE_SCORE);
+  
+  if (relevantMatches.length === 0) {
+    return { context: "", citations: [] };
+  }
+
+  const contextParts: string[] = [];
+  const citations: Citation[] = [];
+  const seenUrls = new Set<string>();
+
+  for (const match of relevantMatches) {
+    const meta = match.metadata;
+    if (!meta?.chunk_text) continue;
+
+    contextParts.push(`[Source: ${meta.source_title || "Unknown"}]\n${meta.chunk_text}`);
+
+    // Add citation if not already added
+    const url = meta.source_url || "";
+    if (url && !seenUrls.has(url)) {
+      seenUrls.add(url);
+      citations.push({
+        title: meta.source_title || "Unknown Source",
+        url,
+        category: meta.category || "general",
+        relevance: match.score,
+      });
+    }
+  }
+
+  return {
+    context: contextParts.join("\n\n---\n\n"),
+    citations,
+  };
+}
+
+// ============= Request Validation =============
 
 function validateRequest(body: unknown): { valid: true; data: AskQuestionRequest } | { valid: false; error: string } {
   if (!body || typeof body !== "object") {
@@ -231,16 +378,13 @@ function validateRequest(body: unknown): { valid: true; data: AskQuestionRequest
     return { valid: false, error: "Question is required" };
   }
 
-  const question = req.question.trim();
+  const question = sanitizeText(req.question);
   if (question.length < MIN_QUESTION_LENGTH) {
     return { valid: false, error: `Question must be at least ${MIN_QUESTION_LENGTH} characters` };
   }
   if (question.length > MAX_QUESTION_LENGTH) {
     return { valid: false, error: `Question must be less than ${MAX_QUESTION_LENGTH} characters` };
   }
-
-  // Sanitize: remove control characters
-  const sanitizedQuestion = question.replace(/[\x00-\x1F\x7F]/g, "");
 
   // include_citations validation
   const includeCitations = req.include_citations === true;
@@ -269,12 +413,14 @@ function validateRequest(body: unknown): { valid: true; data: AskQuestionRequest
   return {
     valid: true,
     data: {
-      question: sanitizedQuestion,
+      question,
       include_citations: includeCitations,
       user_context: userContext,
     },
   };
 }
+
+// ============= Main Handler =============
 
 Deno.serve(async (req) => {
   // CORS preflight
@@ -291,19 +437,25 @@ Deno.serve(async (req) => {
 
   const startTime = Date.now();
 
+  // Helper to create error responses
+  const errorResponse = (status: number, message: string, retryAfter?: number) => {
+    const headers: Record<string, string> = { ...corsHeaders, "Content-Type": "application/json" };
+    if (retryAfter) headers["Retry-After"] = String(retryAfter);
+    return new Response(JSON.stringify({ error: message }), { status, headers });
+  };
+
   try {
     // Get environment variables
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    const pineconeKey = Deno.env.get("PINECONE_API_KEY");
+    const pineconeHost = Deno.env.get("PINECONE_HOST");
     const rateLimitSalt = Deno.env.get("RATE_LIMIT_SALT") || "default-salt";
 
-    if (!lovableApiKey) {
-      console.error("Missing LOVABLE_API_KEY");
-      return new Response(
-        JSON.stringify({ error: "Service configuration error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!openaiKey) {
+      console.error("Missing OPENAI_API_KEY");
+      return errorResponse(500, "Service configuration error");
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -361,18 +513,12 @@ Deno.serve(async (req) => {
     try {
       body = await req.json();
     } catch {
-      return new Response(
-        JSON.stringify({ error: "Invalid JSON body" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return errorResponse(400, "Invalid JSON body");
     }
 
     const validation = validateRequest(body);
     if (!validation.valid) {
-      return new Response(
-        JSON.stringify({ error: validation.error }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return errorResponse(400, validation.error);
     }
 
     const { question, include_citations } = validation.data;
@@ -380,12 +526,59 @@ Deno.serve(async (req) => {
     // Classify intent
     const intent = classifyIntent(question);
 
-    // Generate answer using Lovable AI
-    const { answer, confidence } = await generateAnswer(
-      question,
-      lovableApiKey,
-      intent
-    );
+    // Generate embedding for the question
+    let embedding: number[] | null = null;
+    let context = "";
+    let citations: Citation[] = [];
+
+    try {
+      embedding = await getEmbedding(question, openaiKey);
+    } catch (e) {
+      const err = e as Error & { httpCode?: number };
+      // If embedding fails due to quota, return appropriate error
+      if (err.httpCode === 402 || err.httpCode === 503) {
+        return errorResponse(err.httpCode, err.message, err.httpCode === 503 ? 30 : undefined);
+      }
+      // For other errors, continue without RAG
+      console.error("Embedding error (continuing without RAG):", err.message);
+    }
+
+    // Query Pinecone if we have embedding and config
+    if (embedding && pineconeHost && pineconeKey) {
+      try {
+        const matches = await queryPinecone(embedding, pineconeHost, pineconeKey);
+        const result = buildContextFromMatches(matches);
+        context = result.context;
+        citations = result.citations;
+      } catch (e) {
+        console.error("Pinecone error (continuing without RAG):", e);
+      }
+    }
+
+    // Generate answer
+    let answer: string;
+    try {
+      answer = await generateAnswer(question, context, intent, openaiKey);
+    } catch (e) {
+      const err = e as Error & { httpCode?: number };
+      if (err.httpCode) {
+        return errorResponse(err.httpCode, err.message, err.httpCode === 503 ? 30 : undefined);
+      }
+      return errorResponse(500, "Failed to generate answer. Please try again.");
+    }
+
+    // Calculate confidence based on RAG quality
+    let confidence = 0.5; // Base confidence without RAG
+    if (context) {
+      // Higher confidence with RAG context
+      const avgRelevance = citations.length > 0 
+        ? citations.reduce((sum, c) => sum + c.relevance, 0) / citations.length
+        : 0;
+      confidence = Math.min(0.95, 0.6 + avgRelevance * 0.35);
+    }
+    if (intent === "credit_education" && context) {
+      confidence = Math.min(0.95, confidence + 0.1);
+    }
 
     // Increment rate limit
     await incrementRateLimit(supabase, bucket, "ask_credit_question");
@@ -393,18 +586,26 @@ Deno.serve(async (req) => {
     const latencyMs = Date.now() - startTime;
 
     // Log query for audit
-    await supabase.from("rag_queries").insert({
-      user_id: userId,
-      ip_hash: ipHash,
-      question,
-      intent,
-      retrieved_chunks: [], // No RAG retrieval in this version
-      answer,
-      confidence,
-      model: "google/gemini-2.5-flash",
-      latency_ms: latencyMs,
-      include_citations: include_citations || false,
-    });
+    try {
+      await supabase.from("rag_queries").insert({
+        user_id: userId,
+        ip_hash: ipHash,
+        question,
+        intent,
+        retrieved_chunks: citations.map(c => ({
+          title: c.title,
+          url: c.url,
+          relevance: c.relevance,
+        })),
+        answer,
+        confidence,
+        model: OPENAI_CHAT_MODEL,
+        latency_ms: latencyMs,
+        include_citations: include_citations || false,
+      });
+    } catch (logError) {
+      console.error("Failed to log query:", logError);
+    }
 
     // Build response
     const response: Record<string, unknown> = {
@@ -414,7 +615,12 @@ Deno.serve(async (req) => {
       latency_ms: latencyMs,
     };
 
-    // Suggest follow-up questions based on intent
+    // Include citations if requested and available
+    if (include_citations && citations.length > 0) {
+      response.citations = citations;
+    }
+
+    // Suggest follow-up questions
     const followups: string[] = [];
     if (intent === "credit_education") {
       followups.push(
@@ -439,8 +645,11 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Ask question error:", error);
     
-    const startTimeForLog = Date.now();
-    
+    // Determine appropriate error code
+    const err = error as Error & { httpCode?: number };
+    const httpCode = err.httpCode || 500;
+    const message = err.message || "An unexpected error occurred. Please try again.";
+
     // Log error
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -449,25 +658,21 @@ Deno.serve(async (req) => {
       
       await supabase.from("rag_queries").insert({
         question: "ERROR",
-        answer: "An error occurred",
+        answer: message,
         confidence: 0,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: message,
         latency_ms: Date.now() - startTime,
       });
     } catch (logError) {
       console.error("Failed to log error:", logError);
     }
 
-    // Return user-friendly error
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    
     return new Response(
-      JSON.stringify({ 
-        error: errorMessage.includes("busy") || errorMessage.includes("quota") 
-          ? errorMessage 
-          : "Failed to process your question. Please try again.",
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: message }),
+      { 
+        status: httpCode, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      }
     );
   }
 });

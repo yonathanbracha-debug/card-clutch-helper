@@ -121,17 +121,42 @@ export default function Ask() {
         },
       });
 
+      // Handle function invocation errors
       if (error) {
-        // Handle rate limiting
-        if (error.message?.includes('429') || error.message?.includes('rate')) {
-          throw new Error('You\'re asking questions too quickly. Please wait a moment and try again.');
+        let errorMsg = 'Something went wrong. Please try again.';
+        
+        // Parse error message for specific cases
+        const errStr = error.message?.toLowerCase() || '';
+        if (errStr.includes('429') || errStr.includes('rate')) {
+          errorMsg = 'You\'re asking questions too quickly. Please wait a moment and try again.';
+        } else if (errStr.includes('402') || errStr.includes('quota')) {
+          errorMsg = 'AI service is temporarily unavailable. Please try again later.';
+        } else if (errStr.includes('503') || errStr.includes('busy')) {
+          errorMsg = 'AI service is busy. Please try again in a moment.';
         }
-        throw error;
+        
+        throw new Error(errorMsg);
       }
 
-      // Check for error in response body
-      if (data?.error === 'rate_limited') {
-        throw new Error(data.message || 'Rate limited. Please wait and try again.');
+      // Handle error responses in the data body
+      if (data?.error) {
+        let errorMsg = data.error;
+        
+        // User-friendly messages for specific error types
+        if (data.error === 'rate_limited') {
+          errorMsg = data.message || 'Rate limited. Please wait and try again.';
+        } else if (typeof data.error === 'string' && data.error.includes('quota')) {
+          errorMsg = 'AI service is temporarily unavailable. Please try again later.';
+        } else if (typeof data.error === 'string' && data.error.includes('busy')) {
+          errorMsg = 'AI service is busy. Please try again in a moment.';
+        }
+        
+        throw new Error(errorMsg);
+      }
+
+      // Validate we got an answer
+      if (!data?.answer) {
+        throw new Error('No response received. Please try again.');
       }
 
       const assistantMessage: Message = {
@@ -151,10 +176,15 @@ export default function Ask() {
         setDemoState(prev => ({ count: prev.count + 1 }));
       }
     } catch (err) {
+      console.error('Ask error:', err);
+      
+      // NEVER blank screen - always show a friendly error message in chat
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+        content: err instanceof Error 
+          ? err.message 
+          : 'I encountered an issue processing your question. Please try again.',
         timestamp: new Date(),
         isError: true,
       };
