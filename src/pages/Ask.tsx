@@ -21,16 +21,27 @@ import {
   Loader2,
   MessageSquare,
   HelpCircle,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Shield,
 } from 'lucide-react';
 
 const ASK_DEMO_KEY = 'cardclutch_ask_demo';
 const MAX_ASK_DEMO = 3;
+
+// Score impact types
+type ScoreImpact = 'none' | 'temporary' | 'long_term' | 'unknown';
+type ConfidenceLevel = 'high' | 'issuer_dependent' | 'situational' | 'insufficient_data';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   confidence?: number;
+  confidenceLevel?: ConfidenceLevel;
+  scoreImpact?: ScoreImpact;
   citations?: Array<{
     title: string;
     url: string;
@@ -40,6 +51,63 @@ interface Message {
   intent?: string;
   timestamp: Date;
   isError?: boolean;
+  isMyth?: boolean;
+  mythCorrection?: string | null;
+}
+
+// Score Impact Badge Component
+function ScoreImpactBadge({ impact }: { impact: ScoreImpact }) {
+  const config = {
+    none: { icon: Minus, label: 'No score impact', className: 'text-muted-foreground bg-muted' },
+    temporary: { icon: TrendingDown, label: 'Temporary impact', className: 'text-amber-600 bg-amber-500/10' },
+    long_term: { icon: TrendingUp, label: 'Long-term impact', className: 'text-destructive bg-destructive/10' },
+    unknown: { icon: HelpCircle, label: 'Impact varies', className: 'text-muted-foreground bg-muted' },
+  };
+  
+  const { icon: Icon, label, className } = config[impact];
+  
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium", className)}>
+      <Icon className="w-3.5 h-3.5" />
+      {label}
+    </span>
+  );
+}
+
+// Confidence Level Badge Component  
+function ConfidenceLevelBadge({ level }: { level: ConfidenceLevel }) {
+  const config = {
+    high: { label: 'High certainty', className: 'text-emerald-600 bg-emerald-500/10' },
+    issuer_dependent: { label: 'Issuer-dependent', className: 'text-amber-600 bg-amber-500/10' },
+    situational: { label: 'Situational', className: 'text-blue-600 bg-blue-500/10' },
+    insufficient_data: { label: 'Insufficient data', className: 'text-muted-foreground bg-muted' },
+  };
+  
+  const { label, className } = config[level];
+  
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium", className)}>
+      <Shield className="w-3.5 h-3.5" />
+      {label}
+    </span>
+  );
+}
+
+// Myth Warning Component
+function MythWarning({ correction }: { correction: string }) {
+  return (
+    <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 mb-4">
+      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-medium text-amber-600 dark:text-amber-400 mb-1">
+          Common misconception
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {correction}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 interface AskDemoState {
@@ -146,9 +214,13 @@ export default function Ask() {
         role: 'assistant',
         content: data.answer,
         confidence: data.confidence,
+        confidenceLevel: data.confidence_level,
+        scoreImpact: data.score_impact,
         citations: data.citations,
         intent: data.intent,
         timestamp: new Date(),
+        isMyth: data.is_myth,
+        mythCorrection: data.myth_correction,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -291,13 +363,30 @@ export default function Ask() {
                           </div>
                         )}
                         
+                        {/* Myth Warning */}
+                        {message.role === 'assistant' && message.isMyth && message.mythCorrection && (
+                          <MythWarning correction={message.mythCorrection} />
+                        )}
+                        
+                        {/* Score Impact & Confidence Badges */}
+                        {message.role === 'assistant' && !message.isError && (
+                          <div className="flex items-center gap-2 flex-wrap mb-4">
+                            {message.scoreImpact && (
+                              <ScoreImpactBadge impact={message.scoreImpact} />
+                            )}
+                            {message.confidenceLevel && (
+                              <ConfidenceLevelBadge level={message.confidenceLevel} />
+                            )}
+                          </div>
+                        )}
+                        
                         <p className="whitespace-pre-wrap text-sm leading-relaxed">
                           {message.content}
                         </p>
                         
                         {message.role === 'assistant' && !message.isError && (
                           <div className="mt-4 space-y-4">
-                            {message.confidence !== undefined && (
+                            {message.confidence !== undefined && message.confidence < 0.95 && (
                               <ConfidenceMeter 
                                 confidence={message.confidence} 
                                 size="sm"
