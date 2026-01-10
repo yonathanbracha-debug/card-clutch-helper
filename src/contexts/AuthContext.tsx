@@ -2,6 +2,11 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
+// Local storage keys for guest calibration data
+const GUEST_EXPERIENCE_KEY = 'cardclutch_guest_experience';
+const GUEST_CALIBRATION_KEY = 'cardclutch_guest_calibration';
+const GUEST_MYTH_FLAGS_KEY = 'cardclutch_guest_myth_flags';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -22,6 +27,73 @@ function getDeviceUserId(): string {
   return newId;
 }
 
+// Migrate guest calibration data to database on signup/login
+async function migrateGuestCalibrationData(userId: string) {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const guestCalibration = localStorage.getItem(GUEST_CALIBRATION_KEY);
+    const guestExperience = localStorage.getItem(GUEST_EXPERIENCE_KEY);
+    const guestMythFlags = localStorage.getItem(GUEST_MYTH_FLAGS_KEY);
+    
+    // Only migrate if guest has completed calibration
+    if (guestCalibration !== 'true') return;
+    
+    // Check if user already has calibration data
+    const { data: existing } = await supabase
+      .from('user_preferences')
+      .select('calibration_completed')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    // Don't overwrite existing calibration
+    if (existing?.calibration_completed) {
+      // Clear guest data since user already has calibration
+      localStorage.removeItem(GUEST_CALIBRATION_KEY);
+      localStorage.removeItem(GUEST_EXPERIENCE_KEY);
+      localStorage.removeItem(GUEST_MYTH_FLAGS_KEY);
+      return;
+    }
+    
+    // Parse guest data
+    const experienceLevel = guestExperience && ['beginner', 'intermediate', 'advanced'].includes(guestExperience)
+      ? guestExperience
+      : 'beginner';
+    
+    let mythFlagsObj: Record<string, boolean> = {};
+    if (guestMythFlags) {
+      try {
+        const parsed = JSON.parse(guestMythFlags);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(flag => { mythFlagsObj[flag] = true; });
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    
+    // Migrate to database
+    const { error } = await supabase
+      .from('user_preferences')
+      .update({
+        calibration_completed: true,
+        experience_level: experienceLevel,
+        myth_flags: mythFlagsObj,
+      })
+      .eq('user_id', userId);
+    
+    if (!error) {
+      // Clear guest data after successful migration
+      localStorage.removeItem(GUEST_CALIBRATION_KEY);
+      localStorage.removeItem(GUEST_EXPERIENCE_KEY);
+      localStorage.removeItem(GUEST_MYTH_FLAGS_KEY);
+      console.log('Guest calibration data migrated successfully');
+    }
+  } catch (err) {
+    console.error('Failed to migrate guest calibration data:', err);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -31,10 +103,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Migrate guest data on sign in
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Use setTimeout to avoid blocking the auth flow
+          setTimeout(() => {
+            migrateGuestCalibrationData(session.user.id);
+          }, 100);
+        }
       }
     );
 

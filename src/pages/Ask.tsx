@@ -290,6 +290,33 @@ export default function Ask() {
     }
   };
 
+  // Handle reset calibration
+  const handleResetCalibration = async () => {
+    if (isLoggedIn) {
+      try {
+        await updatePreferences({
+          calibration_completed: false,
+          calibration_responses: {},
+          myth_flags: {},
+          experience_level: 'beginner',
+        });
+      } catch (err) {
+        console.error('Failed to reset calibration:', err);
+      }
+    } else {
+      setGuestCalibrationComplete(false);
+      setGuestExperienceLevel('beginner');
+      setGuestMythFlags([]);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(GUEST_CALIBRATION_KEY);
+        localStorage.removeItem(GUEST_EXPERIENCE_KEY);
+        localStorage.removeItem(GUEST_MYTH_FLAGS_KEY);
+      }
+    }
+    // Clear messages to show calibration
+    setMessages([]);
+  };
+
   const canAsk = isLoggedIn || demoState.count < MAX_ASK_DEMO;
   const remaining = isLoggedIn ? Infinity : MAX_ASK_DEMO - demoState.count;
 
@@ -530,10 +557,18 @@ export default function Ask() {
               </div>
             </div>
 
-            {/* Conservative Mode Indicator */}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Shield className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Conservative Mode Active — We avoid aggressive strategies.</span>
+            {/* Conservative Mode Indicator & Reset Calibration */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Shield className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Conservative Mode Active — We avoid aggressive strategies.</span>
+              </div>
+              <button
+                onClick={handleResetCalibration}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
+              >
+                Reset calibration
+              </button>
             </div>
           </motion.div>
 
