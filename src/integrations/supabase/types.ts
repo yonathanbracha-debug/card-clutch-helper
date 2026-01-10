@@ -776,22 +776,34 @@ export type Database = {
       }
       user_preferences: {
         Row: {
+          calibration_completed: boolean
+          calibration_responses: Json | null
           created_at: string
+          experience_level: string
           mode: Database["public"]["Enums"]["user_mode"]
+          myth_flags: Json | null
           onboarding_completed: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
+          calibration_completed?: boolean
+          calibration_responses?: Json | null
           created_at?: string
+          experience_level?: string
           mode?: Database["public"]["Enums"]["user_mode"]
+          myth_flags?: Json | null
           onboarding_completed?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
+          calibration_completed?: boolean
+          calibration_responses?: Json | null
           created_at?: string
+          experience_level?: string
           mode?: Database["public"]["Enums"]["user_mode"]
+          myth_flags?: Json | null
           onboarding_completed?: boolean
           updated_at?: string
           user_id?: string
