@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { AmbientBackground } from '@/components/marketing/AmbientBackground';
 import { Button } from '@/components/ui/button';
 import { ConfidenceMeter } from '@/components/ConfidenceMeter';
 import { DemoLimitModal } from '@/components/DemoLimitModal';
@@ -15,6 +14,8 @@ import {
   ExternalLink,
   AlertCircle,
   Loader2,
+  MessageSquare,
+  Sparkles,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -194,24 +195,24 @@ export default function Ask() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <AmbientBackground />
       <Header />
       
-      <main className="flex-1 pt-14 pb-6 relative z-10">
-        <div className="max-w-2xl mx-auto px-6 h-full flex flex-col py-8">
-          {/* Header */}
+      <main className="flex-1 pt-20 pb-6">
+        <div className="container-main h-full flex flex-col py-8">
+          {/* Page Header */}
           <div className="mb-8">
-            <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-4">
-              Credit Q&amp;A
-            </p>
-            <h1 className="text-3xl font-light text-foreground mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium mb-4">
+              <MessageSquare className="w-3 h-3" />
+              Credit Q&A
+            </div>
+            <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-3">
               Ask about credit
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-lg max-w-xl">
               Get answers about credit scores, cards, and personal finance.
             </p>
             {!isLoggedIn && remaining > 0 && remaining !== Infinity && (
-              <p className="font-mono text-xs text-muted-foreground mt-3">
+              <p className="text-xs text-muted-foreground mt-3">
                 {remaining} free question{remaining !== 1 ? 's' : ''} remaining
               </p>
             )}
@@ -225,7 +226,7 @@ export default function Ask() {
                   Ask anything about credit. Some ideas:
                 </p>
                 
-                <div className="space-y-2">
+                <div className="grid sm:grid-cols-2 gap-3">
                   {EXAMPLE_PROMPTS.map((prompt, i) => (
                     <button
                       key={i}
@@ -233,7 +234,7 @@ export default function Ask() {
                         setInputValue(prompt);
                         textareaRef.current?.focus();
                       }}
-                      className="w-full text-left px-4 py-3 rounded border border-border bg-card hover:bg-secondary transition-colors text-sm text-muted-foreground hover:text-foreground"
+                      className="text-left p-4 rounded-2xl border border-border bg-card hover:bg-secondary transition-colors text-sm text-muted-foreground hover:text-foreground"
                     >
                       {prompt}
                     </button>
@@ -252,9 +253,9 @@ export default function Ask() {
                   >
                     <div
                       className={cn(
-                        "max-w-[85%] rounded px-4 py-3",
+                        "max-w-[85%] rounded-2xl px-4 py-3",
                         message.role === 'user'
-                          ? 'bg-foreground text-background'
+                          ? 'bg-primary text-primary-foreground'
                           : message.isError
                           ? 'bg-destructive/10 border border-destructive/20'
                           : 'bg-card border border-border'
@@ -321,7 +322,7 @@ export default function Ask() {
                 
                 {isLoading && (
                   <div className="flex justify-start">
-                    <div className="bg-card border border-border rounded px-4 py-3">
+                    <div className="bg-card border border-border rounded-2xl px-4 py-3">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Loader2 className="w-4 h-4 animate-spin" />
                         <span className="text-sm">Thinking...</span>
@@ -343,7 +344,7 @@ export default function Ask() {
           </div>
 
           {/* Text Input */}
-          <div className="sticky bottom-0 bg-transparent pt-2">
+          <div className="sticky bottom-0 bg-background pt-2">
             <div className="relative">
               <textarea
                 ref={textareaRef}
@@ -354,11 +355,11 @@ export default function Ask() {
                 disabled={isLoading}
                 rows={1}
                 className={cn(
-                  "w-full resize-none rounded border border-border bg-card px-4 py-3 pr-12",
+                  "w-full resize-none rounded-2xl border border-border bg-card px-4 py-3 pr-12",
                   "text-sm placeholder:text-muted-foreground text-foreground",
-                  "focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary",
+                  "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
-                  "min-h-[48px] max-h-[200px]"
+                  "min-h-[48px] max-h-[200px] transition-all"
                 )}
                 style={{
                   height: 'auto',
@@ -372,14 +373,15 @@ export default function Ask() {
               />
               <Button
                 size="icon"
+                variant="primary"
                 onClick={() => handleSubmit(inputValue)}
                 disabled={!inputValue.trim() || isLoading}
-                className="absolute right-2 bottom-2 h-8 w-8 rounded"
+                className="absolute right-2 bottom-2 h-8 w-8 rounded-xl"
               >
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-            <p className="font-mono text-xs text-muted-foreground text-center mt-3">
+            <p className="text-xs text-muted-foreground text-center mt-3">
               AI-generated. Verify important information independently.
             </p>
           </div>

@@ -15,11 +15,11 @@ function HeroWord({ word }: { word: string }) {
   return (
     <motion.span
       key={word}
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -6 }}
+      exit={{ opacity: 0, y: -8 }}
       transition={{ 
-        duration: animations.wordRotateDuration / 1000, 
+        duration: 0.45, 
         ease: [0.4, 0, 0.2, 1] 
       }}
       className="inline-block text-primary"
@@ -55,7 +55,7 @@ export function RampHero({ onOpenDemo, className }: RampHeroProps) {
     
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % rotatingWords.length);
-    }, animations.wordRotateInterval);
+    }, 4500); // 4.5 second interval as specified
     return () => clearInterval(interval);
   }, [prefersReducedMotion]);
 
@@ -74,11 +74,11 @@ export function RampHero({ onOpenDemo, className }: RampHeroProps) {
   ];
 
   return (
-    <section className={cn("min-h-[85vh] flex items-center", className)}>
-      <div className="container-main w-full py-16 lg:py-24">
-        <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          {/* Left Column - Content */}
-          <div className="lg:col-span-6 space-y-8">
+    <section className={cn("min-h-[720px] max-h-[780px] flex items-center", className)}>
+      <div className="container-main w-full py-16 lg:py-20">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+          {/* Left Column - Content (cols 1-6) */}
+          <div className="lg:col-span-6 space-y-6">
             {/* Social proof */}
             <motion.p
               initial={{ opacity: 0, y: 10 }}
@@ -94,11 +94,10 @@ export function RampHero({ onOpenDemo, className }: RampHeroProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.6 }}
-              className="text-4xl md:text-5xl lg:text-5xl font-semibold text-foreground leading-tight"
+              className="text-4xl md:text-5xl lg:text-[3.25rem] font-semibold text-foreground leading-[1.1] tracking-tight"
             >
-              Credit decisions,
-              <br />
-              <span className="inline-flex min-w-[200px]">
+              Credit decisions,{" "}
+              <span className="inline-flex min-w-[180px] md:min-w-[240px]">
                 {prefersReducedMotion ? (
                   <span className="text-primary">explained</span>
                 ) : (
@@ -134,12 +133,13 @@ export function RampHero({ onOpenDemo, className }: RampHeroProps) {
                   placeholder="What's your email?"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-12 rounded-xl border-border bg-card px-4 text-base"
+                  className="h-12 rounded-xl border-border bg-card px-4 text-base flex-1"
                 />
                 <Button
                   size="lg"
+                  variant="primary"
                   onClick={handleGetStarted}
-                  className="h-12 px-6 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-2"
+                  className="h-12 px-6 rounded-xl font-medium gap-2 whitespace-nowrap"
                 >
                   Get started free
                   <ArrowRight className="w-4 h-4" />
@@ -149,7 +149,7 @@ export function RampHero({ onOpenDemo, className }: RampHeroProps) {
               <Button
                 variant="ghost"
                 onClick={onOpenDemo}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground px-0"
               >
                 See it in action →
               </Button>
@@ -171,14 +171,14 @@ export function RampHero({ onOpenDemo, className }: RampHeroProps) {
             </motion.div>
           </div>
 
-          {/* Right Column - Visual */}
+          {/* Right Column - Visual (cols 7-12) */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3, duration: 0.7 }}
-            className="lg:col-span-6"
+            className="lg:col-span-6 flex justify-center lg:justify-end"
           >
-            <div className="gradient-panel p-8 lg:p-12">
+            <div className="gradient-panel p-6 md:p-8 lg:p-10 w-full max-w-lg">
               <HeroCardStack />
             </div>
           </motion.div>
