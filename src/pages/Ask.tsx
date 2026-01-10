@@ -12,6 +12,7 @@ import { DemoLimitModal } from '@/components/DemoLimitModal';
 import { AIVoiceInput } from '@/components/ui/ai-voice-input';
 import { CalibrationQuestions, CalibrationResult } from '@/components/ask/CalibrationQuestions';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserPreferences, ExperienceLevel } from '@/hooks/useUserPreferences';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -39,14 +40,15 @@ import {
 
 const ASK_DEMO_KEY = 'cardclutch_ask_demo';
 const MAX_ASK_DEMO = 3;
-const ASK_EXPERIENCE_KEY = 'cardclutch_experience_level';
-const ASK_CALIBRATION_KEY = 'cardclutch_calibration_complete';
-const ASK_MYTH_FLAGS_KEY = 'cardclutch_myth_flags';
+
+// Local storage keys for guest users
+const GUEST_EXPERIENCE_KEY = 'cardclutch_guest_experience';
+const GUEST_CALIBRATION_KEY = 'cardclutch_guest_calibration';
+const GUEST_MYTH_FLAGS_KEY = 'cardclutch_guest_myth_flags';
 
 // Score impact types
 type ScoreImpact = 'none' | 'temporary' | 'long_term' | 'unknown';
 type ConfidenceLevel = 'high' | 'issuer_dependent' | 'situational' | 'insufficient_data';
-type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 type AnswerMode = 'quick' | 'mechanics' | 'action' | 'risk';
 
 interface Message {
@@ -152,6 +154,7 @@ const EXAMPLE_PROMPTS = [
 
 export default function Ask() {
   const { user } = useAuth();
+  const { preferences, loading: prefsLoading, updatePreferences } = useUserPreferences();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -159,11 +162,26 @@ export default function Ask() {
   const [demoState, setDemoState] = useState<AskDemoState>({ count: 0 });
   const [expandedCitations, setExpandedCitations] = useState<Set<string>>(new Set());
   const [answerMode, setAnswerMode] = useState<AnswerMode>('quick');
-  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('beginner');
-  const [calibrationComplete, setCalibrationComplete] = useState(false);
-  const [mythFlags, setMythFlags] = useState<string[]>([]);
+  
+  // Local state for guest users, synced with DB for logged-in users
+  const [guestExperienceLevel, setGuestExperienceLevel] = useState<ExperienceLevel>('beginner');
+  const [guestCalibrationComplete, setGuestCalibrationComplete] = useState(false);
+  const [guestMythFlags, setGuestMythFlags] = useState<string[]>([]);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Derived state - use DB for logged-in users, localStorage for guests
+  const isLoggedIn = !!user;
+  const experienceLevel = isLoggedIn && preferences 
+    ? preferences.experience_level 
+    : guestExperienceLevel;
+  const calibrationComplete = isLoggedIn && preferences 
+    ? preferences.calibration_completed 
+    : guestCalibrationComplete;
+  const mythFlags = isLoggedIn && preferences 
+    ? Object.keys(preferences.myth_flags).filter(k => preferences.myth_flags[k]) 
+    : guestMythFlags;
 
   // Load demo state
   useEffect(() => {
@@ -179,29 +197,29 @@ export default function Ask() {
     }
   }, []);
 
-  // Load persisted experience level and calibration state
+  // Load guest preferences from localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (!isLoggedIn && typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem(ASK_EXPERIENCE_KEY);
-        if (stored && ['beginner', 'intermediate', 'advanced'].includes(stored)) {
-          setExperienceLevel(stored as ExperienceLevel);
+        const storedExp = localStorage.getItem(GUEST_EXPERIENCE_KEY);
+        if (storedExp && ['beginner', 'intermediate', 'advanced'].includes(storedExp)) {
+          setGuestExperienceLevel(storedExp as ExperienceLevel);
         }
         
-        const calibrationDone = localStorage.getItem(ASK_CALIBRATION_KEY);
+        const calibrationDone = localStorage.getItem(GUEST_CALIBRATION_KEY);
         if (calibrationDone === 'true') {
-          setCalibrationComplete(true);
+          setGuestCalibrationComplete(true);
         }
         
-        const storedMythFlags = localStorage.getItem(ASK_MYTH_FLAGS_KEY);
+        const storedMythFlags = localStorage.getItem(GUEST_MYTH_FLAGS_KEY);
         if (storedMythFlags) {
-          setMythFlags(JSON.parse(storedMythFlags));
+          setGuestMythFlags(JSON.parse(storedMythFlags));
         }
       } catch {
         // Ignore
       }
     }
-  }, []);
+  }, [isLoggedIn]);
 
   // Persist demo state
   useEffect(() => {
@@ -210,35 +228,68 @@ export default function Ask() {
     }
   }, [demoState]);
 
-  // Persist experience level
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(ASK_EXPERIENCE_KEY, experienceLevel);
-    }
-  }, [experienceLevel]);
-
   // Handle calibration completion
-  const handleCalibrationComplete = (result: CalibrationResult) => {
-    setExperienceLevel(result.experienceLevel);
-    setMythFlags(result.mythFlags);
-    setCalibrationComplete(true);
-    
-    // Persist to localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(ASK_CALIBRATION_KEY, 'true');
-      localStorage.setItem(ASK_EXPERIENCE_KEY, result.experienceLevel);
-      localStorage.setItem(ASK_MYTH_FLAGS_KEY, JSON.stringify(result.mythFlags));
+  const handleCalibrationComplete = async (result: CalibrationResult) => {
+    if (isLoggedIn) {
+      // Persist to database for logged-in users
+      try {
+        const mythFlagsObj: Record<string, boolean> = {};
+        result.mythFlags.forEach(flag => { mythFlagsObj[flag] = true; });
+        
+        await updatePreferences({
+          experience_level: result.experienceLevel,
+          calibration_completed: true,
+          calibration_responses: result.responses,
+          myth_flags: mythFlagsObj,
+        });
+      } catch (err) {
+        console.error('Failed to save calibration to database:', err);
+      }
+    } else {
+      // Persist to localStorage for guests
+      setGuestExperienceLevel(result.experienceLevel);
+      setGuestMythFlags(result.mythFlags);
+      setGuestCalibrationComplete(true);
+      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(GUEST_CALIBRATION_KEY, 'true');
+        localStorage.setItem(GUEST_EXPERIENCE_KEY, result.experienceLevel);
+        localStorage.setItem(GUEST_MYTH_FLAGS_KEY, JSON.stringify(result.mythFlags));
+      }
     }
   };
 
-  const handleCalibrationSkip = () => {
-    setCalibrationComplete(true);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(ASK_CALIBRATION_KEY, 'true');
+  const handleCalibrationSkip = async () => {
+    if (isLoggedIn) {
+      try {
+        await updatePreferences({ calibration_completed: true });
+      } catch (err) {
+        console.error('Failed to save calibration skip to database:', err);
+      }
+    } else {
+      setGuestCalibrationComplete(true);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(GUEST_CALIBRATION_KEY, 'true');
+      }
     }
   };
 
-  const isLoggedIn = !!user;
+  // Handle experience level change
+  const handleExperienceLevelChange = async (level: ExperienceLevel) => {
+    if (isLoggedIn) {
+      try {
+        await updatePreferences({ experience_level: level });
+      } catch (err) {
+        console.error('Failed to update experience level:', err);
+      }
+    } else {
+      setGuestExperienceLevel(level);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(GUEST_EXPERIENCE_KEY, level);
+      }
+    }
+  };
+
   const canAsk = isLoggedIn || demoState.count < MAX_ASK_DEMO;
   const remaining = isLoggedIn ? Infinity : MAX_ASK_DEMO - demoState.count;
 
@@ -358,6 +409,22 @@ export default function Ask() {
     textareaRef.current?.focus();
   };
 
+  // Show loading state while fetching preferences for logged-in users
+  if (isLoggedIn && prefsLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <main className="flex-1 pt-20 pb-6 flex items-center justify-center">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="text-sm">Loading your preferences...</span>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   // Show calibration for first-time users
   if (!calibrationComplete && messages.length === 0) {
     return (
@@ -423,7 +490,7 @@ export default function Ask() {
                 {EXPERIENCE_LEVELS.map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
-                    onClick={() => setExperienceLevel(id)}
+                    onClick={() => handleExperienceLevelChange(id)}
                     className={cn(
                       "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
                       experienceLevel === id

@@ -2,10 +2,31 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
+
+export interface CalibrationResponses {
+  [questionId: string]: boolean;
+}
+
+export interface MythFlags {
+  [mythId: string]: boolean;
+}
+
 export interface UserPreferences {
   mode: 'rewards' | 'conservative';
   onboarding_completed: boolean;
+  experience_level: ExperienceLevel;
+  calibration_completed: boolean;
+  calibration_responses: CalibrationResponses;
+  myth_flags: MythFlags;
 }
+
+const DEFAULT_PREFERENCES: Omit<UserPreferences, 'mode' | 'onboarding_completed'> = {
+  experience_level: 'beginner',
+  calibration_completed: false,
+  calibration_responses: {},
+  myth_flags: {},
+};
 
 export function useUserPreferences() {
   const { user } = useAuth();
@@ -22,7 +43,7 @@ export function useUserPreferences() {
     try {
       const { data, error } = await supabase
         .from('user_preferences')
-        .select('mode, onboarding_completed')
+        .select('mode, onboarding_completed, experience_level, calibration_completed, calibration_responses, myth_flags')
         .eq('user_id', user.id)
         .single();
 
@@ -34,20 +55,28 @@ export function useUserPreferences() {
           const { data: insertData, error: insertError } = await supabase
             .from('user_preferences')
             .insert({ user_id: user.id })
-            .select('mode, onboarding_completed')
+            .select('mode, onboarding_completed, experience_level, calibration_completed, calibration_responses, myth_flags')
             .single();
           
           if (!insertError && insertData) {
             setPreferences({
               mode: insertData.mode as 'rewards' | 'conservative',
-              onboarding_completed: insertData.onboarding_completed
+              onboarding_completed: insertData.onboarding_completed,
+              experience_level: (insertData.experience_level as ExperienceLevel) || 'beginner',
+              calibration_completed: insertData.calibration_completed || false,
+              calibration_responses: (insertData.calibration_responses as CalibrationResponses) || {},
+              myth_flags: (insertData.myth_flags as MythFlags) || {},
             });
           }
         }
       } else if (data) {
         setPreferences({
           mode: data.mode as 'rewards' | 'conservative',
-          onboarding_completed: data.onboarding_completed
+          onboarding_completed: data.onboarding_completed,
+          experience_level: (data.experience_level as ExperienceLevel) || 'beginner',
+          calibration_completed: data.calibration_completed || false,
+          calibration_responses: (data.calibration_responses as CalibrationResponses) || {},
+          myth_flags: (data.myth_flags as MythFlags) || {},
         });
       }
     } catch (err) {
