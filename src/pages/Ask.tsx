@@ -254,7 +254,7 @@ export default function Ask() {
                           setInputValue(prompt);
                           textareaRef.current?.focus();
                         }}
-                        className="text-left p-5 rounded-2xl border border-border bg-card hover:bg-secondary/50 hover:border-border/80 transition-all duration-300 text-sm text-muted-foreground hover:text-foreground shadow-soft-sm hover:shadow-soft-md"
+                        className="text-left p-5 rounded-2xl border border-border bg-card hover:bg-secondary/50 hover:border-accent/40 transition-all duration-300 text-sm text-muted-foreground hover:text-foreground shadow-soft-sm hover:shadow-soft-md"
                       >
                         {prompt}
                       </motion.button>
@@ -334,7 +334,7 @@ export default function Ask() {
                                           href={citation.url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="flex items-center gap-2 text-xs text-primary hover:underline"
+                                          className="flex items-center gap-2 text-xs text-accent hover:underline"
                                         >
                                           <ExternalLink className="w-3 h-3" />
                                           <span className="truncate">{citation.title}</span>
@@ -393,9 +393,9 @@ export default function Ask() {
                 className={cn(
                   "w-full resize-none rounded-2xl border border-border bg-card px-5 py-4 pr-14",
                   "text-sm placeholder:text-muted-foreground/60 text-foreground",
-                  "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
+                  "focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/60",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
-                  "min-h-[56px] max-h-[200px] transition-all duration-200",
+                  "min-h-[56px] max-h-[200px] transition-all duration-300",
                   "shadow-soft-sm hover:shadow-soft-md"
                 )}
                 style={{

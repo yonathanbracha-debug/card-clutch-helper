@@ -155,21 +155,31 @@ function AbstractCardVisual() {
   );
 }
 
-// Partner row - slow marquee
+// Partner row - slow continuous marquee
 function PartnerRow() {
-  const partners = ['Visa', 'Mastercard', 'Amex', 'Discover', 'Capital One', 'Chase'];
+  const partners = ['Visa', 'Mastercard', 'American Express', 'Discover', 'Capital One', 'Chase'];
   
   return (
-    <section className="py-16 border-y border-border bg-card/30">
+    <section className="py-16 border-y border-border bg-card/30 overflow-hidden">
       <div className="container-main">
         <p className="text-center text-xs text-muted-foreground uppercase tracking-widest mb-8">
           Works with all major cards
         </p>
-        <div className="flex items-center justify-center gap-8 sm:gap-16 flex-wrap">
-          {partners.map((partner) => (
+      </div>
+      
+      {/* Marquee container */}
+      <div className="relative">
+        {/* Fade edges */}
+        <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-background to-transparent z-10" />
+        <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-background to-transparent z-10" />
+        
+        {/* Scrolling track */}
+        <div className="flex animate-marquee-slow">
+          {/* Double the logos for seamless loop */}
+          {[...partners, ...partners].map((partner, i) => (
             <span
-              key={partner}
-              className="text-muted-foreground/60 font-medium text-lg tracking-wide"
+              key={`${partner}-${i}`}
+              className="text-muted-foreground/50 font-medium text-lg tracking-wide whitespace-nowrap px-12"
             >
               {partner}
             </span>
@@ -180,22 +190,24 @@ function PartnerRow() {
   );
 }
 
-// Feature section
+// Feature section - scannable with expand-on-interaction
 function FeatureSection() {
+  const [expanded, setExpanded] = useState<number | null>(null);
+  
   const features = [
     {
       title: 'Optimal card selection',
-      description: 'Know exactly which card to use for every purchase. No guessing, no spreadsheets.',
+      summary: 'Know exactly which card to use for every purchase.',
       details: 'We analyze merchant categories, reward multipliers, and known exclusions to recommend the single best card from your wallet.',
     },
     {
       title: 'Utilization control',
-      description: 'Prevent credit score damage before it happens with payment timing guidance.',
+      summary: 'Prevent credit score damage before it happens.',
       details: 'Statement close dates matter. We tell you when to pay to keep utilization in the optimal band.',
     },
     {
       title: 'Privacy by design',
-      description: 'No bank connections. No selling data. Your information stays yours.',
+      summary: 'No bank connections. Your information stays yours.',
       details: 'All logic runs locally or on edge functions with minimal data retention. We never see your transactions.',
     },
   ];
@@ -203,7 +215,7 @@ function FeatureSection() {
   return (
     <section className="py-24 lg:py-32">
       <div className="container-main">
-        <div className="max-w-2xl mb-16">
+        <div className="max-w-2xl mb-12">
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -226,27 +238,46 @@ function FeatureSection() {
 
         <div className="grid lg:grid-cols-3 gap-6">
           {features.map((feature, index) => (
-            <motion.div
+            <motion.button
               key={feature.title}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
-              className="group card-interactive p-8"
+              onClick={() => setExpanded(expanded === index ? null : index)}
+              className="group card-interactive p-8 text-left cursor-pointer"
             >
               <div className="text-xs font-medium text-primary/70 mb-4">
                 {String(index + 1).padStart(2, '0')}
               </div>
-              <h3 className="text-xl font-medium text-foreground mb-3">
+              <h3 className="text-xl font-medium text-foreground mb-2">
                 {feature.title}
               </h3>
-              <p className="text-muted-foreground mb-4">
-                {feature.description}
+              <p className="text-muted-foreground text-sm">
+                {feature.summary}
               </p>
-              <p className="text-sm text-muted-foreground/80 leading-relaxed">
-                {feature.details}
-              </p>
-            </motion.div>
+              
+              {/* Expandable details */}
+              <motion.div
+                initial={false}
+                animate={{ 
+                  height: expanded === index ? 'auto' : 0,
+                  opacity: expanded === index ? 1 : 0,
+                  marginTop: expanded === index ? 16 : 0
+                }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                className="overflow-hidden"
+              >
+                <p className="text-sm text-muted-foreground/80 leading-relaxed border-t border-border pt-4">
+                  {feature.details}
+                </p>
+              </motion.div>
+              
+              {/* Expand indicator */}
+              <div className="mt-4 text-xs text-primary/60 group-hover:text-primary transition-colors duration-300">
+                {expanded === index ? 'Less' : 'Learn more'}
+              </div>
+            </motion.button>
           ))}
         </div>
       </div>

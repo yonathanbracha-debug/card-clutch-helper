@@ -286,6 +286,11 @@
   .animate-pulse-slow {
     animation: pulse-slow 4s ease-in-out infinite;
   }
+
+  /* Slow continuous marquee for partner logos */
+  .animate-marquee-slow {
+    animation: marquee-slow 40s linear infinite;
+  }
 }
 
 @keyframes fade-in {
@@ -337,6 +342,15 @@
   }
 }
 
+@keyframes marquee-slow {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
@@ -369,7 +383,8 @@
   .animate-slide-up,
   .animate-scale-in,
   .animate-float,
-  .animate-pulse-slow {
+  .animate-pulse-slow,
+  .animate-marquee-slow {
     animation: none !important;
   }
   

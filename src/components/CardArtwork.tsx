@@ -113,12 +113,14 @@ const cardOverrides: Record<string, { gradient: string; textColor: string }> = {
   },
 };
 
+// Credit card standard aspect ratio: 85.6mm × 53.98mm = 1.586:1
+// Physical cards have ~3mm radius on 85.6mm width = ~3.5% border radius
 const sizeClasses = {
-  xs: 'w-12 h-8 rounded text-[4px]',
-  sm: 'w-16 h-10 rounded-md text-[5px]',
-  md: 'w-24 h-16 rounded-lg text-[7px]',
-  lg: 'w-40 h-24 rounded-xl text-[10px]',
-  xl: 'w-64 h-40 rounded-2xl text-xs',
+  xs: 'w-12 text-[4px]',
+  sm: 'w-16 text-[5px]',
+  md: 'w-24 text-[7px]',
+  lg: 'w-40 text-[10px]',
+  xl: 'w-64 text-xs',
 };
 
 const chipSizes = {
@@ -170,7 +172,10 @@ export function CardArtwork({
         sizeClasses[size],
         className
       )}
-      style={{ aspectRatio: '1.586' }}
+      style={{ 
+        aspectRatio: '1.586',
+        borderRadius: '3.48%', // Physical card radius
+      }}
     >
       {/* Pattern overlays */}
       {pattern === 'metallic' && (
