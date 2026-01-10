@@ -118,7 +118,23 @@ async function getEmbeddings(texts: string[], openaiKey: string): Promise<number
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`OpenAI embedding error: ${response.status} ${errorText}`);
+    
+    // Parse specific OpenAI errors
+    try {
+      const parsed = JSON.parse(errorText);
+      if (response.status === 429 || parsed.error?.code === "rate_limit_exceeded") {
+        throw new Error("OpenAI rate limit exceeded. Please try again in a moment.");
+      }
+      if (response.status === 402 || parsed.error?.code === "insufficient_quota") {
+        throw new Error("OpenAI quota exceeded. Please check billing.");
+      }
+    } catch (parseErr) {
+      if (parseErr instanceof Error && parseErr.message.includes("OpenAI")) {
+        throw parseErr;
+      }
+    }
+    
+    throw new Error(`OpenAI embedding error: ${response.status}`);
   }
 
   const data = await response.json();
