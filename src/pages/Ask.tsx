@@ -1,3 +1,7 @@
+/**
+ * Ask Page - Credit Q&A
+ * Trust-first, calm experience for credit questions
+ */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -8,6 +12,7 @@ import { AIVoiceInput } from '@/components/ui/ai-voice-input';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Send, 
   ChevronDown, 
@@ -15,9 +20,8 @@ import {
   AlertCircle,
   Loader2,
   MessageSquare,
-  Sparkles,
+  HelpCircle,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 const ASK_DEMO_KEY = 'cardclutch_ask_demo';
 const MAX_ASK_DEMO = 3;
@@ -200,143 +204,175 @@ export default function Ask() {
       <main className="flex-1 pt-20 pb-6">
         <div className="container-main h-full flex flex-col py-8">
           {/* Page Header */}
-          <div className="mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary text-muted-foreground text-xs font-medium mb-4">
-              <MessageSquare className="w-3 h-3" />
+          <motion.div 
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+            className="mb-8"
+          >
+            <span className="pill-secondary mb-4">
+              <MessageSquare className="w-3.5 h-3.5" />
               Credit Q&A
-            </div>
+            </span>
             <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-3">
               Ask about credit
             </h1>
-            <p className="text-muted-foreground text-lg max-w-xl">
-              Get answers about credit scores, cards, and personal finance.
+            <p className="text-muted-foreground text-lg max-w-xl leading-relaxed">
+              Get conservative, fact-based answers about credit scores, cards, and personal finance. 
+              No hype, just clarity.
             </p>
             {!isLoggedIn && remaining > 0 && remaining !== Infinity && (
-              <p className="text-xs text-muted-foreground mt-3">
+              <p className="text-sm text-muted-foreground/70 mt-4 font-mono">
                 {remaining} free question{remaining !== 1 ? 's' : ''} remaining
               </p>
             )}
-          </div>
+          </motion.div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto space-y-4 mb-4 min-h-[300px]">
-            {messages.length === 0 ? (
-              <div className="space-y-6">
-                <p className="text-sm text-muted-foreground">
-                  Ask anything about credit. Some ideas:
-                </p>
-                
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {EXAMPLE_PROMPTS.map((prompt, i) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        setInputValue(prompt);
-                        textareaRef.current?.focus();
-                      }}
-                      className="text-left p-4 rounded-2xl border border-border bg-card hover:bg-secondary transition-colors text-sm text-muted-foreground hover:text-foreground"
-                    >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <>
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      "flex",
-                      message.role === 'user' ? 'justify-end' : 'justify-start'
-                    )}
-                  >
-                    <div
+          <div className="flex-1 overflow-y-auto space-y-6 mb-6 min-h-[300px]">
+            <AnimatePresence mode="popLayout">
+              {messages.length === 0 ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.4, delay: 0.2 }}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <HelpCircle className="w-4 h-4" />
+                    <span>Ask anything about credit. Here are some ideas:</span>
+                  </div>
+                  
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {EXAMPLE_PROMPTS.map((prompt, i) => (
+                      <motion.button
+                        key={i}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.1 * i }}
+                        onClick={() => {
+                          setInputValue(prompt);
+                          textareaRef.current?.focus();
+                        }}
+                        className="text-left p-5 rounded-2xl border border-border bg-card hover:bg-secondary/50 hover:border-border/80 transition-all duration-300 text-sm text-muted-foreground hover:text-foreground shadow-soft-sm hover:shadow-soft-md"
+                      >
+                        {prompt}
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              ) : (
+                <>
+                  {messages.map((message, index) => (
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.05 }}
                       className={cn(
-                        "max-w-[85%] rounded-2xl px-4 py-3",
-                        message.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : message.isError
-                          ? 'bg-destructive/10 border border-destructive/20'
-                          : 'bg-card border border-border'
+                        "flex",
+                        message.role === 'user' ? 'justify-end' : 'justify-start'
                       )}
                     >
-                      {message.isError && (
-                        <div className="flex items-center gap-2 text-destructive mb-2">
-                          <AlertCircle className="w-4 h-4" />
-                          <span className="text-sm font-medium">Error</span>
-                        </div>
-                      )}
-                      
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {message.content}
-                      </p>
-                      
-                      {message.role === 'assistant' && !message.isError && (
-                        <div className="mt-3 space-y-3">
-                          {message.confidence !== undefined && (
-                            <ConfidenceMeter 
-                              confidence={message.confidence} 
-                              size="sm"
-                            />
-                          )}
-                          
-                          {message.citations && message.citations.length > 0 && (
-                            <div className="border-t border-border pt-3">
-                              <button
-                                onClick={() => toggleCitations(message.id)}
-                                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                              >
-                                <ChevronDown
-                                  className={cn(
-                                    "w-4 h-4 transition-transform",
-                                    expandedCitations.has(message.id) && "rotate-180"
-                                  )}
-                                />
-                                {expandedCitations.has(message.id) ? 'Hide' : 'Show'} sources ({message.citations.length})
-                              </button>
-                              
-                              {expandedCitations.has(message.id) && (
-                                <div className="mt-2 space-y-2">
-                                  {message.citations.map((citation, i) => (
-                                    <a
-                                      key={i}
-                                      href={citation.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-2 text-xs text-primary hover:underline"
+                      <div
+                        className={cn(
+                          "max-w-[85%] rounded-2xl px-5 py-4 shadow-soft-sm",
+                          message.role === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : message.isError
+                            ? 'bg-destructive/5 border border-destructive/20'
+                            : 'bg-card border border-border'
+                        )}
+                      >
+                        {message.isError && (
+                          <div className="flex items-center gap-2 text-destructive mb-3">
+                            <AlertCircle className="w-4 h-4" />
+                            <span className="text-sm font-medium">Error</span>
+                          </div>
+                        )}
+                        
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                          {message.content}
+                        </p>
+                        
+                        {message.role === 'assistant' && !message.isError && (
+                          <div className="mt-4 space-y-4">
+                            {message.confidence !== undefined && (
+                              <ConfidenceMeter 
+                                confidence={message.confidence} 
+                                size="sm"
+                              />
+                            )}
+                            
+                            {message.citations && message.citations.length > 0 && (
+                              <div className="border-t border-border pt-4">
+                                <button
+                                  onClick={() => toggleCitations(message.id)}
+                                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors duration-200"
+                                >
+                                  <ChevronDown
+                                    className={cn(
+                                      "w-4 h-4 transition-transform duration-300",
+                                      expandedCitations.has(message.id) && "rotate-180"
+                                    )}
+                                  />
+                                  {expandedCitations.has(message.id) ? 'Hide' : 'Show'} sources ({message.citations.length})
+                                </button>
+                                
+                                <AnimatePresence>
+                                  {expandedCitations.has(message.id) && (
+                                    <motion.div 
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: 'auto' }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      transition={{ duration: 0.3 }}
+                                      className="mt-3 space-y-2 overflow-hidden"
                                     >
-                                      <ExternalLink className="w-3 h-3" />
-                                      <span className="truncate">{citation.title}</span>
-                                    </a>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-card border border-border rounded-2xl px-4 py-3">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm">Thinking...</span>
+                                      {message.citations.map((citation, i) => (
+                                        <a
+                                          key={i}
+                                          href={citation.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-2 text-xs text-primary hover:underline"
+                                        >
+                                          <ExternalLink className="w-3 h-3" />
+                                          <span className="truncate">{citation.title}</span>
+                                        </a>
+                                      ))}
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+                    </motion.div>
+                  ))}
+                  
+                  {isLoading && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex justify-start"
+                    >
+                      <div className="bg-card border border-border rounded-2xl px-5 py-4 shadow-soft-sm">
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span className="text-sm">Analyzing your question...</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </>
+              )}
+            </AnimatePresence>
             <div ref={messagesEndRef} />
           </div>
 
           {/* Voice Input */}
-          <div className="mb-3">
+          <div className="mb-4">
             <AIVoiceInput 
               onTranscript={handleVoiceTranscript} 
               disabled={isLoading}
@@ -344,7 +380,7 @@ export default function Ask() {
           </div>
 
           {/* Text Input */}
-          <div className="sticky bottom-0 bg-background pt-2">
+          <div className="sticky bottom-0 bg-background pt-3">
             <div className="relative">
               <textarea
                 ref={textareaRef}
@@ -355,15 +391,16 @@ export default function Ask() {
                 disabled={isLoading}
                 rows={1}
                 className={cn(
-                  "w-full resize-none rounded-2xl border border-border bg-card px-4 py-3 pr-12",
-                  "text-sm placeholder:text-muted-foreground text-foreground",
-                  "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
+                  "w-full resize-none rounded-2xl border border-border bg-card px-5 py-4 pr-14",
+                  "text-sm placeholder:text-muted-foreground/60 text-foreground",
+                  "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
-                  "min-h-[48px] max-h-[200px] transition-all"
+                  "min-h-[56px] max-h-[200px] transition-all duration-200",
+                  "shadow-soft-sm hover:shadow-soft-md"
                 )}
                 style={{
                   height: 'auto',
-                  minHeight: '48px',
+                  minHeight: '56px',
                 }}
                 onInput={(e) => {
                   const target = e.target as HTMLTextAreaElement;
@@ -376,13 +413,13 @@ export default function Ask() {
                 variant="primary"
                 onClick={() => handleSubmit(inputValue)}
                 disabled={!inputValue.trim() || isLoading}
-                className="absolute right-2 bottom-2 h-8 w-8 rounded-xl"
+                className="absolute right-3 bottom-3 h-10 w-10 rounded-xl"
               >
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground text-center mt-3">
-              AI-generated. Verify important information independently.
+            <p className="text-xs text-muted-foreground/70 text-center mt-4">
+              AI-generated answers. Always verify important information with official sources.
             </p>
           </div>
         </div>
