@@ -10,35 +10,35 @@
 
 @layer base {
   :root {
-    /* Light mode - Soft warm neutrals */
-    --background: 220 16% 96%;
-    --foreground: 230 25% 12%;
+    /* Light mode - Warm off-whites, reduced contrast */
+    --background: 40 20% 96%;
+    --foreground: 220 20% 18%;
 
-    --card: 220 20% 98%;
-    --card-foreground: 230 25% 12%;
+    --card: 40 25% 98%;
+    --card-foreground: 220 20% 18%;
 
-    --popover: 220 20% 98%;
-    --popover-foreground: 230 25% 12%;
+    --popover: 40 25% 98%;
+    --popover-foreground: 220 20% 18%;
 
-    /* Cool indigo accent */
-    --primary: 245 58% 51%;
+    /* Cool indigo accent - softer for light */
+    --primary: 245 50% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 92%;
-    --secondary-foreground: 230 25% 12%;
+    --secondary: 40 15% 93%;
+    --secondary-foreground: 220 20% 18%;
 
-    --muted: 220 14% 88%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 40 12% 88%;
+    --muted-foreground: 220 12% 42%;
 
-    --accent: 245 40% 60%;
+    --accent: 245 40% 58%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 50%;
+    --destructive: 0 55% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 14% 88%;
-    --input: 220 14% 92%;
-    --ring: 245 58% 51%;
+    --border: 40 12% 86%;
+    --input: 40 15% 93%;
+    --ring: 245 50% 55%;
 
     /* Radii - Soft, safe, non-aggressive */
     --radius: 1rem;
@@ -48,25 +48,25 @@
     --radius-2xl: 2rem;
     --radius-3xl: 2.5rem;
 
-    /* Shadows - Subtle, low contrast */
-    --shadow-xs: 0 1px 2px hsl(230 25% 12% / 0.02);
-    --shadow-sm: 0 2px 8px hsl(230 25% 12% / 0.04);
-    --shadow-md: 0 4px 16px hsl(230 25% 12% / 0.06);
-    --shadow-lg: 0 12px 32px hsl(230 25% 12% / 0.08);
-    --shadow-xl: 0 24px 48px hsl(230 25% 12% / 0.1);
+    /* Shadows - Warmer, softer for light mode */
+    --shadow-xs: 0 1px 2px hsl(40 20% 30% / 0.03);
+    --shadow-sm: 0 2px 8px hsl(40 20% 30% / 0.05);
+    --shadow-md: 0 4px 16px hsl(40 20% 30% / 0.07);
+    --shadow-lg: 0 12px 32px hsl(40 20% 30% / 0.09);
+    --shadow-xl: 0 24px 48px hsl(40 20% 30% / 0.11);
 
-    /* Surfaces */
-    --surface: 220 20% 98%;
-    --surface-elevated: 0 0% 100%;
+    /* Surfaces - warmer off-whites */
+    --surface: 40 25% 98%;
+    --surface-elevated: 40 30% 99%;
 
-    --sidebar-background: 220 20% 98%;
-    --sidebar-foreground: 230 25% 12%;
-    --sidebar-primary: 245 58% 51%;
+    --sidebar-background: 40 25% 97%;
+    --sidebar-foreground: 220 20% 18%;
+    --sidebar-primary: 245 50% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 92%;
-    --sidebar-accent-foreground: 230 25% 12%;
-    --sidebar-border: 220 14% 88%;
-    --sidebar-ring: 245 58% 51%;
+    --sidebar-accent: 40 15% 93%;
+    --sidebar-accent-foreground: 220 20% 18%;
+    --sidebar-border: 40 12% 86%;
+    --sidebar-ring: 245 50% 55%;
   }
 
   .dark {
