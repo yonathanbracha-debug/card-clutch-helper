@@ -5,126 +5,53 @@
  */
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { WaitlistForm } from '@/components/WaitlistForm';
 import { AmbientBackground } from '@/components/marketing/AmbientBackground';
-import { cn } from '@/lib/utils';
+import { AnimatedHero } from '@/components/ui/animated-hero';
+import { FeatureSection } from '@/components/ui/feature-section';
+import { ContainerScroll, CardClutchPreview } from '@/components/ui/container-scroll-animation';
 
 const Index = () => {
-  const navigate = useNavigate();
-
   return (
     <div className="min-h-screen bg-background">
       <AmbientBackground />
       <Header />
       
       <main className="pt-14 relative z-10">
-        {/* HERO - Centered, calm, clear */}
-        <section className="min-h-[85vh] flex items-center">
-          <div className="max-w-3xl mx-auto px-6 py-24 text-center">
-            {/* Small label */}
-            <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-8">
-              Credit Decision Engine
-            </p>
+        {/* HERO - Animated with rotating words */}
+        <AnimatedHero />
 
-            {/* Headline */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight text-foreground leading-tight mb-8">
-              Credit decisions,
-              <br />
-              explained &amp; optimized.
-            </h1>
-            
-            {/* Subhead */}
-            <p className="text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto mb-12">
-              Know which card to use before you buy. Understand payment timing. 
-              Avoid category traps. No guessing required.
-            </p>
-            
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-16">
-              <Button 
-                size="lg" 
-                onClick={() => navigate('/analyze')}
-                className="gap-2"
-              >
-                Try the Analyzer
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-              <Button 
-                size="lg" 
-                variant="outline"
-                onClick={() => navigate('/ask')}
-              >
-                Ask a Question
-              </Button>
-            </div>
-            
-            {/* Trust statement */}
-            <p className="font-mono text-xs text-muted-foreground">
-              No bank connections required. Your data stays with you.
-            </p>
-          </div>
-        </section>
+        {/* HOW IT WORKS - Feature steps */}
+        <FeatureSection />
 
-        {/* HOW IT WORKS - Simple, numbered */}
+        {/* PARALLAX PREVIEW - Container scroll animation */}
         <section className="border-t border-border">
-          <div className="max-w-3xl mx-auto px-6 py-24">
-            <h2 className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-12">
-              How it works
-            </h2>
-
-            <div className="space-y-0">
-              {[
-                {
-                  step: '01',
-                  title: 'Add your cards',
-                  description: 'Select the credit cards you carry. Takes 30 seconds.',
-                },
-                {
-                  step: '02',
-                  title: 'Paste any merchant',
-                  description: 'Enter a URL or merchant name before you buy.',
-                },
-                {
-                  step: '03',
-                  title: 'Get your answer',
-                  description: 'See which card earns the most, with confidence levels and reasoning.',
-                },
-              ].map((item, index) => (
-                <div 
-                  key={item.step}
-                  className={cn(
-                    "grid md:grid-cols-12 gap-4 py-8",
-                    index !== 2 && "border-b border-border"
-                  )}
-                >
-                  <div className="md:col-span-2">
-                    <span className="font-mono text-sm text-muted-foreground">
-                      {item.step}
-                    </span>
-                  </div>
-                  <div className="md:col-span-10">
-                    <h3 className="text-lg font-medium text-foreground mb-2">
-                      {item.title}
-                    </h3>
-                    <p className="text-muted-foreground">
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <ContainerScroll
+            titleComponent={
+              <div>
+                <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-4">
+                  See it in action
+                </p>
+                <h2 className="text-3xl md:text-4xl font-light text-foreground mb-4">
+                  The error-free credit decision.
+                </h2>
+                <p className="text-muted-foreground max-w-xl mx-auto">
+                  We output the exact action: which card, why, and what to pay before statement close
+                  to keep utilization in the optimal band.
+                </p>
+              </div>
+            }
+          >
+            <CardClutchPreview />
+          </ContainerScroll>
         </section>
 
         {/* PRINCIPLES - Trust building */}
         <section className="border-t border-border">
           <div className="max-w-3xl mx-auto px-6 py-24">
-            <h2 className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-12">
+            <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground mb-12">
               Our approach
-            </h2>
+            </p>
 
             <div className="grid md:grid-cols-3 gap-8">
               {[
