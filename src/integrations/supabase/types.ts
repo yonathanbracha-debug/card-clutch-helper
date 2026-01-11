@@ -786,6 +786,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_credit_profile: {
+        Row: {
+          age_bucket: string | null
+          bnpl_usage: string | null
+          carry_balance: boolean
+          confidence_level: string | null
+          created_at: string
+          experience_level: string
+          income_bucket: string | null
+          intent: string
+          onboarding_completed: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age_bucket?: string | null
+          bnpl_usage?: string | null
+          carry_balance?: boolean
+          confidence_level?: string | null
+          created_at?: string
+          experience_level?: string
+          income_bucket?: string | null
+          intent?: string
+          onboarding_completed?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age_bucket?: string | null
+          bnpl_usage?: string | null
+          carry_balance?: boolean
+          confidence_level?: string | null
+          created_at?: string
+          experience_level?: string
+          income_bucket?: string | null
+          intent?: string
+          onboarding_completed?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           calibration_completed: boolean
