@@ -547,7 +547,11 @@ export type Database = {
       rag_queries: {
         Row: {
           answer: string
+          answer_depth: string | null
           answer_json: Json | null
+          answer_schema_version: number
+          calibration_needed: boolean
+          calibration_questions: Json
           confidence: number
           created_at: string
           error: string | null
@@ -557,13 +561,21 @@ export type Database = {
           ip_hash: string | null
           latency_ms: number | null
           model: string | null
+          myth_flags: Json
           question: string
+          redacted_answer: Json | null
+          redacted_question: string | null
           retrieved_chunks: Json
+          routing: Json
           user_id: string | null
         }
         Insert: {
           answer: string
+          answer_depth?: string | null
           answer_json?: Json | null
+          answer_schema_version?: number
+          calibration_needed?: boolean
+          calibration_questions?: Json
           confidence?: number
           created_at?: string
           error?: string | null
@@ -573,13 +585,21 @@ export type Database = {
           ip_hash?: string | null
           latency_ms?: number | null
           model?: string | null
+          myth_flags?: Json
           question: string
+          redacted_answer?: Json | null
+          redacted_question?: string | null
           retrieved_chunks?: Json
+          routing?: Json
           user_id?: string | null
         }
         Update: {
           answer?: string
+          answer_depth?: string | null
           answer_json?: Json | null
+          answer_schema_version?: number
+          calibration_needed?: boolean
+          calibration_questions?: Json
           confidence?: number
           created_at?: string
           error?: string | null
@@ -589,8 +609,12 @@ export type Database = {
           ip_hash?: string | null
           latency_ms?: number | null
           model?: string | null
+          myth_flags?: Json
           question?: string
+          redacted_answer?: Json | null
+          redacted_question?: string | null
           retrieved_chunks?: Json
+          routing?: Json
           user_id?: string | null
         }
         Relationships: []
@@ -783,6 +807,78 @@ export type Database = {
           ip_hash?: string | null
           metadata?: Json | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_ai_preferences: {
+        Row: {
+          answer_depth: string
+          created_at: string
+          last_calibrated_at: string | null
+          tone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer_depth?: string
+          created_at?: string
+          last_calibrated_at?: string | null
+          tone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer_depth?: string
+          created_at?: string
+          last_calibrated_at?: string | null
+          tone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_calibration: {
+        Row: {
+          bnpl_usage: string | null
+          carry_balance: boolean | null
+          confidence_level: string | null
+          created_at: string
+          goal_rewards: boolean | null
+          goal_score: boolean | null
+          has_budgeting_habit: boolean | null
+          has_emergency_fund: boolean | null
+          knows_statement_vs_due: boolean | null
+          understands_utilization: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bnpl_usage?: string | null
+          carry_balance?: boolean | null
+          confidence_level?: string | null
+          created_at?: string
+          goal_rewards?: boolean | null
+          goal_score?: boolean | null
+          has_budgeting_habit?: boolean | null
+          has_emergency_fund?: boolean | null
+          knows_statement_vs_due?: boolean | null
+          understands_utilization?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bnpl_usage?: string | null
+          carry_balance?: boolean | null
+          confidence_level?: string | null
+          created_at?: string
+          goal_rewards?: boolean | null
+          goal_score?: boolean | null
+          has_budgeting_habit?: boolean | null
+          has_emergency_fund?: boolean | null
+          knows_statement_vs_due?: boolean | null
+          understands_utilization?: boolean | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
