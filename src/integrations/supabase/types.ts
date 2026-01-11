@@ -547,6 +547,7 @@ export type Database = {
       rag_queries: {
         Row: {
           answer: string
+          answer_json: Json | null
           confidence: number
           created_at: string
           error: string | null
@@ -562,6 +563,7 @@ export type Database = {
         }
         Insert: {
           answer: string
+          answer_json?: Json | null
           confidence?: number
           created_at?: string
           error?: string | null
@@ -577,6 +579,7 @@ export type Database = {
         }
         Update: {
           answer?: string
+          answer_json?: Json | null
           confidence?: number
           created_at?: string
           error?: string | null
@@ -599,7 +602,10 @@ export type Database = {
           count: number
           id: string
           scope: string
+          scope_key: string | null
+          scope_type: string | null
           updated_at: string
+          window_size_seconds: number | null
           window_start: string
         }
         Insert: {
@@ -608,7 +614,10 @@ export type Database = {
           count?: number
           id?: string
           scope: string
+          scope_key?: string | null
+          scope_type?: string | null
           updated_at?: string
+          window_size_seconds?: number | null
           window_start?: string
         }
         Update: {
@@ -617,7 +626,10 @@ export type Database = {
           count?: number
           id?: string
           scope?: string
+          scope_key?: string | null
+          scope_type?: string | null
           updated_at?: string
+          window_size_seconds?: number | null
           window_start?: string
         }
         Relationships: []
@@ -916,6 +928,7 @@ export type Database = {
       rag_queries_public: {
         Row: {
           answer: string | null
+          answer_json: Json | null
           confidence: number | null
           created_at: string | null
           error: string | null
@@ -930,6 +943,7 @@ export type Database = {
         }
         Insert: {
           answer?: string | null
+          answer_json?: Json | null
           confidence?: number | null
           created_at?: string | null
           error?: string | null
@@ -944,6 +958,7 @@ export type Database = {
         }
         Update: {
           answer?: string | null
+          answer_json?: Json | null
           confidence?: number | null
           created_at?: string | null
           error?: string | null
