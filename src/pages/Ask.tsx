@@ -11,6 +11,17 @@ import { ConfidenceMeter } from '@/components/ConfidenceMeter';
 import { DemoLimitModal } from '@/components/DemoLimitModal';
 import { AIVoiceInput } from '@/components/ui/ai-voice-input';
 import { CalibrationQuestions, CalibrationResult } from '@/components/ask/CalibrationQuestions';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserPreferences, ExperienceLevel } from '@/hooks/useUserPreferences';
 import { supabase } from '@/integrations/supabase/client';
@@ -563,12 +574,30 @@ export default function Ask() {
                 <Shield className="w-3.5 h-3.5 text-emerald-500" />
                 <span>Conservative Mode Active — We avoid aggressive strategies.</span>
               </div>
-              <button
-                onClick={handleResetCalibration}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
-              >
-                Reset calibration
-              </button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
+                  >
+                    Reset calibration
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Reset calibration?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will clear your current calibration data and experience level. 
+                      You'll need to complete the calibration questions again.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleResetCalibration}>
+                      Reset
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </motion.div>
 
