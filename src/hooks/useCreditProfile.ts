@@ -9,6 +9,7 @@ export type BnplUsage = 'never' | 'sometimes' | 'often';
 export type AgeBucket = '<18' | '18-20' | '21-24' | '25-34' | '35-44' | '45-54' | '55+';
 export type IncomeBucket = '<25k' | '25-50k' | '50-100k' | '100-200k' | '200k+';
 export type ConfidenceLevel = 'low' | 'medium' | 'high';
+export type CreditHistory = 'none' | 'thin' | 'established';
 
 export interface CreditProfile {
   user_id: string;
@@ -19,6 +20,8 @@ export interface CreditProfile {
   age_bucket: AgeBucket | null;
   income_bucket: IncomeBucket | null;
   confidence_level: ConfidenceLevel | null;
+  credit_history: CreditHistory | null;
+  has_derogatories: boolean;
   onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
@@ -46,6 +49,17 @@ export function deriveCreditState(profile: Partial<CreditProfile>): CreditState 
   let educationMode: EducationMode = 'standard';
   let riskCeiling: 'low' | 'medium' | 'high' = 'medium';
 
+  // Credit history determines starting point
+  if (profile.credit_history === 'none') {
+    stage = 'starter';
+    maxTier = 1;
+    flags.push('no_credit_history');
+  } else if (profile.credit_history === 'thin') {
+    stage = 'builder';
+    maxTier = 2;
+    flags.push('thin_credit_history');
+  }
+
   // Age restrictions - sets initial stage
   if (profile.age_bucket === '<18') {
     stage = 'starter';
@@ -55,6 +69,14 @@ export function deriveCreditState(profile: Partial<CreditProfile>): CreditState 
     stage = 'starter';
     maxTier = 1;
     flags.push('limited_credit_history');
+  }
+
+  // Derogatories are a major constraint
+  if (profile.has_derogatories) {
+    flags.push('has_derogatories');
+    flags.push('suppress_premium_cards');
+    maxTier = Math.min(maxTier, 2);
+    riskCeiling = 'low';
   }
 
   // Balance carrying is a critical risk flag - CANNOT progress past builder
@@ -125,6 +147,8 @@ const DEFAULT_PROFILE: Omit<CreditProfile, 'user_id' | 'created_at' | 'updated_a
   age_bucket: null,
   income_bucket: null,
   confidence_level: null,
+  credit_history: null,
+  has_derogatories: false,
   onboarding_completed: false,
 };
 

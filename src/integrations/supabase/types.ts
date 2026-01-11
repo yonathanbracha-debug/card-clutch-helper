@@ -889,7 +889,9 @@ export type Database = {
           carry_balance: boolean
           confidence_level: string | null
           created_at: string
+          credit_history: string | null
           experience_level: string
+          has_derogatories: boolean
           income_bucket: string | null
           intent: string
           onboarding_completed: boolean
@@ -902,7 +904,9 @@ export type Database = {
           carry_balance?: boolean
           confidence_level?: string | null
           created_at?: string
+          credit_history?: string | null
           experience_level?: string
+          has_derogatories?: boolean
           income_bucket?: string | null
           intent?: string
           onboarding_completed?: boolean
@@ -915,7 +919,9 @@ export type Database = {
           carry_balance?: boolean
           confidence_level?: string | null
           created_at?: string
+          credit_history?: string | null
           experience_level?: string
+          has_derogatories?: boolean
           income_bucket?: string | null
           intent?: string
           onboarding_completed?: boolean
