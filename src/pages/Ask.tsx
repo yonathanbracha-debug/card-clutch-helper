@@ -15,6 +15,7 @@ import { AIVoiceInput } from '@/components/ui/ai-voice-input';
 import { CalibrationQuestions, CalibrationResult } from '@/components/ask/CalibrationQuestions';
 import { AnswerRenderer } from '@/components/ask/AnswerRenderer';
 import { AnswerDepthToggle } from '@/components/ask/AnswerDepthToggle';
+import { CreditPathwayProgress } from '@/components/ask/CreditPathwayProgress';
 import { AskAiResponseSchema, type AskAiResponse } from '@/lib/askAiSchema';
 import { AnswerSchema as NewAnswerSchemaValidator, type AnswerResponse as NewAnswerSchema } from '@/lib/ai/answerSchema';
 import {
@@ -794,6 +795,18 @@ export default function Ask() {
             )}
           </motion.div>
 
+          {/* Credit Pathway Progress - Show for logged in users with credit state */}
+          {isLoggedIn && creditState && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.05 }}
+              className="mb-6"
+            >
+              <CreditPathwayProgress creditState={creditState} />
+            </motion.div>
+          )}
+
           {/* Controls Panel */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -801,31 +814,30 @@ export default function Ask() {
             transition={{ duration: 0.4, delay: 0.1 }}
             className="mb-6 space-y-4"
           >
-            {/* Answer Depth Selector */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                Depth:
-              </span>
-              <div className="flex items-center gap-1.5">
-                {(['beginner', 'intermediate', 'advanced'] as const).map((depth) => (
-                  <button
-                    key={depth}
-                    onClick={() => {
-                      setAnswerDepth(depth);
-                      handleExperienceLevelChange(depth);
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
-                      answerDepth === depth
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    {depth.charAt(0).toUpperCase() + depth.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Answer Depth Toggle - Integrated with tooltip */}
+            <AnswerDepthToggle
+              value={answerDepth}
+              onChange={(depth) => {
+                setAnswerDepth(depth);
+                handleExperienceLevelChange(depth);
+              }}
+              disabled={isLoading}
+              onPersist={async (depth) => {
+                if (isLoggedIn) {
+                  try {
+                    await supabase
+                      .from('user_ai_preferences')
+                      .upsert({
+                        user_id: user!.id,
+                        answer_depth: depth,
+                        updated_at: new Date().toISOString(),
+                      });
+                  } catch (err) {
+                    console.error('Failed to persist depth:', err);
+                  }
+                }
+              }}
+            />
 
             {/* Answer Mode Toggle */}
             <div className="flex items-center gap-3 flex-wrap">
