@@ -1144,6 +1144,33 @@ Deno.serve(async (req) => {
       }
     }
 
+    // SERVER-FIRST GATING: Check onboarding completion for authenticated users
+    if (userId) {
+      const { data: creditProfile, error: profileError } = await supabase
+        .from("user_credit_profile")
+        .select("onboarding_completed")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      // If no profile exists or onboarding is not complete, reject the request
+      const onboardingComplete = creditProfile?.onboarding_completed ?? false;
+      
+      if (!onboardingComplete) {
+        const response = createErrorResponse(
+          requestId, 
+          "ONBOARDING_REQUIRED", 
+          "Credit profile onboarding must be completed before using this feature.", 
+          Date.now() - startTime, 
+          ipLimit, 
+          userLimit
+        );
+        return new Response(JSON.stringify(response), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json", ...buildRateLimitHeaders(ipLimit, userLimit) },
+        });
+      }
+    }
+
     // Get and hash client IP
     const clientIP = getClientIP(req);
     const ipHash = await hashIP(clientIP, rateLimitSalt);
