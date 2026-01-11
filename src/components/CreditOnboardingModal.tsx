@@ -25,7 +25,8 @@ import {
   ExperienceLevel, 
   CreditIntent, 
   BnplUsage, 
-  AgeBucket, 
+  AgeBucket,
+  CreditHistory,
   IncomeBucket,
   deriveCreditState
 } from '@/hooks/useCreditProfile';
@@ -35,7 +36,7 @@ interface CreditOnboardingModalProps {
   onComplete: () => void;
 }
 
-type OnboardingStep = 1 | 2 | 3 | 4 | 5;
+type OnboardingStep = 1 | 2 | 3 | 4 | 5 | 6;
 
 interface ProfileFormData {
   experience_level: ExperienceLevel;
@@ -44,6 +45,7 @@ interface ProfileFormData {
   bnpl_usage: BnplUsage | null;
   age_bucket: AgeBucket | null;
   income_bucket: IncomeBucket | null;
+  credit_history: CreditHistory | null;
 }
 
 const AGE_OPTIONS: { value: AgeBucket; label: string }[] = [
@@ -54,6 +56,12 @@ const AGE_OPTIONS: { value: AgeBucket; label: string }[] = [
   { value: '35-44', label: '35-44' },
   { value: '45-54', label: '45-54' },
   { value: '55+', label: '55+' },
+];
+
+const CREDIT_HISTORY_OPTIONS: { value: CreditHistory; label: string; description: string }[] = [
+  { value: 'none', label: 'No Credit History', description: 'Never had a credit card or loan in my name' },
+  { value: 'thin', label: 'Thin File', description: 'Less than 2 years of credit history or few accounts' },
+  { value: 'established', label: 'Established', description: '2+ years with multiple accounts in good standing' },
 ];
 
 const INCOME_OPTIONS: { value: IncomeBucket; label: string }[] = [
@@ -74,6 +82,7 @@ export function CreditOnboardingModal({ open, onComplete }: CreditOnboardingModa
     bnpl_usage: null,
     age_bucket: null,
     income_bucket: null,
+    credit_history: null,
   });
   
   const { cards, loading: cardsLoading } = useCreditCards();
@@ -136,7 +145,8 @@ export function CreditOnboardingModal({ open, onComplete }: CreditOnboardingModa
     }
   };
 
-  const canProceedToStep5 = selectedCardIds.length >= 2;
+  const canProceedToStep5 = formData.credit_history !== null;
+  const canProceedToStep6 = selectedCardIds.length >= 2;
 
   // Risk warning based on profile
   const showBalanceWarning = formData.carry_balance;
@@ -147,7 +157,7 @@ export function CreditOnboardingModal({ open, onComplete }: CreditOnboardingModa
       <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden" onPointerDownOutside={(e) => e.preventDefault()}>
         {/* Progress Bar */}
         <div className="flex items-center gap-2 px-6 pt-6">
-          {[1, 2, 3, 4, 5].map((s) => (
+          {[1, 2, 3, 4, 5, 6].map((s) => (
             <div
               key={s}
               className={cn(
@@ -402,8 +412,63 @@ export function CreditOnboardingModal({ open, onComplete }: CreditOnboardingModa
             </div>
           )}
 
-          {/* Step 4: Add Cards */}
+          {/* Step 4: Credit History */}
           {step === 4 && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-2">Your Credit History</h2>
+                <p className="text-muted-foreground">This helps us recommend cards you'll actually be approved for</p>
+              </div>
+
+              <div className="grid gap-4">
+                {CREDIT_HISTORY_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setFormData(prev => ({ ...prev, credit_history: option.value }))}
+                    className={cn(
+                      "p-5 rounded-xl border-2 text-left transition-all hover:border-primary/50",
+                      formData.credit_history === option.value
+                        ? "border-primary bg-primary/5"
+                        : "border-border"
+                    )}
+                  >
+                    <h3 className="font-semibold mb-1">{option.label}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {option.description}
+                    </p>
+                  </button>
+                ))}
+              </div>
+
+              {formData.credit_history === 'none' && (
+                <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                  <div className="flex items-start gap-2">
+                    <Shield className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      No problem! We'll recommend secured cards and student cards that are designed for building credit from scratch.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
+                  Back
+                </Button>
+                <Button 
+                  onClick={() => setStep(5)} 
+                  disabled={!canProceedToStep5}
+                  className="flex-1"
+                >
+                  Continue
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Add Cards */}
+          {step === 5 && (
             <div className="space-y-4 animate-fade-in">
               <div className="text-center">
                 <h2 className="text-2xl font-bold mb-2">Add Your Cards</h2>
@@ -492,12 +557,12 @@ export function CreditOnboardingModal({ open, onComplete }: CreditOnboardingModa
 
               {/* Actions */}
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
+                <Button variant="outline" onClick={() => setStep(4)} className="flex-1">
                   Back
                 </Button>
                 <Button 
-                  onClick={() => setStep(5)} 
-                  disabled={!canProceedToStep5}
+                  onClick={() => setStep(6)} 
+                  disabled={!canProceedToStep6}
                   className="flex-1 gap-2"
                 >
                   Continue
@@ -507,8 +572,8 @@ export function CreditOnboardingModal({ open, onComplete }: CreditOnboardingModa
             </div>
           )}
 
-          {/* Step 5: Summary & Finish */}
-          {step === 5 && (
+          {/* Step 6: Summary & Finish */}
+          {step === 6 && (
             <div className="space-y-6 animate-fade-in">
               <div className="text-center">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -563,7 +628,7 @@ export function CreditOnboardingModal({ open, onComplete }: CreditOnboardingModa
               )}
 
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(4)} className="flex-1">
+                <Button variant="outline" onClick={() => setStep(5)} className="flex-1">
                   Back
                 </Button>
                 <Button onClick={handleFinish} className="flex-1 gap-2">
