@@ -11,6 +11,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useWalletCards } from '@/hooks/useWalletCards';
 import { useCreditCards } from '@/hooks/useCreditCards';
 import { useAllCardRewardRules } from '@/hooks/useCardRewardRules';
+import { CreditPathwayCard } from '@/components/pathway/CreditPathwayCard';
+import { TodoList } from '@/components/todos/TodoList';
 import { 
   Wallet, 
   CreditCard, 
@@ -19,7 +21,7 @@ import {
   Settings,
   Plus,
   TrendingUp,
-  History
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -237,23 +239,29 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Recent Activity Placeholder */}
+          {/* Credit Pathway + To-dos Row */}
+          <div className="grid md:grid-cols-2 gap-6 mt-6">
+            <CreditPathwayCard />
+            <TodoList compact maxItems={3} />
+          </div>
+
+          {/* Statement Diagnostics CTA */}
           <Card className="mt-6">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
-                <History className="w-5 h-5 text-primary" />
-                Recent Activity
+                <FileText className="w-5 h-5 text-primary" />
+                Statement Diagnostics
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="py-8 text-center">
-                <History className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground mb-2">
-                  Your recommendation history will appear here
+              <div className="py-6 text-center">
+                <FileText className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload transactions to find missed rewards and subscription waste
                 </p>
-                <Link to="/analyze">
+                <Link to="/diagnostics">
                   <Button size="sm" variant="outline" className="gap-2">
-                    Get Your First Recommendation
+                    View Statement Report
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>

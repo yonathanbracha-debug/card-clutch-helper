@@ -810,6 +810,54 @@ export type Database = {
         }
         Relationships: []
       }
+      to_dos: {
+        Row: {
+          created_at: string
+          cta_label: string | null
+          cta_url: string | null
+          description: string
+          id: string
+          impact_usd: number
+          snooze_until: string | null
+          source: Json
+          status: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cta_label?: string | null
+          cta_url?: string | null
+          description: string
+          id?: string
+          impact_usd?: number
+          snooze_until?: string | null
+          source?: Json
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cta_label?: string | null
+          cta_url?: string | null
+          description?: string
+          id?: string
+          impact_usd?: number
+          snooze_until?: string | null
+          source?: Json
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_ai_preferences: {
         Row: {
           answer_depth: string
@@ -934,6 +982,7 @@ export type Database = {
         Row: {
           calibration_completed: boolean
           calibration_responses: Json | null
+          card_rules: Json | null
           carry_balance: boolean | null
           created_at: string
           experience_level: string
@@ -947,6 +996,7 @@ export type Database = {
         Insert: {
           calibration_completed?: boolean
           calibration_responses?: Json | null
+          card_rules?: Json | null
           carry_balance?: boolean | null
           created_at?: string
           experience_level?: string
@@ -960,6 +1010,7 @@ export type Database = {
         Update: {
           calibration_completed?: boolean
           calibration_responses?: Json | null
+          card_rules?: Json | null
           carry_balance?: boolean | null
           created_at?: string
           experience_level?: string
