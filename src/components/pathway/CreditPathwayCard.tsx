@@ -14,8 +14,10 @@ import {
   TrendingUp,
   Rocket,
   CreditCard,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
+import { useCreditProfile } from '@/hooks/useCreditProfile';
 import { cn } from '@/lib/utils';
 import { 
   generateCreditPathway, 
@@ -41,7 +43,7 @@ import {
 } from '@/components/ui/tooltip';
 
 interface CreditPathwayCardProps {
-  profile: PathwayProfile;
+  profile?: PathwayProfile;
   className?: string;
   compact?: boolean;
 }
@@ -76,8 +78,55 @@ function ApprovalOddsBadge({ odds }: { odds: 'high' | 'medium' | 'low' }) {
   );
 }
 
-export function CreditPathwayCard({ profile, className, compact = false }: CreditPathwayCardProps) {
-  const pathway = useMemo(() => generateCreditPathway(profile), [profile]);
+export function CreditPathwayCard({ profile: propProfile, className, compact = false }: CreditPathwayCardProps) {
+  const { profile: hookProfile, loading } = useCreditProfile();
+  
+  // Use prop profile if provided, otherwise use hook profile
+  const profile = propProfile || hookProfile;
+  
+  const pathway = useMemo(() => {
+    if (!profile) return null;
+    return generateCreditPathway({
+      age_bucket: profile.age_bucket ?? undefined,
+      income_bucket: profile.income_bucket ?? undefined,
+      experience_level: profile.experience_level,
+      credit_history: profile.credit_history ?? undefined,
+      has_derogatories: profile.has_derogatories,
+      carry_balance: profile.carry_balance,
+      bnpl_usage: profile.bnpl_usage ?? undefined,
+      intent: profile.intent,
+    });
+  }, [profile]);
+  
+  // Loading state
+  if (loading) {
+    return (
+      <Card className={cn('overflow-hidden', className)}>
+        <CardContent className="py-12 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // No profile state
+  if (!profile || !pathway) {
+    return (
+      <Card className={cn('overflow-hidden', className)}>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">Credit Pathway</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="py-6 text-center">
+            <CreditCard className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
+              Complete credit onboarding to see your personalized pathway
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
   const stageIndex = ['first_card', 'early_builder', 'established_builder', 'optimizer', 'advanced_optimizer']
     .indexOf(pathway.current_stage);
