@@ -28,6 +28,7 @@ import Dashboard from "./pages/Dashboard";
 import Ask from "./pages/Ask";
 import Diagnostics from "./pages/Diagnostics";
 import Transactions from "./pages/Transactions";
+import Pathway from "./pages/Pathway";
 import { ProtectedCreditRoute } from "@/components/ProtectedCreditRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "@/contexts/AuthContext";
@@ -105,6 +106,9 @@ const App = () => (
               {/* Finance Diagnostics */}
               <Route path="/diagnostics" element={<Diagnostics />} />
               <Route path="/transactions" element={<Transactions />} />
+              
+              {/* Credit Pathway */}
+              <Route path="/pathway" element={<Pathway />} />
               
               {/* Wallet with friendly gating */}
               <Route path="/wallet" element={<WalletWrapper />} />
