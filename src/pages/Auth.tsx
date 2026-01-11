@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Mail, Lock, ArrowRight, Loader2, Shield, UserPlus } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, Shield, UserPlus, KeyRound } from 'lucide-react';
 
 // Google icon SVG component
 const GoogleIcon = () => (
@@ -33,7 +33,7 @@ const GoogleIcon = () => (
 );
 
 // Explicit auth modes - no ambiguity
-type AuthMode = 'login' | 'signup';
+type AuthMode = 'login' | 'signup' | 'forgot';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -42,12 +42,19 @@ const Auth = () => {
   const { user } = useAuth();
   
   // Initialize mode from URL param or default to login
-  const initialMode = searchParams.get('mode') === 'signup' ? 'signup' : 'login';
-  const [mode, setMode] = useState<AuthMode>(initialMode);
+  const getInitialMode = (): AuthMode => {
+    const mode = searchParams.get('mode');
+    if (mode === 'signup') return 'signup';
+    if (mode === 'forgot') return 'forgot';
+    return 'login';
+  };
+  
+  const [mode, setMode] = useState<AuthMode>(getInitialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -60,7 +67,7 @@ const Auth = () => {
   // Sync mode with URL
   useEffect(() => {
     const urlMode = searchParams.get('mode');
-    if (urlMode === 'signup' || urlMode === 'login') {
+    if (urlMode === 'signup' || urlMode === 'login' || urlMode === 'forgot') {
       setMode(urlMode);
     }
   }, [searchParams]);
@@ -68,10 +75,46 @@ const Auth = () => {
   const handleModeChange = (newMode: AuthMode) => {
     setMode(newMode);
     setMagicLinkSent(false);
+    setResetEmailSent(false);
     // Update URL without navigation
     const newUrl = new URL(window.location.href);
     newUrl.searchParams.set('mode', newMode);
     window.history.replaceState({}, '', newUrl.toString());
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({
+        title: 'Email required',
+        description: 'Please enter your email address.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?mode=login`,
+      });
+      
+      if (error) throw error;
+      
+      setResetEmailSent(true);
+      toast({
+        title: 'Reset email sent',
+        description: 'Check your email for a password reset link.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send reset email.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleAuth = async () => {
@@ -272,6 +315,104 @@ const Auth = () => {
     );
   }
 
+  // Password reset email sent confirmation
+  if (resetEmailSent) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-20 pb-12">
+          <div className="container max-w-md mx-auto px-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+              <KeyRound className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">Check your email</h1>
+            <p className="text-muted-foreground mb-6">
+              We sent a password reset link to <strong>{email}</strong>.
+              <br />Click the link to reset your password.
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={() => handleModeChange('login')}
+            >
+              Back to login
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Forgot password flow
+  if (mode === 'forgot') {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-20 pb-12">
+          <div className="container max-w-md mx-auto px-4">
+            <div className="text-center mb-8">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/10">
+                <KeyRound className="w-7 h-7 text-primary" />
+              </div>
+              <h1 className="text-3xl font-bold mb-2">Reset your password</h1>
+              <p className="text-muted-foreground max-w-xs mx-auto">
+                Enter your email address and we'll send you a link to reset your password.
+              </p>
+            </div>
+
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                    autoComplete="email"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full gap-2" 
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    Send reset link
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                Remember your password?{' '}
+                <button
+                  onClick={() => handleModeChange('login')}
+                  className="text-primary font-medium hover:underline"
+                >
+                  Log in
+                </button>
+              </p>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   const isLogin = mode === 'login';
 
   return (
@@ -349,7 +490,18 @@ const Auth = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="password">Password</Label>
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={() => handleModeChange('forgot')}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
