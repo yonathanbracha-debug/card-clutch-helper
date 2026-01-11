@@ -23,7 +23,10 @@ type EventName =
   | 'signup_clicked'
   | 'signup_completed'
   | 'wallet_card_added'
-  | 'wallet_card_removed';
+  | 'wallet_card_removed'
+  | 'ask_success'
+  | 'ask_error'
+  | 'ask_schema_error';
 
 interface EventContext {
   domain?: string;
