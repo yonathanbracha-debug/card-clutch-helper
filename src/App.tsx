@@ -26,6 +26,7 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Dashboard from "./pages/Dashboard";
 import Ask from "./pages/Ask";
+import { ProtectedCreditRoute } from "@/components/ProtectedCreditRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -78,7 +79,7 @@ const App = () => (
               <Route path="/trust" element={<Trust />} />
               <Route path="/features" element={<Features />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/ask" element={<Ask />} />
+              <Route path="/ask" element={<ProtectedCreditRoute allowDemo={true}><Ask /></ProtectedCreditRoute>} />
               
               {/* Lab route (lazy loaded for 3D experiments) */}
               <Route 
