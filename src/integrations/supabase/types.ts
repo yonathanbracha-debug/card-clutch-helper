@@ -44,6 +44,57 @@ export type Database = {
         }
         Relationships: []
       }
+      benefit_usage: {
+        Row: {
+          benefit_id: string
+          card_name: string
+          created_at: string
+          id: string
+          issuer: string
+          last_used_at: string | null
+          period_end: string
+          period_start: string
+          status: string
+          updated_at: string
+          usage_count: number
+          used_amount: number
+          user_id: string
+          value_usd: number
+        }
+        Insert: {
+          benefit_id: string
+          card_name: string
+          created_at?: string
+          id?: string
+          issuer: string
+          last_used_at?: string | null
+          period_end: string
+          period_start: string
+          status?: string
+          updated_at?: string
+          usage_count?: number
+          used_amount?: number
+          user_id: string
+          value_usd: number
+        }
+        Update: {
+          benefit_id?: string
+          card_name?: string
+          created_at?: string
+          id?: string
+          issuer?: string
+          last_used_at?: string | null
+          period_end?: string
+          period_start?: string
+          status?: string
+          updated_at?: string
+          usage_count?: number
+          used_amount?: number
+          user_id?: string
+          value_usd?: number
+        }
+        Relationships: []
+      }
       card_reward_rules: {
         Row: {
           cap_cents: number | null
@@ -541,6 +592,63 @@ export type Database = {
           email?: string | null
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      purchase_risk_events: {
+        Row: {
+          alternatives: string[]
+          amount: number
+          bnpl_detected: boolean
+          bnpl_provider: string | null
+          context: Json
+          created_at: string
+          explanation: string[]
+          id: string
+          merchant: string
+          risk_level: string
+          risk_score: number
+          suppressed: boolean
+          suppression_reason: string | null
+          user_classification: string | null
+          user_id: string
+          user_prompt_shown: boolean
+        }
+        Insert: {
+          alternatives?: string[]
+          amount: number
+          bnpl_detected?: boolean
+          bnpl_provider?: string | null
+          context?: Json
+          created_at?: string
+          explanation?: string[]
+          id?: string
+          merchant: string
+          risk_level?: string
+          risk_score?: number
+          suppressed?: boolean
+          suppression_reason?: string | null
+          user_classification?: string | null
+          user_id: string
+          user_prompt_shown?: boolean
+        }
+        Update: {
+          alternatives?: string[]
+          amount?: number
+          bnpl_detected?: boolean
+          bnpl_provider?: string | null
+          context?: Json
+          created_at?: string
+          explanation?: string[]
+          id?: string
+          merchant?: string
+          risk_level?: string
+          risk_score?: number
+          suppressed?: boolean
+          suppression_reason?: string | null
+          user_classification?: string | null
+          user_id?: string
+          user_prompt_shown?: boolean
         }
         Relationships: []
       }
@@ -1279,7 +1387,16 @@ export type Database = {
     }
     Enums: {
       app_role: "user" | "admin" | "owner"
+      bnpl_provider:
+        | "affirm"
+        | "klarna"
+        | "afterpay"
+        | "zip"
+        | "sezzle"
+        | "paypal_pay_in_4"
+        | "other"
       card_network: "visa" | "mastercard" | "amex" | "discover"
+      risk_level: "low" | "medium" | "high"
       user_mode: "rewards" | "conservative"
       utilization_level: "low" | "medium" | "high"
       verification_status: "verified" | "pending" | "stale"
@@ -1411,7 +1528,17 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["user", "admin", "owner"],
+      bnpl_provider: [
+        "affirm",
+        "klarna",
+        "afterpay",
+        "zip",
+        "sezzle",
+        "paypal_pay_in_4",
+        "other",
+      ],
       card_network: ["visa", "mastercard", "amex", "discover"],
+      risk_level: ["low", "medium", "high"],
       user_mode: ["rewards", "conservative"],
       utilization_level: ["low", "medium", "high"],
       verification_status: ["verified", "pending", "stale"],

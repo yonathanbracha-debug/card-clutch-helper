@@ -266,7 +266,41 @@ export function summarizeOpportunities(
   };
 }
 
-// ============= BNPL TRAP DETECTION (Section I) =============
+// ============= BNPL DETECTION ENGINE (Section I) =============
+
+// Known BNPL providers
+export const BNPL_PROVIDERS = [
+  'affirm',
+  'klarna',
+  'afterpay',
+  'zip',
+  'sezzle',
+  'paypal pay in 4',
+  'quadpay',
+  'splitit',
+  'perpay',
+] as const;
+
+// BNPL detection patterns in transaction text
+const BNPL_PATTERNS = [
+  'installment',
+  'pay later',
+  '4 payments',
+  'bi-weekly',
+  'pay in 4',
+  'pay in four',
+  'split payment',
+];
+
+export type BNPLProvider = typeof BNPL_PROVIDERS[number] | 'other' | null;
+export type RiskLevel = 'low' | 'medium' | 'high';
+export type PurchaseClassification = 'essential' | 'planned' | 'impulse' | 'unsure';
+
+export interface BNPLDetectionResult {
+  bnpl_detected: boolean;
+  bnpl_provider: BNPLProvider;
+  detection_method: 'merchant_name' | 'transaction_text' | 'category' | null;
+}
 
 export interface RiskAlert {
   title: string;
@@ -275,8 +309,334 @@ export interface RiskAlert {
   safer_alternative: string;
 }
 
+export interface BNPLRiskResponse {
+  bnpl_detected: boolean;
+  bnpl_provider: string | null;
+  risk_level: RiskLevel;
+  risk_score: number;
+  explanation: string[];
+  alternatives: string[];
+  user_prompt_shown: boolean;
+  suppressed: boolean;
+  suppression_reason: string | null;
+}
+
+export interface UserCreditContext {
+  utilization_percent?: number;
+  open_bnpl_count?: number;
+  monthly_discretionary_percent?: number;
+  carry_balance?: boolean;
+  income_bucket?: string;
+}
+
 /**
- * Detect potential BNPL traps and high-risk purchases
+ * Detect if a transaction involves BNPL
+ */
+export function detectBNPL(
+  merchantName: string,
+  transactionText?: string,
+  category?: string
+): BNPLDetectionResult {
+  const normalized = merchantName.toLowerCase();
+  const textNormalized = (transactionText || '').toLowerCase();
+  
+  // Check merchant name against known BNPL providers
+  for (const provider of BNPL_PROVIDERS) {
+    if (normalized.includes(provider)) {
+      return {
+        bnpl_detected: true,
+        bnpl_provider: provider,
+        detection_method: 'merchant_name',
+      };
+    }
+  }
+  
+  // Check transaction text for BNPL patterns
+  for (const pattern of BNPL_PATTERNS) {
+    if (textNormalized.includes(pattern) || normalized.includes(pattern)) {
+      // Try to identify provider from text
+      let provider: BNPLProvider = 'other';
+      for (const p of BNPL_PROVIDERS) {
+        if (textNormalized.includes(p) || normalized.includes(p)) {
+          provider = p;
+          break;
+        }
+      }
+      return {
+        bnpl_detected: true,
+        bnpl_provider: provider,
+        detection_method: 'transaction_text',
+      };
+    }
+  }
+  
+  // Check if category indicates BNPL
+  if (category?.toLowerCase().includes('bnpl') || category?.toLowerCase().includes('buy now pay later')) {
+    return {
+      bnpl_detected: true,
+      bnpl_provider: 'other',
+      detection_method: 'category',
+    };
+  }
+  
+  return {
+    bnpl_detected: false,
+    bnpl_provider: null,
+    detection_method: null,
+  };
+}
+
+/**
+ * Calculate BNPL risk score (0-100)
+ * Deterministic formula based on user context
+ */
+export function calculateBNPLRiskScore(
+  amountCents: number,
+  userContext: UserCreditContext
+): { score: number; level: RiskLevel; factors: string[] } {
+  let score = 0;
+  const factors: string[] = [];
+  
+  // Factor 1: Utilization (0-25 points)
+  const util = userContext.utilization_percent || 0;
+  if (util > 50) {
+    score += 25;
+    factors.push('Credit utilization above 50%');
+  } else if (util > 30) {
+    score += 15;
+    factors.push('Credit utilization above 30%');
+  } else if (util > 10) {
+    score += 5;
+  }
+  
+  // Factor 2: Open BNPL plans (0-25 points)
+  const openPlans = userContext.open_bnpl_count || 0;
+  if (openPlans >= 3) {
+    score += 25;
+    factors.push('Multiple active BNPL plans detected');
+  } else if (openPlans >= 1) {
+    score += 10 * openPlans;
+  }
+  
+  // Factor 3: Carry balance flag (0-20 points)
+  if (userContext.carry_balance) {
+    score += 20;
+    factors.push('Currently carrying a credit card balance');
+  }
+  
+  // Factor 4: Purchase size relative to income (0-20 points)
+  const amountDollars = amountCents / 100;
+  const incomeThresholds: Record<string, number> = {
+    'under_25k': 200,
+    '25k_50k': 400,
+    '50k_75k': 600,
+    '75k_100k': 800,
+    'over_100k': 1000,
+  };
+  const threshold = incomeThresholds[userContext.income_bucket || '50k_75k'] || 500;
+  if (amountDollars > threshold * 1.5) {
+    score += 20;
+    factors.push('Purchase amount is significant relative to income');
+  } else if (amountDollars > threshold) {
+    score += 10;
+  }
+  
+  // Factor 5: Discretionary spend ratio (0-10 points)
+  const discretionary = userContext.monthly_discretionary_percent || 50;
+  if (discretionary > 60) {
+    score += 10;
+    factors.push('High discretionary spending ratio');
+  } else if (discretionary > 40) {
+    score += 5;
+  }
+  
+  // Cap at 100
+  score = Math.min(100, score);
+  
+  // Determine level
+  let level: RiskLevel = 'low';
+  if (score >= 60) {
+    level = 'high';
+  } else if (score >= 30) {
+    level = 'medium';
+  }
+  
+  return { score, level, factors };
+}
+
+/**
+ * Check if BNPL warning should be suppressed
+ */
+export function shouldSuppressBNPL(
+  amountCents: number,
+  utilImpactPercent: number,
+  userOptedOut: boolean,
+  isZeroAPR: boolean = false
+): { suppress: boolean; reason: string | null } {
+  // Suppression: User opted out
+  if (userOptedOut) {
+    return { suppress: true, reason: 'User opted out of BNPL warnings' };
+  }
+  
+  // Suppression: Amount < $50
+  if (amountCents < 5000) {
+    return { suppress: true, reason: 'Amount below $50 threshold' };
+  }
+  
+  // Suppression: 0% APR with minimal util impact
+  if (isZeroAPR && utilImpactPercent < 3) {
+    return { suppress: true, reason: '0% APR with <3% utilization impact' };
+  }
+  
+  return { suppress: false, reason: null };
+}
+
+/**
+ * Generate BNPL risk explanation (max 2 sentences, plain English)
+ */
+export function generateBNPLExplanation(
+  riskLevel: RiskLevel,
+  factors: string[]
+): string[] {
+  const explanations: string[] = [];
+  
+  // Top-line warning (1 sentence)
+  if (riskLevel === 'high') {
+    explanations.push('This BNPL plan may strain your payment flexibility.');
+  } else if (riskLevel === 'medium') {
+    explanations.push('This BNPL plan can increase utilization volatility.');
+  } else {
+    explanations.push('BNPL plans require careful payment tracking.');
+  }
+  
+  // Mechanical explanations (2-3 bullets)
+  explanations.push('BNPL balances may count toward utilization on some issuers.');
+  
+  if (factors.includes('Multiple active BNPL plans detected')) {
+    explanations.push('Multiple BNPL plans reduce payment flexibility.');
+  }
+  
+  explanations.push('Missed BNPL payments can report negatively to credit bureaus.');
+  
+  return explanations;
+}
+
+/**
+ * Generate alternative suggestions based on risk level
+ */
+export function generateBNPLAlternatives(
+  riskLevel: RiskLevel,
+  amountCents: number,
+  userCards?: Array<{ name: string; issuer: string }>
+): string[] {
+  const alternatives: string[] = [];
+  const amountDollars = (amountCents / 100).toFixed(2);
+  
+  if (riskLevel === 'low') {
+    return alternatives; // No alternatives needed for low risk
+  }
+  
+  // Primary alternative: Use credit card
+  if (userCards && userCards.length > 0) {
+    const topCard = userCards[0];
+    alternatives.push(`Paying in full on ${topCard.name} keeps utilization flat.`);
+  } else {
+    alternatives.push('Paying in full with a credit card keeps utilization flat.');
+  }
+  
+  // Secondary: Earn rewards
+  alternatives.push('Using a rewards card earns points without installment risk.');
+  
+  // If high risk, suggest delay
+  if (riskLevel === 'high') {
+    alternatives.push('Delaying purchase by 2 weeks may reduce utilization impact.');
+  }
+  
+  return alternatives;
+}
+
+/**
+ * Full BNPL risk analysis
+ */
+export function analyzeBNPLRisk(
+  merchantName: string,
+  amountCents: number,
+  userContext: UserCreditContext,
+  options: {
+    transactionText?: string;
+    category?: string;
+    userOptedOut?: boolean;
+    isZeroAPR?: boolean;
+    userCards?: Array<{ name: string; issuer: string }>;
+  } = {}
+): BNPLRiskResponse {
+  // Step 1: Detect BNPL
+  const detection = detectBNPL(merchantName, options.transactionText, options.category);
+  
+  if (!detection.bnpl_detected) {
+    return {
+      bnpl_detected: false,
+      bnpl_provider: null,
+      risk_level: 'low',
+      risk_score: 0,
+      explanation: [],
+      alternatives: [],
+      user_prompt_shown: false,
+      suppressed: false,
+      suppression_reason: null,
+    };
+  }
+  
+  // Step 2: Check suppression
+  const utilImpact = (amountCents / 100) / (userContext.utilization_percent || 50) * 100;
+  const suppression = shouldSuppressBNPL(
+    amountCents,
+    utilImpact,
+    options.userOptedOut || false,
+    options.isZeroAPR
+  );
+  
+  if (suppression.suppress) {
+    return {
+      bnpl_detected: true,
+      bnpl_provider: detection.bnpl_provider,
+      risk_level: 'low',
+      risk_score: 0,
+      explanation: [],
+      alternatives: [],
+      user_prompt_shown: false,
+      suppressed: true,
+      suppression_reason: suppression.reason,
+    };
+  }
+  
+  // Step 3: Calculate risk score
+  const { score, level, factors } = calculateBNPLRiskScore(amountCents, userContext);
+  
+  // Step 4: Generate explanations
+  const explanation = generateBNPLExplanation(level, factors);
+  
+  // Step 5: Generate alternatives
+  const alternatives = generateBNPLAlternatives(level, amountCents, options.userCards);
+  
+  // Step 6: Determine if user prompt should be shown
+  const userPromptShown = level === 'high';
+  
+  return {
+    bnpl_detected: true,
+    bnpl_provider: detection.bnpl_provider,
+    risk_level: level,
+    risk_score: score,
+    explanation,
+    alternatives,
+    user_prompt_shown: userPromptShown,
+    suppressed: false,
+    suppression_reason: null,
+  };
+}
+
+/**
+ * Detect potential BNPL traps and high-risk purchases (legacy interface)
  */
 export function detectRiskAlerts(
   transaction: Transaction,
@@ -285,7 +645,6 @@ export function detectRiskAlerts(
   // BNPL detection
   if (transaction.is_bnpl) {
     const amount = transaction.amount / 100;
-    // Assume 10% effective cost for late/missed payments
     const potentialCost = (amount * 0.1).toFixed(2);
     
     return {
@@ -315,12 +674,39 @@ export function detectRiskAlerts(
   return null;
 }
 
+// ============= FUTURE EXTENSION HOOKS (Stubs) =============
+
+// Placeholder for BNPL stacking alerts
+export function detectBNPLStacking(_userId: string): null {
+  // TODO: Implement when BNPL plan tracking is added
+  return null;
+}
+
+// Placeholder for deferred-interest detection
+export function detectDeferredInterestTrap(_transaction: Transaction): null {
+  // TODO: Implement deferred-interest landmine detection
+  return null;
+}
+
+// Placeholder for merchant-specific BNPL abuse patterns
+export function detectMerchantBNPLAbuse(_merchantName: string): null {
+  // TODO: Implement when merchant pattern data is available
+  return null;
+}
+
+// Placeholder for credit pathway impact modeling
+export function modelCreditPathwayImpact(_bnplResponse: BNPLRiskResponse): null {
+  // TODO: Integrate with credit pathway engine
+  return null;
+}
+
 // ============= BATCH ANALYSIS =============
 
 export interface AnalysisResult {
   opportunities: MissedOpportunity[];
   summary: OpportunitySummary;
   risk_alerts: RiskAlert[];
+  bnpl_risks: BNPLRiskResponse[];
 }
 
 /**
@@ -329,10 +715,12 @@ export interface AnalysisResult {
 export function analyzeTransactions(
   transactions: Transaction[],
   userCardIds: string[],
-  averageMonthlyDiscretionary?: number
+  averageMonthlyDiscretionary?: number,
+  userContext?: UserCreditContext
 ): AnalysisResult {
   const opportunities: MissedOpportunity[] = [];
   const riskAlerts: RiskAlert[] = [];
+  const bnplRisks: BNPLRiskResponse[] = [];
   
   for (const tx of transactions) {
     const opportunity = analyzeTransaction(tx, userCardIds);
@@ -340,12 +728,23 @@ export function analyzeTransactions(
     
     const risk = detectRiskAlerts(tx, averageMonthlyDiscretionary);
     if (risk) riskAlerts.push(risk);
+    
+    // Run BNPL analysis if context available
+    if (userContext) {
+      const bnplRisk = analyzeBNPLRisk(tx.merchant, tx.amount, userContext, {
+        category: tx.category,
+      });
+      if (bnplRisk.bnpl_detected && !bnplRisk.suppressed) {
+        bnplRisks.push(bnplRisk);
+      }
+    }
   }
   
   return {
     opportunities,
     summary: summarizeOpportunities(opportunities),
     risk_alerts: riskAlerts,
+    bnpl_risks: bnplRisks,
   };
 }
 
