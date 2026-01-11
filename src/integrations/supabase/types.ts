@@ -790,8 +790,10 @@ export type Database = {
         Row: {
           calibration_completed: boolean
           calibration_responses: Json | null
+          carry_balance: boolean | null
           created_at: string
           experience_level: string
+          intent: string | null
           mode: Database["public"]["Enums"]["user_mode"]
           myth_flags: Json | null
           onboarding_completed: boolean
@@ -801,8 +803,10 @@ export type Database = {
         Insert: {
           calibration_completed?: boolean
           calibration_responses?: Json | null
+          carry_balance?: boolean | null
           created_at?: string
           experience_level?: string
+          intent?: string | null
           mode?: Database["public"]["Enums"]["user_mode"]
           myth_flags?: Json | null
           onboarding_completed?: boolean
@@ -812,8 +816,10 @@ export type Database = {
         Update: {
           calibration_completed?: boolean
           calibration_responses?: Json | null
+          carry_balance?: boolean | null
           created_at?: string
           experience_level?: string
+          intent?: string | null
           mode?: Database["public"]["Enums"]["user_mode"]
           myth_flags?: Json | null
           onboarding_completed?: boolean

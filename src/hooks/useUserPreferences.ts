@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
+export type UserIntent = 'optimize_score' | 'maximize_rewards' | 'both';
+export type UserMode = 'rewards' | 'conservative';
 
 export interface CalibrationResponses {
   [questionId: string]: boolean;
@@ -13,12 +15,14 @@ export interface MythFlags {
 }
 
 export interface UserPreferences {
-  mode: 'rewards' | 'conservative';
+  mode: UserMode;
   onboarding_completed: boolean;
   experience_level: ExperienceLevel;
   calibration_completed: boolean;
   calibration_responses: CalibrationResponses;
   myth_flags: MythFlags;
+  intent: UserIntent;
+  carry_balance: boolean;
 }
 
 const DEFAULT_PREFERENCES: Omit<UserPreferences, 'mode' | 'onboarding_completed'> = {
@@ -26,6 +30,8 @@ const DEFAULT_PREFERENCES: Omit<UserPreferences, 'mode' | 'onboarding_completed'
   calibration_completed: false,
   calibration_responses: {},
   myth_flags: {},
+  intent: 'both',
+  carry_balance: false,
 };
 
 export function useUserPreferences() {
@@ -43,40 +49,43 @@ export function useUserPreferences() {
     try {
       const { data, error } = await supabase
         .from('user_preferences')
-        .select('mode, onboarding_completed, experience_level, calibration_completed, calibration_responses, myth_flags')
+        .select('mode, onboarding_completed, experience_level, calibration_completed, calibration_responses, myth_flags, intent, carry_balance')
         .eq('user_id', user.id)
         .single();
 
       if (error) {
         console.error('Error fetching preferences:', error);
-        // If no preferences exist, they should have been created by trigger
-        // Create them manually as fallback
+        // If no preferences exist, create them
         if (error.code === 'PGRST116') {
           const { data: insertData, error: insertError } = await supabase
             .from('user_preferences')
             .insert({ user_id: user.id })
-            .select('mode, onboarding_completed, experience_level, calibration_completed, calibration_responses, myth_flags')
+            .select('mode, onboarding_completed, experience_level, calibration_completed, calibration_responses, myth_flags, intent, carry_balance')
             .single();
           
           if (!insertError && insertData) {
             setPreferences({
-              mode: insertData.mode as 'rewards' | 'conservative',
+              mode: insertData.mode as UserMode,
               onboarding_completed: insertData.onboarding_completed,
               experience_level: (insertData.experience_level as ExperienceLevel) || 'beginner',
               calibration_completed: insertData.calibration_completed || false,
               calibration_responses: (insertData.calibration_responses as CalibrationResponses) || {},
               myth_flags: (insertData.myth_flags as MythFlags) || {},
+              intent: (insertData.intent as UserIntent) || 'both',
+              carry_balance: insertData.carry_balance || false,
             });
           }
         }
       } else if (data) {
         setPreferences({
-          mode: data.mode as 'rewards' | 'conservative',
+          mode: data.mode as UserMode,
           onboarding_completed: data.onboarding_completed,
           experience_level: (data.experience_level as ExperienceLevel) || 'beginner',
           calibration_completed: data.calibration_completed || false,
           calibration_responses: (data.calibration_responses as CalibrationResponses) || {},
           myth_flags: (data.myth_flags as MythFlags) || {},
+          intent: (data.intent as UserIntent) || 'both',
+          carry_balance: data.carry_balance || false,
         });
       }
     } catch (err) {

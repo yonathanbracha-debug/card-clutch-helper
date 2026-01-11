@@ -2,15 +2,17 @@
  * Ask Page - Credit Q&A
  * Trust-first, calm experience for credit questions
  * CardClutch Vertical AI System
+ * 
+ * Updated 2026-01-11: Hard output schema (AskAiResponseSchema) support
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { ConfidenceMeter } from '@/components/ConfidenceMeter';
 import { DemoLimitModal } from '@/components/DemoLimitModal';
 import { AIVoiceInput } from '@/components/ui/ai-voice-input';
 import { CalibrationQuestions, CalibrationResult } from '@/components/ask/CalibrationQuestions';
+import { AskAiResponseSchema, type AskAiResponse } from '@/lib/askAiSchema';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,8 +24,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserPreferences, ExperienceLevel } from '@/hooks/useUserPreferences';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -47,6 +55,9 @@ import {
   User,
   GraduationCap,
   Briefcase,
+  CheckCircle2,
+  XCircle,
+  Clock,
 } from 'lucide-react';
 
 const ASK_DEMO_KEY = 'cardclutch_ask_demo';
@@ -57,37 +68,23 @@ const GUEST_EXPERIENCE_KEY = 'cardclutch_guest_experience';
 const GUEST_CALIBRATION_KEY = 'cardclutch_guest_calibration';
 const GUEST_MYTH_FLAGS_KEY = 'cardclutch_guest_myth_flags';
 
-// Score impact types
-type ScoreImpact = 'none' | 'temporary' | 'long_term' | 'unknown';
-type ConfidenceLevel = 'high' | 'issuer_dependent' | 'situational' | 'insufficient_data';
 type AnswerMode = 'quick' | 'mechanics' | 'action' | 'risk';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  confidence?: number;
-  confidenceLevel?: ConfidenceLevel;
-  scoreImpact?: ScoreImpact;
-  citations?: Array<{
-    title: string;
-    url: string;
-    category: string;
-    relevance: number;
-  }>;
-  intent?: string;
+  response?: AskAiResponse;
   timestamp: Date;
   isError?: boolean;
-  isMyth?: boolean;
-  mythCorrection?: string | null;
 }
 
 // Answer Mode configurations
 const ANSWER_MODES: { id: AnswerMode; label: string; icon: typeof Zap; description: string }[] = [
-  { id: 'quick', label: 'Quick Answer', icon: Zap, description: 'Direct answer only' },
-  { id: 'mechanics', label: 'Explain Mechanics', icon: Cog, description: 'How it works' },
-  { id: 'action', label: 'What To Do', icon: ListChecks, description: 'Actionable steps' },
-  { id: 'risk', label: 'Risk Analysis', icon: AlertOctagon, description: 'Full risk breakdown' },
+  { id: 'quick', label: 'Quick', icon: Zap, description: 'Direct answer' },
+  { id: 'mechanics', label: 'Mechanics', icon: Cog, description: 'How it works' },
+  { id: 'action', label: 'Steps', icon: ListChecks, description: 'What to do' },
+  { id: 'risk', label: 'Risk', icon: AlertOctagon, description: 'Full breakdown' },
 ];
 
 // Experience Level configurations
@@ -98,56 +95,243 @@ const EXPERIENCE_LEVELS: { id: ExperienceLevel; label: string; icon: typeof User
 ];
 
 // Score Impact Badge Component
-function ScoreImpactBadge({ impact }: { impact: ScoreImpact }) {
-  const config = {
-    none: { icon: Minus, label: 'No score impact', className: 'text-muted-foreground bg-muted' },
-    temporary: { icon: TrendingDown, label: 'Temporary impact', className: 'text-amber-600 bg-amber-500/10' },
-    long_term: { icon: TrendingUp, label: 'Long-term impact', className: 'text-destructive bg-destructive/10' },
-    unknown: { icon: HelpCircle, label: 'Impact varies', className: 'text-muted-foreground bg-muted' },
+function ScoreImpactBadge({ shortTerm, longTerm }: { shortTerm: string; longTerm: string }) {
+  const getImpactIcon = (impact: string) => {
+    switch (impact) {
+      case 'help': return <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />;
+      case 'hurt': return <TrendingDown className="w-3.5 h-3.5 text-destructive" />;
+      case 'neutral': return <Minus className="w-3.5 h-3.5 text-muted-foreground" />;
+      default: return <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />;
+    }
   };
   
-  const { icon: Icon, label, className } = config[impact];
+  const formatImpact = (impact: string) => {
+    switch (impact) {
+      case 'help': return 'Helps';
+      case 'hurt': return 'Hurts';
+      case 'neutral': return 'Neutral';
+      default: return 'Unknown';
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3 text-xs">
+      <span className="flex items-center gap-1.5 text-muted-foreground">
+        <Clock className="w-3 h-3" />
+        Short: {formatImpact(shortTerm)}
+        {getImpactIcon(shortTerm)}
+      </span>
+      <span className="flex items-center gap-1.5 text-muted-foreground">
+        Long: {formatImpact(longTerm)}
+        {getImpactIcon(longTerm)}
+      </span>
+    </div>
+  );
+}
+
+// Confidence Badge Component  
+function ConfidenceBadge({ level, score }: { level: string; score: number }) {
+  const config: Record<string, { icon: typeof CheckCircle2; className: string }> = {
+    high: { icon: CheckCircle2, className: 'text-emerald-600 bg-emerald-500/10' },
+    medium: { icon: Shield, className: 'text-amber-600 bg-amber-500/10' },
+    low: { icon: XCircle, className: 'text-muted-foreground bg-muted' },
+  };
+  
+  const { icon: Icon, className } = config[level] || config.low;
   
   return (
     <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium", className)}>
       <Icon className="w-3.5 h-3.5" />
-      {label}
+      {Math.round(score * 100)}% confident
     </span>
   );
 }
 
-// Confidence Level Badge Component  
-function ConfidenceLevelBadge({ level }: { level: ConfidenceLevel }) {
-  const config = {
-    high: { label: 'High certainty', className: 'text-emerald-600 bg-emerald-500/10' },
-    issuer_dependent: { label: 'Issuer-dependent', className: 'text-amber-600 bg-amber-500/10' },
-    situational: { label: 'Situational', className: 'text-blue-600 bg-blue-500/10' },
-    insufficient_data: { label: 'Insufficient data', className: 'text-muted-foreground bg-muted' },
+// Route Badge Component
+function RouteBadge({ route }: { route: string }) {
+  const config: Record<string, { label: string; className: string }> = {
+    deterministic: { label: 'Verified', className: 'text-emerald-600 bg-emerald-500/10' },
+    rag: { label: 'AI-assisted', className: 'text-blue-600 bg-blue-500/10' },
+    hybrid: { label: 'Hybrid', className: 'text-purple-600 bg-purple-500/10' },
+    error: { label: 'Error', className: 'text-destructive bg-destructive/10' },
   };
   
-  const { label, className } = config[level];
+  const { label, className } = config[route] || { label: route, className: 'text-muted-foreground bg-muted' };
   
   return (
-    <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium", className)}>
-      <Shield className="w-3.5 h-3.5" />
+    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono", className)}>
       {label}
     </span>
   );
 }
 
 // Myth Warning Component
-function MythWarning({ correction }: { correction: string }) {
+function MythWarning({ label, correction }: { label: string | null; correction: string | null }) {
+  if (!correction) return null;
+  
   return (
     <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 mb-4">
       <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
       <div>
         <p className="text-sm font-medium text-amber-600 dark:text-amber-400 mb-1">
-          Common misconception
+          Common Misconception{label ? `: ${label}` : ''}
         </p>
         <p className="text-sm text-muted-foreground">
           {correction}
         </p>
       </div>
+    </div>
+  );
+}
+
+// Answer Section Renderer - handles the new schema structure
+function AnswerSection({ response, experienceLevel }: { response: AskAiResponse; experienceLevel: ExperienceLevel }) {
+  const [showDetailed, setShowDetailed] = useState(false);
+
+  // For beginners: show only TL;DR and action items
+  // For intermediate: show short answer
+  // For advanced: show everything
+  const showActionItems = response.answer.action_items.length > 0;
+  const showPitfalls = response.answer.pitfalls.length > 0 && experienceLevel !== 'beginner';
+  const showDetailedToggle = response.answer.detailed && response.answer.detailed !== response.answer.short && experienceLevel !== 'beginner';
+
+  return (
+    <div className="space-y-4">
+      {/* TL;DR - always shown */}
+      <div className="text-sm leading-relaxed font-medium">
+        {response.answer.tl_dr}
+      </div>
+
+      {/* Short answer - shown for intermediate/advanced */}
+      {experienceLevel !== 'beginner' && response.answer.short !== response.answer.tl_dr && (
+        <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+          {response.answer.short}
+        </div>
+      )}
+
+      {/* Action Items */}
+      {showActionItems && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">What to do</p>
+          <ul className="space-y-1.5">
+            {response.answer.action_items.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Pitfalls */}
+      {showPitfalls && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Watch out for</p>
+          <ul className="space-y-1.5">
+            {response.answer.pitfalls.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Detailed (collapsible) */}
+      {showDetailedToggle && (
+        <Collapsible open={showDetailed} onOpenChange={setShowDetailed}>
+          <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronDown className={cn("w-4 h-4 transition-transform", showDetailed && "rotate-180")} />
+            {showDetailed ? 'Hide' : 'Show'} full explanation
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="mt-3 pt-3 border-t border-border text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+              {response.answer.detailed}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Score Impact */}
+      {experienceLevel !== 'beginner' && (
+        <div className="pt-3 border-t border-border">
+          <ScoreImpactBadge 
+            shortTerm={response.score_impact.short_term} 
+            longTerm={response.score_impact.long_term} 
+          />
+          {response.score_impact.notes && (
+            <p className="text-xs text-muted-foreground mt-1">{response.score_impact.notes}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Citations Section
+function CitationsSection({ citations, messageId }: { citations: AskAiResponse['citations']; messageId: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!citations || citations.length === 0) return null;
+
+  return (
+    <div className="border-t border-border pt-4 mt-4">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors duration-200"
+      >
+        <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", expanded && "rotate-180")} />
+        {expanded ? 'Hide' : 'Show'} sources ({citations.length})
+      </button>
+      
+      <AnimatePresence>
+        {expanded && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mt-3 space-y-2 overflow-hidden"
+          >
+            {citations.map((citation, i) => (
+              citation.url ? (
+                <a
+                  key={i}
+                  href={citation.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs text-accent hover:underline"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span className="truncate">{citation.title}</span>
+                </a>
+              ) : (
+                <span key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Shield className="w-3 h-3" />
+                  <span className="truncate">{citation.title}</span>
+                </span>
+              )
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Rate Limit Display
+function RateLimitIndicator({ metrics }: { metrics: AskAiResponse['metrics'] }) {
+  const ipRemaining = metrics.rate_limit.ip.remaining;
+  const ipLimit = metrics.rate_limit.ip.limit;
+  const userRemaining = metrics.rate_limit.user?.remaining ?? null;
+  
+  if (ipRemaining > ipLimit * 0.5) return null; // Only show when running low
+  
+  return (
+    <div className="text-xs text-muted-foreground/70 font-mono">
+      {userRemaining !== null ? `${userRemaining} requests remaining` : `${ipRemaining}/${ipLimit} remaining`}
     </div>
   );
 }
@@ -166,12 +350,12 @@ const EXAMPLE_PROMPTS = [
 export default function Ask() {
   const { user } = useAuth();
   const { preferences, loading: prefsLoading, updatePreferences } = useUserPreferences();
+  const { trackEvent } = useAnalytics();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [demoState, setDemoState] = useState<AskDemoState>({ count: 0 });
-  const [expandedCitations, setExpandedCitations] = useState<Set<string>>(new Set());
   const [answerMode, setAnswerMode] = useState<AnswerMode>('quick');
   
   // Local state for guest users, synced with DB for logged-in users
@@ -190,9 +374,6 @@ export default function Ask() {
   const calibrationComplete = isLoggedIn && preferences 
     ? preferences.calibration_completed 
     : guestCalibrationComplete;
-  const mythFlags = isLoggedIn && preferences 
-    ? Object.keys(preferences.myth_flags).filter(k => preferences.myth_flags[k]) 
-    : guestMythFlags;
 
   // Load demo state
   useEffect(() => {
@@ -242,7 +423,6 @@ export default function Ask() {
   // Handle calibration completion
   const handleCalibrationComplete = async (result: CalibrationResult) => {
     if (isLoggedIn) {
-      // Persist to database for logged-in users
       try {
         const mythFlagsObj: Record<string, boolean> = {};
         result.mythFlags.forEach(flag => { mythFlagsObj[flag] = true; });
@@ -257,7 +437,6 @@ export default function Ask() {
         console.error('Failed to save calibration to database:', err);
       }
     } else {
-      // Persist to localStorage for guests
       setGuestExperienceLevel(result.experienceLevel);
       setGuestMythFlags(result.mythFlags);
       setGuestCalibrationComplete(true);
@@ -324,7 +503,6 @@ export default function Ask() {
         localStorage.removeItem(GUEST_MYTH_FLAGS_KEY);
       }
     }
-    // Clear messages to show calibration
     setMessages([]);
   };
 
@@ -379,35 +557,58 @@ export default function Ask() {
         throw new Error(errorMsg);
       }
 
-      if (data?.error) {
-        throw new Error(data.message || data.error);
+      // Validate response against schema
+      const parseResult = AskAiResponseSchema.safeParse(data);
+      
+      if (!parseResult.success) {
+        console.error('Schema validation failed:', parseResult.error);
+        // Track schema failure analytics
+        trackEvent('ask_schema_error', { 
+          error: parseResult.error.message?.slice(0, 100) 
+        }).catch(() => {});
+        
+        // Fall back to legacy format if schema validation fails
+        const assistantMessage: Message = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: data?.answer?.short || data?.answer || 'Unable to process response.',
+          timestamp: new Date(),
+          isError: !!data?.error,
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      } else {
+        // Schema-validated response
+        const response = parseResult.data;
+        
+        // Track analytics
+        trackEvent('ask_success', {
+          route: response.route,
+          confidence: response.confidence.level,
+        }).catch(() => {});
+
+        const assistantMessage: Message = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: response.answer.tl_dr,
+          response,
+          timestamp: new Date(),
+          isError: response.route === 'error',
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
       }
-
-      if (!data?.answer) {
-        throw new Error('No response received.');
-      }
-
-      const assistantMessage: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: data.answer,
-        confidence: data.confidence,
-        confidenceLevel: data.confidence_level,
-        scoreImpact: data.score_impact,
-        citations: data.citations,
-        intent: data.intent,
-        timestamp: new Date(),
-        isMyth: data.is_myth,
-        mythCorrection: data.myth_correction,
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
 
       if (!isLoggedIn) {
         setDemoState(prev => ({ count: prev.count + 1 }));
       }
     } catch (err) {
       console.error('Ask error:', err);
+      
+      // Track error analytics
+      trackEvent('ask_error', {
+        error: err instanceof Error ? err.message.slice(0, 100) : 'unknown'
+      }).catch(() => {});
+      
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -428,18 +629,6 @@ export default function Ask() {
       e.preventDefault();
       handleSubmit(inputValue);
     }
-  };
-
-  const toggleCitations = (messageId: string) => {
-    setExpandedCitations(prev => {
-      const next = new Set(prev);
-      if (next.has(messageId)) {
-        next.delete(messageId);
-      } else {
-        next.add(messageId);
-      }
-      return next;
-    });
   };
 
   const handleVoiceTranscript = (text: string) => {
@@ -494,16 +683,27 @@ export default function Ask() {
             transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
             className="mb-6"
           >
-            <span className="pill-secondary mb-4">
-              <MessageSquare className="w-3.5 h-3.5" />
-              Credit Q&A
-            </span>
+            <div className="flex items-center justify-between mb-4">
+              <span className="pill-secondary">
+                <MessageSquare className="w-3.5 h-3.5" />
+                Credit Q&A
+              </span>
+              {/* Experience Level Badge */}
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary">
+                {EXPERIENCE_LEVELS.find(l => l.id === experienceLevel)?.icon && (
+                  (() => {
+                    const LevelIcon = EXPERIENCE_LEVELS.find(l => l.id === experienceLevel)!.icon;
+                    return <LevelIcon className="w-3 h-3" />;
+                  })()
+                )}
+                {experienceLevel.charAt(0).toUpperCase() + experienceLevel.slice(1)}
+              </span>
+            </div>
             <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-3">
               Ask about credit
             </h1>
             <p className="text-muted-foreground text-lg max-w-xl leading-relaxed">
-              Get conservative, fact-based answers about credit scores, cards, and personal finance. 
-              No hype, just clarity.
+              Get conservative, fact-based answers about credit scores, cards, and personal finance.
             </p>
             {!isLoggedIn && remaining > 0 && remaining !== Infinity && (
               <p className="text-sm text-muted-foreground/70 mt-4 font-mono">
@@ -522,7 +722,7 @@ export default function Ask() {
             {/* Experience Level Selector */}
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                Experience:
+                Depth:
               </span>
               <div className="flex items-center gap-1.5">
                 {EXPERIENCE_LEVELS.map(({ id, label, icon: Icon }) => (
@@ -546,7 +746,7 @@ export default function Ask() {
             {/* Answer Mode Toggle */}
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                Mode:
+                Focus:
               </span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {ANSWER_MODES.map(({ id, label, icon: Icon, description }) => (
@@ -568,17 +768,15 @@ export default function Ask() {
               </div>
             </div>
 
-            {/* Conservative Mode Indicator & Reset Calibration */}
+            {/* Reset Calibration */}
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Shield className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Conservative Mode Active — We avoid aggressive strategies.</span>
+                <span>Conservative Mode — We avoid aggressive strategies.</span>
               </div>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <button
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
-                  >
+                  <button className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline">
                     Reset calibration
                   </button>
                 </AlertDialogTrigger>
@@ -586,8 +784,7 @@ export default function Ask() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Reset calibration?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will clear your current calibration data and experience level. 
-                      You'll need to complete the calibration questions again.
+                      This will clear your calibration data and experience level.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -636,7 +833,7 @@ export default function Ask() {
                 </motion.div>
               ) : (
                 <>
-                  {messages.map((message, index) => (
+                  {messages.map((message) => (
                     <motion.div
                       key={message.id}
                       initial={{ opacity: 0, y: 16 }}
@@ -664,78 +861,46 @@ export default function Ask() {
                           </div>
                         )}
                         
-                        {/* Myth Warning */}
-                        {message.role === 'assistant' && message.isMyth && message.mythCorrection && (
-                          <MythWarning correction={message.mythCorrection} />
-                        )}
-                        
-                        {/* Score Impact & Confidence Badges */}
-                        {message.role === 'assistant' && !message.isError && (
-                          <div className="flex items-center gap-2 flex-wrap mb-4">
-                            {message.scoreImpact && (
-                              <ScoreImpactBadge impact={message.scoreImpact} />
-                            )}
-                            {message.confidenceLevel && (
-                              <ConfidenceLevelBadge level={message.confidenceLevel} />
-                            )}
-                          </div>
-                        )}
-                        
-                        <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                          {message.content}
-                        </p>
-                        
-                        {message.role === 'assistant' && !message.isError && (
-                          <div className="mt-4 space-y-4">
-                            {message.confidence !== undefined && message.confidence < 0.95 && (
-                              <ConfidenceMeter 
-                                confidence={message.confidence} 
-                                size="sm"
+                        {/* Schema-validated response rendering */}
+                        {message.response ? (
+                          <>
+                            {/* Myth Warning */}
+                            {message.response.myth.is_myth && (
+                              <MythWarning 
+                                label={message.response.myth.myth_label} 
+                                correction={message.response.myth.correction} 
                               />
                             )}
                             
-                            {message.citations && message.citations.length > 0 && (
-                              <div className="border-t border-border pt-4">
-                                <button
-                                  onClick={() => toggleCitations(message.id)}
-                                  className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors duration-200"
-                                >
-                                  <ChevronDown
-                                    className={cn(
-                                      "w-4 h-4 transition-transform duration-300",
-                                      expandedCitations.has(message.id) && "rotate-180"
-                                    )}
-                                  />
-                                  {expandedCitations.has(message.id) ? 'Hide' : 'Show'} sources ({message.citations.length})
-                                </button>
-                                
-                                <AnimatePresence>
-                                  {expandedCitations.has(message.id) && (
-                                    <motion.div 
-                                      initial={{ opacity: 0, height: 0 }}
-                                      animate={{ opacity: 1, height: 'auto' }}
-                                      exit={{ opacity: 0, height: 0 }}
-                                      transition={{ duration: 0.3 }}
-                                      className="mt-3 space-y-2 overflow-hidden"
-                                    >
-                                      {message.citations.map((citation, i) => (
-                                        <a
-                                          key={i}
-                                          href={citation.url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-2 text-xs text-accent hover:underline"
-                                        >
-                                          <ExternalLink className="w-3 h-3" />
-                                          <span className="truncate">{citation.title}</span>
-                                        </a>
-                                      ))}
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            )}
-                          </div>
+                            {/* Badges */}
+                            <div className="flex items-center gap-2 flex-wrap mb-4">
+                              <RouteBadge route={message.response.route} />
+                              <ConfidenceBadge 
+                                level={message.response.confidence.level} 
+                                score={message.response.confidence.score} 
+                              />
+                            </div>
+                            
+                            {/* Answer Section */}
+                            <AnswerSection 
+                              response={message.response} 
+                              experienceLevel={experienceLevel} 
+                            />
+                            
+                            {/* Citations */}
+                            <CitationsSection 
+                              citations={message.response.citations} 
+                              messageId={message.id} 
+                            />
+                            
+                            {/* Rate Limit Indicator */}
+                            <RateLimitIndicator metrics={message.response.metrics} />
+                          </>
+                        ) : (
+                          /* Legacy/fallback rendering */
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                            {message.content}
+                          </p>
                         )}
                       </div>
                     </motion.div>
@@ -809,7 +974,7 @@ export default function Ask() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground/70 text-center mt-4">
-              AI-generated answers. Always verify important information with official sources.
+              AI-generated answers. Always verify with official sources.
             </p>
           </div>
         </div>
