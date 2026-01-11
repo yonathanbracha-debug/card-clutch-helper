@@ -26,6 +26,8 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Dashboard from "./pages/Dashboard";
 import Ask from "./pages/Ask";
+import Diagnostics from "./pages/Diagnostics";
+import Transactions from "./pages/Transactions";
 import { ProtectedCreditRoute } from "@/components/ProtectedCreditRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "@/contexts/AuthContext";
@@ -99,6 +101,10 @@ const App = () => (
               
               {/* User Dashboard (protected) */}
               <Route path="/dashboard" element={<Dashboard />} />
+              
+              {/* Finance Diagnostics */}
+              <Route path="/diagnostics" element={<Diagnostics />} />
+              <Route path="/transactions" element={<Transactions />} />
               
               {/* Wallet with friendly gating */}
               <Route path="/wallet" element={<WalletWrapper />} />
