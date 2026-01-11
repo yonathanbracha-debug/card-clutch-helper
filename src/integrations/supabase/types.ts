@@ -818,6 +818,7 @@ export type Database = {
           description: string
           id: string
           impact_usd: number
+          priority_score: number
           snooze_until: string | null
           source: Json
           status: string
@@ -833,6 +834,7 @@ export type Database = {
           description: string
           id?: string
           impact_usd?: number
+          priority_score?: number
           snooze_until?: string | null
           source?: Json
           status?: string
@@ -848,6 +850,7 @@ export type Database = {
           description?: string
           id?: string
           impact_usd?: number
+          priority_score?: number
           snooze_until?: string | null
           source?: Json
           status?: string
@@ -974,6 +977,36 @@ export type Database = {
           intent?: string
           onboarding_completed?: boolean
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_feedback: {
+        Row: {
+          created_at: string
+          feedback: string
+          id: string
+          insight_key: string
+          insight_type: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback: string
+          id?: string
+          insight_key: string
+          insight_type: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback?: string
+          id?: string
+          insight_key?: string
+          insight_type?: string
+          reason?: string | null
           user_id?: string
         }
         Relationships: []
