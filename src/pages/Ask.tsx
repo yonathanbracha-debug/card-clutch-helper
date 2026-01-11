@@ -3,16 +3,20 @@
  * Trust-first, calm experience for credit questions
  * CardClutch Vertical AI System
  * 
- * Updated 2026-01-11: Hard output schema (AskAiResponseSchema) support
+ * Updated 2026-01-11: Hard output schema + Credit Onboarding integration
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { DemoLimitModal } from '@/components/DemoLimitModal';
+import { CreditOnboardingModal } from '@/components/CreditOnboardingModal';
 import { AIVoiceInput } from '@/components/ui/ai-voice-input';
 import { CalibrationQuestions, CalibrationResult } from '@/components/ask/CalibrationQuestions';
+import { AnswerRenderer } from '@/components/ask/AnswerRenderer';
+import { AnswerDepthToggle } from '@/components/ask/AnswerDepthToggle';
 import { AskAiResponseSchema, type AskAiResponse } from '@/lib/askAiSchema';
+import { AnswerSchema as NewAnswerSchemaValidator, type AnswerResponse as NewAnswerSchema } from '@/lib/ai/answerSchema';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +35,7 @@ import {
 } from "@/components/ui/collapsible";
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserPreferences, ExperienceLevel } from '@/hooks/useUserPreferences';
+import { useCreditProfile } from '@/hooks/useCreditProfile';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -69,14 +74,17 @@ const GUEST_CALIBRATION_KEY = 'cardclutch_guest_calibration';
 const GUEST_MYTH_FLAGS_KEY = 'cardclutch_guest_myth_flags';
 
 type AnswerMode = 'quick' | 'mechanics' | 'action' | 'risk';
+type AnswerDepth = 'beginner' | 'intermediate' | 'advanced';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   response?: AskAiResponse;
+  newSchemaResponse?: NewAnswerSchema;
   timestamp: Date;
   isError?: boolean;
+  isOnboardingRequired?: boolean;
 }
 
 // Answer Mode configurations
@@ -350,13 +358,21 @@ const EXAMPLE_PROMPTS = [
 export default function Ask() {
   const { user } = useAuth();
   const { preferences, loading: prefsLoading, updatePreferences } = useUserPreferences();
+  const { 
+    requiresOnboarding, 
+    loading: profileLoading, 
+    refetch: refetchProfile,
+    creditState 
+  } = useCreditProfile();
   const { trackEvent } = useAnalytics();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [demoState, setDemoState] = useState<AskDemoState>({ count: 0 });
   const [answerMode, setAnswerMode] = useState<AnswerMode>('quick');
+  const [answerDepth, setAnswerDepth] = useState<AnswerDepth>('beginner');
   
   // Local state for guest users, synced with DB for logged-in users
   const [guestExperienceLevel, setGuestExperienceLevel] = useState<ExperienceLevel>('beginner');
@@ -365,6 +381,22 @@ export default function Ask() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Show onboarding modal if authenticated user needs it
+  useEffect(() => {
+    if (user && requiresOnboarding && !profileLoading) {
+      setShowOnboardingModal(true);
+    }
+  }, [user, requiresOnboarding, profileLoading]);
+
+  // Sync answer depth with experience level
+  useEffect(() => {
+    if (preferences?.experience_level) {
+      setAnswerDepth(preferences.experience_level as AnswerDepth);
+    } else {
+      setAnswerDepth(guestExperienceLevel as AnswerDepth);
+    }
+  }, [preferences?.experience_level, guestExperienceLevel]);
 
   // Derived state - use DB for logged-in users, localStorage for guests
   const isLoggedIn = !!user;
@@ -517,7 +549,7 @@ export default function Ask() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  const handleSubmit = async (question: string) => {
+  const handleSubmit = async (question: string, calibrationAnswers?: Record<string, any>) => {
     if (!question.trim() || isLoading) return;
 
     if (!canAsk) {
@@ -541,61 +573,111 @@ export default function Ask() {
         body: {
           question: question.trim(),
           include_citations: true,
-          experience_level: experienceLevel,
+          answer_depth: answerDepth,
           answer_mode: answerMode,
+          calibration_answers: calibrationAnswers,
         },
       });
 
-      if (error) {
+      // Handle ONBOARDING_REQUIRED error from server
+      if (error || data?.error === 'ONBOARDING_REQUIRED') {
+        if (data?.error === 'ONBOARDING_REQUIRED') {
+          setShowOnboardingModal(true);
+          const onboardingMessage: Message = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: 'Complete onboarding to get personalized answers.',
+            timestamp: new Date(),
+            isOnboardingRequired: true,
+          };
+          setMessages(prev => [...prev, onboardingMessage]);
+          return;
+        }
+
         let errorMsg = 'Something went wrong. Please try again.';
-        const errStr = error.message?.toLowerCase() || '';
-        if (errStr.includes('429') || errStr.includes('rate')) {
-          errorMsg = 'Too many requests. Please wait a moment.';
-        } else if (errStr.includes('402') || errStr.includes('quota')) {
-          errorMsg = 'Service temporarily unavailable.';
+        if (error) {
+          const errStr = error.message?.toLowerCase() || '';
+          if (errStr.includes('429') || errStr.includes('rate')) {
+            errorMsg = 'Too many requests. Please wait a moment.';
+          } else if (errStr.includes('402') || errStr.includes('quota')) {
+            errorMsg = 'Service temporarily unavailable.';
+          } else if (errStr.includes('403') || errStr.includes('onboarding')) {
+            // Server returned 403 for onboarding required
+            setShowOnboardingModal(true);
+            const onboardingMessage: Message = {
+              id: crypto.randomUUID(),
+              role: 'assistant',
+              content: 'Complete onboarding to get personalized answers.',
+              timestamp: new Date(),
+              isOnboardingRequired: true,
+            };
+            setMessages(prev => [...prev, onboardingMessage]);
+            return;
+          }
         }
         throw new Error(errorMsg);
       }
 
-      // Validate response against schema
-      const parseResult = AskAiResponseSchema.safeParse(data);
+      // Try new schema first, then fallback to legacy
+      const newSchemaResult = NewAnswerSchemaValidator.safeParse(data);
       
-      if (!parseResult.success) {
-        console.error('Schema validation failed:', parseResult.error);
-        // Track schema failure analytics
-        trackEvent('ask_schema_error', { 
-          error: parseResult.error.message?.slice(0, 100) 
-        }).catch(() => {});
+      if (newSchemaResult.success) {
+        // New schema response
+        const response = newSchemaResult.data;
         
-        // Fall back to legacy format if schema validation fails
+        trackEvent('ask_success', {
+          route: response.routing.mode,
+          confidence: response.top_line.confidence,
+          depth: response.answer_depth,
+        }).catch(() => {});
+
         const assistantMessage: Message = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: data?.answer?.short || data?.answer || 'Unable to process response.',
+          content: response.top_line.verdict,
+          newSchemaResponse: response,
           timestamp: new Date(),
-          isError: !!data?.error,
+          isError: false,
         };
+
         setMessages(prev => [...prev, assistantMessage]);
       } else {
-        // Schema-validated response
-        const response = parseResult.data;
+        // Try legacy schema
+        const parseResult = AskAiResponseSchema.safeParse(data);
         
-        // Track analytics
-        trackEvent('ask_success', {
-          route: response.route,
-          confidence: response.confidence.level,
-        }).catch(() => {});
+        if (!parseResult.success) {
+          console.error('Schema validation failed:', parseResult.error);
+          trackEvent('ask_schema_error', { 
+            error: parseResult.error.message?.slice(0, 100) 
+          }).catch(() => {});
+          
+          const assistantMessage: Message = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: data?.answer?.short || data?.answer || data?.top_line?.verdict || 'Unable to process response.',
+            timestamp: new Date(),
+            isError: !!data?.error,
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+        } else {
+          const response = parseResult.data;
+          
+          trackEvent('ask_success', {
+            route: response.route,
+            confidence: response.confidence.level,
+          }).catch(() => {});
 
-        const assistantMessage: Message = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: response.answer.tl_dr,
-          response,
-          timestamp: new Date(),
-          isError: response.route === 'error',
-        };
+          const assistantMessage: Message = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: response.answer.tl_dr,
+            response,
+            timestamp: new Date(),
+            isError: response.route === 'error',
+          };
 
-        setMessages(prev => [...prev, assistantMessage]);
+          setMessages(prev => [...prev, assistantMessage]);
+        }
       }
 
       if (!isLoggedIn) {
@@ -719,25 +801,27 @@ export default function Ask() {
             transition={{ duration: 0.4, delay: 0.1 }}
             className="mb-6 space-y-4"
           >
-            {/* Experience Level Selector */}
+            {/* Answer Depth Selector */}
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
                 Depth:
               </span>
               <div className="flex items-center gap-1.5">
-                {EXPERIENCE_LEVELS.map(({ id, label, icon: Icon }) => (
+                {(['beginner', 'intermediate', 'advanced'] as const).map((depth) => (
                   <button
-                    key={id}
-                    onClick={() => handleExperienceLevelChange(id)}
+                    key={depth}
+                    onClick={() => {
+                      setAnswerDepth(depth);
+                      handleExperienceLevelChange(depth);
+                    }}
                     className={cn(
                       "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
-                      experienceLevel === id
+                      answerDepth === depth
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
-                    <Icon className="w-3 h-3" />
-                    {label}
+                    {depth.charAt(0).toUpperCase() + depth.slice(1)}
                   </button>
                 ))}
               </div>
@@ -861,8 +945,16 @@ export default function Ask() {
                           </div>
                         )}
                         
-                        {/* Schema-validated response rendering */}
-                        {message.response ? (
+                        {/* New schema response rendering */}
+                        {message.newSchemaResponse ? (
+                          <AnswerRenderer 
+                            response={message.newSchemaResponse}
+                            onCalibrationSubmit={(answers) => {
+                              // Re-submit the original question with calibration answers
+                              handleSubmit(message.content || '', answers);
+                            }}
+                          />
+                        ) : message.response ? (
                           <>
                             {/* Myth Warning */}
                             {message.response.myth.is_myth && (
@@ -896,6 +988,18 @@ export default function Ask() {
                             {/* Rate Limit Indicator */}
                             <RateLimitIndicator metrics={message.response.metrics} />
                           </>
+                        ) : message.isOnboardingRequired ? (
+                          <div className="flex items-center gap-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-500" />
+                            <div>
+                              <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                                Complete onboarding first
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                We need to know your credit profile to give personalized answers.
+                              </p>
+                            </div>
+                          </div>
                         ) : (
                           /* Legacy/fallback rendering */
                           <p className="whitespace-pre-wrap text-sm leading-relaxed">
@@ -986,6 +1090,15 @@ export default function Ask() {
         open={showDemoModal}
         onOpenChange={setShowDemoModal}
         showBonusOption={false}
+      />
+
+      {/* Credit Onboarding Modal - shows when authenticated user needs onboarding */}
+      <CreditOnboardingModal
+        open={showOnboardingModal}
+        onComplete={() => {
+          setShowOnboardingModal(false);
+          refetchProfile();
+        }}
       />
     </div>
   );
