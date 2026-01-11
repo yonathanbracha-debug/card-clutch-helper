@@ -1,12 +1,11 @@
 /**
- * Ask Credit Question Edge Function v2
- * Complete rewrite with:
- * - Hard output schema (AnswerSchema)
- * - Myth detection (deterministic)
- * - Calibration questions (context-aware)
- * - Depth-based composition (beginner/intermediate/advanced)
- * - PII redaction before persistence
- * - Server-first gating (onboarding required)
+ * Ask Credit Question Edge Function v3
+ * With HardAnswerSchema format and Section 6 blocking logic
+ * 
+ * Changes from v2:
+ * - Uses HardAnswer schema (summary, recommended_action, steps, mechanics, edge_cases, warnings, confidence, blocked, block_reason)
+ * - Implements credit_state blocking logic
+ * - BNPL/high-risk detection forces risk mode
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
@@ -16,69 +15,180 @@ const corsHeaders = {
 };
 
 // Constants
-const SCHEMA_VERSION = 1;
+const HARD_SCHEMA_VERSION = 2;
 const OPENAI_CHAT_MODEL = "gpt-4o-mini";
 const COST_PER_1K_INPUT = 0.00015;
 const COST_PER_1K_OUTPUT = 0.0006;
 
 type AnswerDepth = "beginner" | "intermediate" | "advanced";
 type ConfidenceLevel = "low" | "medium" | "high";
-type RouteMode = "deterministic" | "rag" | "hybrid";
+type QuestionType = "myth" | "procedure" | "optimization" | "risk" | "education";
 
-// Myth definitions (inlined for edge function)
-interface CreditMyth {
-  id: string;
-  patterns: RegExp[];
-  correction: string;
-  why_it_matters: string;
+// Depth rules - Section 3
+interface DepthRules {
+  summary: { maxSentences: number };
+  recommended_action: boolean;
+  steps: { max: number };
+  mechanics: boolean;
+  edge_cases: boolean;
+  warnings: 'severe_only' | 'allowed' | 'required';
 }
 
-const CREDIT_MYTHS: CreditMyth[] = [
+const DEPTH_RULES: Record<AnswerDepth, DepthRules> = {
+  beginner: {
+    summary: { maxSentences: 2 },
+    recommended_action: true,
+    steps: { max: 3 },
+    mechanics: false,
+    edge_cases: false,
+    warnings: 'severe_only',
+  },
+  intermediate: {
+    summary: { maxSentences: 3 },
+    recommended_action: true,
+    steps: { max: 6 },
+    mechanics: true,
+    edge_cases: false,
+    warnings: 'allowed',
+  },
+  advanced: {
+    summary: { maxSentences: 4 },
+    recommended_action: true,
+    steps: { max: 10 },
+    mechanics: true,
+    edge_cases: true,
+    warnings: 'required',
+  },
+};
+
+// HardAnswer schema type - Section 2
+interface HardAnswer {
+  summary: string;
+  recommended_action: string | null;
+  steps: string[];
+  mechanics: string | null;
+  edge_cases: string[] | null;
+  warnings: string[] | null;
+  confidence: ConfidenceLevel;
+  blocked: boolean;
+  block_reason: string | null;
+}
+
+// Extended response with metadata
+interface HardAnswerResponse extends HardAnswer {
+  schema_version: number;
+  request_id: string;
+  answer_depth: AnswerDepth;
+  question_type: QuestionType;
+  myth_check?: {
+    detected: boolean;
+    myth?: string;
+    correction?: string;
+  };
+  routing: {
+    model: string;
+    latency_ms: number;
+    tokens_in: number;
+    tokens_out: number;
+    cost_usd: number;
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+// Myth definitions - Section 4
+interface CreditMyth {
+  id: string;
+  name: string;
+  patterns: RegExp[];
+  correction: string;
+}
+
+const MANDATORY_MYTHS: CreditMyth[] = [
   {
     id: "MYTH_0_UTIL_IS_BEST",
+    name: "0% utilization is best",
     patterns: [/0%?\s*utilization\s*(is\s*)?(best|optimal|ideal)/i, /zero\s*utilization\s*(is\s*)?(good|best)/i],
-    correction: "0% utilization is NOT optimal. 1-9% reported utilization typically scores best.",
-    why_it_matters: "Zero utilization suggests inactive accounts. Scoring models reward low but non-zero usage.",
+    correction: "1-9% utilization typically scores better than 0%. Zero utilization suggests inactive accounts.",
+  },
+  {
+    id: "MYTH_PAYING_EARLY_HURTS",
+    name: "Paying early hurts score",
+    patterns: [/paying\s*early\s*(hurt|damage|lower)\s*(score|credit)/i],
+    correction: "Paying early does not hurt your score. It reduces utilization reported on statement close.",
+  },
+  {
+    id: "MYTH_MORE_CARDS_ALWAYS_HELP",
+    name: "More cards always help",
+    patterns: [/more\s*cards?\s*(always|definitely)\s*(help|improve|good)/i],
+    correction: "More cards can help average age and total credit, but new inquiries temporarily lower score.",
+  },
+  {
+    id: "MYTH_CLOSING_IS_NEUTRAL",
+    name: "Closing cards is neutral",
+    patterns: [/closing\s*(cards?|accounts?)\s*(is\s*)?(neutral|fine|ok|doesn't\s*matter)/i],
+    correction: "Closing cards reduces total credit limit, which can raise utilization and hurt score.",
+  },
+  {
+    id: "MYTH_CARRYING_BALANCE_BUILDS_CREDIT",
+    name: "Carrying balance builds credit",
+    patterns: [/carry(ing)?\s*(a\s*)?balance\s*(to\s*)?(build|improve|help)\s*(credit|score)/i, /need\s*(to\s*)?carry\s*(a\s*)?balance/i],
+    correction: "You do NOT need to carry a balance. Pay in full every month. Interest does not help your score.",
+  },
+  {
+    id: "MYTH_BNPL_IS_HARMLESS",
+    name: "BNPL is harmless",
+    patterns: [/bnpl\s*(is\s*)?(harmless|safe|no\s*impact)/i, /buy\s*now\s*pay\s*later\s*(is\s*)?(safe|harmless)/i],
+    correction: "Many BNPL providers now report to credit bureaus. Missed payments CAN hurt your score.",
+  },
+  {
+    id: "MYTH_MINIMUM_AVOIDS_INTEREST_IMPACT",
+    name: "Minimum payment avoids interest impact",
+    patterns: [/minimum\s*payment\s*(avoids?|prevents?)\s*(interest|impact)/i],
+    correction: "Minimum payment avoids late fees but you still accrue interest on remaining balance.",
   },
   {
     id: "MYTH_PAY_BY_DUE_DATE_AFFECTS_UTIL",
+    name: "Pay by due date affects utilization",
     patterns: [/pay\s*(by|before)\s*(the\s*)?due\s*date\s*(to\s*)?(lower|reduce)\s*utilization/i],
     correction: "Utilization is reported on statement CLOSE date, not due date. Pay BEFORE statement closes.",
-    why_it_matters: "Most issuers report balances when the statement generates, not when payment is due.",
-  },
-  {
-    id: "MYTH_CARRYING_BALANCE_BUILDS_SCORE",
-    patterns: [/carry(ing)?\s*(a\s*)?balance\s*(to\s*)?(build|improve|help)\s*(credit|score)/i, /need\s*(to\s*)?carry\s*(a\s*)?balance/i],
-    correction: "You do NOT need to carry a balance. Pay in full every month. Interest payments do not help your score.",
-    why_it_matters: "This myth costs consumers billions in unnecessary interest.",
-  },
-  {
-    id: "MYTH_CREDIT_CHECK_HURTS_ALWAYS",
-    patterns: [/checking\s*(my\s*)?(own\s*)?credit\s*(score\s*)?(hurt|damage|lower)/i],
-    correction: "Checking your own credit is a SOFT pull. It has zero effect on your score.",
-    why_it_matters: "Fear of checking credit leads to ignorance about your own financial health.",
   },
   {
     id: "MYTH_CLOSING_DATE_IS_DUE_DATE",
+    name: "Statement close is due date",
     patterns: [/statement\s*(close|closing)\s*(date\s*)?(is\s*)?(same\s*as\s*)?(due\s*date)/i],
     correction: "Statement close date and due date are different. Close date is when statement generates. Due date is ~21-25 days later.",
-    why_it_matters: "Confusing these dates causes missed timing for utilization optimization.",
   },
   {
-    id: "MYTH_PAYING_INTEREST_HELPS_APPROVALS",
-    patterns: [/paying\s*interest\s*(help|improve)\s*(approval|chance)/i],
-    correction: "Paying interest does NOT improve approval odds. Banks profit from interest but scoring models do not reward it.",
-    why_it_matters: "This myth benefits lenders, not you.",
+    id: "MYTH_CREDIT_CHECK_HURTS",
+    name: "Checking credit hurts score",
+    patterns: [/checking\s*(my\s*)?(own\s*)?credit\s*(score\s*)?(hurt|damage|lower)/i],
+    correction: "Checking your own credit is a SOFT pull. It has zero effect on your score.",
   },
   {
     id: "MYTH_BNPL_HAS_NO_CREDIT_IMPACT",
+    name: "BNPL has no credit impact",
     patterns: [/bnpl\s*(has\s*)?(no|zero)\s*(affect|impact)/i, /buy\s*now\s*pay\s*later\s*(doesn't|no)\s*affect/i],
     correction: "Many BNPL providers now report to credit bureaus. Missed payments CAN hurt your score.",
-    why_it_matters: "BNPL is increasingly reported to bureaus. Missed payments can result in collections.",
   },
 ];
 
-// Calibration question definitions
+// BNPL/high-risk patterns - Section 7
+const HIGH_RISK_PATTERNS = [
+  /bnpl/i,
+  /buy\s*now\s*pay\s*later/i,
+  /klarna/i,
+  /affirm/i,
+  /afterpay/i,
+  /minimum\s*payment/i,
+  /cash\s*advance/i,
+  /payday/i,
+  /large\s*(purchase|spend)/i,
+];
+
+// Calibration questions
 interface CalibrationQuestion {
   id: string;
   prompt: string;
@@ -95,42 +205,6 @@ const INITIAL_CALIBRATION: CalibrationQuestion[] = [
   { id: "confidence_level", prompt: "How confident are you about credit decisions?", type: "single_select", options: [{ value: "low", label: "Not confident" }, { value: "medium", label: "Somewhat" }, { value: "high", label: "Very confident" }], required: true },
 ];
 
-// Schema response type
-interface AnswerResponse {
-  schema_version: number;
-  request_id: string;
-  answer_depth: AnswerDepth;
-  routing: {
-    mode: RouteMode;
-    deterministic_topics_hit: string[];
-    rag_chunks_count: number;
-    model: string;
-    latency_ms: number;
-    tokens_in: number;
-    tokens_out: number;
-    cost_usd: number;
-  };
-  calibration: {
-    needed: boolean;
-    questions: CalibrationQuestion[];
-  };
-  myth_detection: {
-    flags: string[];
-    corrections: { myth_id: string; correction: string; why_it_matters: string }[];
-  };
-  top_line: {
-    verdict: string;
-    confidence: ConfidenceLevel;
-    one_sentence: string;
-  };
-  steps: { title: string; action: string; rationale: string }[];
-  mechanics: { title: string; explanation: string }[];
-  edge_cases: { title: string; risk: "low" | "medium" | "high"; detail: string }[];
-  assumptions: string[];
-  disclaimers: string[];
-  followups: { prompt: string; reason: string }[];
-}
-
 // Utility functions
 function generateRequestId(): string {
   return crypto.randomUUID();
@@ -140,22 +214,38 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
-function detectMyths(question: string): { flags: string[]; corrections: AnswerResponse["myth_detection"]["corrections"] } {
-  const flags: string[] = [];
-  const corrections: AnswerResponse["myth_detection"]["corrections"] = [];
+function classifyQuestion(question: string): QuestionType {
+  const q = question.toLowerCase();
   
-  for (const myth of CREDIT_MYTHS) {
+  // Check for myth patterns first
+  for (const myth of MANDATORY_MYTHS) {
+    for (const pattern of myth.patterns) {
+      if (pattern.test(question)) return "myth";
+    }
+  }
+  
+  // Check for high-risk patterns
+  for (const pattern of HIGH_RISK_PATTERNS) {
+    if (pattern.test(question)) return "risk";
+  }
+  
+  // Classify based on keywords
+  if (/should\s*i|what\s*card|best\s*card|recommend|optimize|maximize/i.test(q)) return "optimization";
+  if (/how\s*(do|to)|when\s*(should|to)|step|process/i.test(q)) return "procedure";
+  if (/risk|danger|hurt|damage|bad\s*for/i.test(q)) return "risk";
+  
+  return "education";
+}
+
+function detectMyth(question: string): { detected: boolean; myth?: string; correction?: string } {
+  for (const myth of MANDATORY_MYTHS) {
     for (const pattern of myth.patterns) {
       if (pattern.test(question)) {
-        if (!flags.includes(myth.id)) {
-          flags.push(myth.id);
-          corrections.push({ myth_id: myth.id, correction: myth.correction, why_it_matters: myth.why_it_matters });
-        }
-        break;
+        return { detected: true, myth: myth.name, correction: myth.correction };
       }
     }
   }
-  return { flags, corrections };
+  return { detected: false };
 }
 
 function redactPII(text: string): string {
@@ -166,78 +256,100 @@ function redactPII(text: string): string {
     .replace(/\b(?:\d{4}[-\s]?){3}\d{4}\b/g, "[CARD]");
 }
 
-function createEmptyResponse(requestId: string, depth: AnswerDepth, latencyMs: number): AnswerResponse {
+// Apply depth rules - Section 3
+function applyDepthRules(answer: Partial<HardAnswer>, depth: AnswerDepth): HardAnswer {
+  const rules = DEPTH_RULES[depth];
+  
   return {
-    schema_version: SCHEMA_VERSION,
-    request_id: requestId,
-    answer_depth: depth,
-    routing: { mode: "deterministic", deterministic_topics_hit: [], rag_chunks_count: 0, model: "none", latency_ms: latencyMs, tokens_in: 0, tokens_out: 0, cost_usd: 0 },
-    calibration: { needed: false, questions: [] },
-    myth_detection: { flags: [], corrections: [] },
-    top_line: { verdict: "", confidence: "medium", one_sentence: "" },
-    steps: [],
-    mechanics: [],
-    edge_cases: [],
-    assumptions: [],
-    disclaimers: [],
-    followups: [],
+    summary: answer.summary || "",
+    recommended_action: rules.recommended_action ? (answer.recommended_action || null) : null,
+    steps: (answer.steps || []).slice(0, rules.steps.max),
+    mechanics: rules.mechanics ? (answer.mechanics || null) : null,
+    edge_cases: rules.edge_cases ? (answer.edge_cases || null) : null,
+    warnings: answer.warnings || null,
+    confidence: answer.confidence || "medium",
+    blocked: answer.blocked || false,
+    block_reason: answer.block_reason || null,
   };
 }
 
-function createCalibrationResponse(requestId: string, depth: AnswerDepth, questions: CalibrationQuestion[], latencyMs: number): AnswerResponse {
+// Create blocked response - Section 6
+function createBlockedResponse(
+  requestId: string,
+  depth: AnswerDepth,
+  reason: string,
+  unlockConditions: string[],
+  latencyMs: number
+): HardAnswerResponse {
   return {
-    schema_version: SCHEMA_VERSION,
+    schema_version: HARD_SCHEMA_VERSION,
     request_id: requestId,
     answer_depth: depth,
-    routing: { mode: "deterministic", deterministic_topics_hit: [], rag_chunks_count: 0, model: "none", latency_ms: latencyMs, tokens_in: 0, tokens_out: 0, cost_usd: 0 },
+    question_type: "risk",
+    summary: "This recommendation is blocked based on your credit profile.",
+    recommended_action: null,
+    steps: unlockConditions.map(c => `To unlock: ${c}`),
+    mechanics: null,
+    edge_cases: null,
+    warnings: [reason],
+    confidence: "high",
+    blocked: true,
+    block_reason: reason,
+    routing: { model: "blocking_logic", latency_ms: latencyMs, tokens_in: 0, tokens_out: 0, cost_usd: 0 },
+  };
+}
+
+// Create calibration response
+function createCalibrationResponse(
+  requestId: string,
+  depth: AnswerDepth,
+  questions: CalibrationQuestion[],
+  latencyMs: number
+): HardAnswerResponse & { calibration: { needed: boolean; questions: CalibrationQuestion[] } } {
+  return {
+    schema_version: HARD_SCHEMA_VERSION,
+    request_id: requestId,
+    answer_depth: depth,
+    question_type: "education",
+    summary: "I need one detail before answering.",
+    recommended_action: null,
+    steps: [questions[0]?.prompt || "Please complete calibration."],
+    mechanics: null,
+    edge_cases: null,
+    warnings: null,
+    confidence: "low",
+    blocked: false,
+    block_reason: null,
     calibration: { needed: true, questions },
-    myth_detection: { flags: [], corrections: [] },
-    top_line: { verdict: "Need 2-5 details to answer precisely", confidence: "low", one_sentence: "Please answer a few quick questions so I can give you accurate guidance." },
-    steps: [],
-    mechanics: [],
-    edge_cases: [],
-    assumptions: [],
-    disclaimers: [],
-    followups: questions.map(q => ({ prompt: q.prompt, reason: "Required for accurate answer" })),
+    routing: { model: "calibration", latency_ms: latencyMs, tokens_in: 0, tokens_out: 0, cost_usd: 0 },
   };
 }
 
-function createErrorResponse(requestId: string, code: string, message: string, latencyMs: number): AnswerResponse & { error: { code: string; message: string } } {
+// Create error response
+function createErrorResponse(
+  requestId: string,
+  depth: AnswerDepth,
+  code: string,
+  message: string,
+  latencyMs: number
+): HardAnswerResponse {
   return {
-    ...createEmptyResponse(requestId, "beginner", latencyMs),
-    top_line: { verdict: "Error", confidence: "low", one_sentence: message },
+    schema_version: HARD_SCHEMA_VERSION,
+    request_id: requestId,
+    answer_depth: depth,
+    question_type: "education",
+    summary: message,
+    recommended_action: null,
+    steps: [],
+    mechanics: null,
+    edge_cases: null,
+    warnings: null,
+    confidence: "low",
+    blocked: false,
+    block_reason: null,
+    routing: { model: "error", latency_ms: latencyMs, tokens_in: 0, tokens_out: 0, cost_usd: 0 },
     error: { code, message },
   };
-}
-
-// Composition rules by depth
-function composeByDepth(
-  depth: AnswerDepth,
-  raw: { verdict: string; one_sentence: string; steps: any[]; mechanics: any[]; edge_cases: any[]; assumptions: string[] }
-): Pick<AnswerResponse, "steps" | "mechanics" | "edge_cases" | "assumptions"> {
-  switch (depth) {
-    case "beginner":
-      return {
-        steps: raw.steps.slice(0, 6),
-        mechanics: [],
-        edge_cases: [],
-        assumptions: raw.assumptions.slice(0, 3),
-      };
-    case "intermediate":
-      return {
-        steps: raw.steps,
-        mechanics: raw.mechanics.slice(0, 4),
-        edge_cases: raw.edge_cases.slice(0, 3),
-        assumptions: raw.assumptions.slice(0, 5),
-      };
-    case "advanced":
-      return {
-        steps: raw.steps,
-        mechanics: raw.mechanics.slice(0, 6),
-        edge_cases: raw.edge_cases.slice(0, 7),
-        assumptions: raw.assumptions.slice(0, 7),
-      };
-  }
 }
 
 // Main handler
@@ -248,11 +360,12 @@ Deno.serve(async (req) => {
 
   const startTime = Date.now();
   const requestId = generateRequestId();
+  let depth: AnswerDepth = "beginner";
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -274,12 +387,12 @@ Deno.serve(async (req) => {
     if (userId) {
       const { data: creditProfile } = await supabase
         .from("user_credit_profile")
-        .select("onboarding_completed, experience_level, carry_balance")
+        .select("onboarding_completed, experience_level, carry_balance, intent")
         .eq("user_id", userId)
         .maybeSingle();
 
       if (!creditProfile?.onboarding_completed) {
-        const response = createErrorResponse(requestId, "ONBOARDING_REQUIRED", "Complete credit onboarding to use Ask AI.", Date.now() - startTime);
+        const response = createErrorResponse(requestId, depth, "ONBOARDING_REQUIRED", "Complete credit onboarding to use Ask AI.", Date.now() - startTime);
         return new Response(JSON.stringify(response), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -292,7 +405,7 @@ Deno.serve(async (req) => {
     try {
       body = await req.json();
     } catch {
-      const response = createErrorResponse(requestId, "INVALID_JSON", "Invalid JSON body", Date.now() - startTime);
+      const response = createErrorResponse(requestId, depth, "INVALID_JSON", "Invalid JSON body", Date.now() - startTime);
       return new Response(JSON.stringify(response), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -302,7 +415,7 @@ Deno.serve(async (req) => {
     const { question, answer_depth: requestedDepth, context, calibration_answers } = body;
 
     if (!question || typeof question !== "string" || question.length < 5) {
-      const response = createErrorResponse(requestId, "VALIDATION_ERROR", "Question must be at least 5 characters", Date.now() - startTime);
+      const response = createErrorResponse(requestId, depth, "VALIDATION_ERROR", "Question must be at least 5 characters", Date.now() - startTime);
       return new Response(JSON.stringify(response), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -318,15 +431,14 @@ Deno.serve(async (req) => {
       const [aiPrefsResult, calibResult, profileResult] = await Promise.all([
         supabase.from("user_ai_preferences").select("answer_depth, tone").eq("user_id", userId).maybeSingle(),
         supabase.from("user_calibration").select("*").eq("user_id", userId).maybeSingle(),
-        supabase.from("user_credit_profile").select("experience_level, carry_balance").eq("user_id", userId).maybeSingle(),
+        supabase.from("user_credit_profile").select("experience_level, carry_balance, intent").eq("user_id", userId).maybeSingle(),
       ]);
       aiPrefs = aiPrefsResult.data;
       userCalibration = calibResult.data;
       creditProfile = profileResult.data;
     }
 
-    // Determine answer depth (C1)
-    let depth: AnswerDepth = "beginner";
+    // Determine answer depth (Section 3)
     if (requestedDepth && ["beginner", "intermediate", "advanced"].includes(requestedDepth)) {
       depth = requestedDepth as AnswerDepth;
     } else if (aiPrefs?.answer_depth) {
@@ -336,15 +448,85 @@ Deno.serve(async (req) => {
       depth = mapping[creditProfile.experience_level] || "beginner";
     }
 
-    // Hard rule: cap at intermediate if carrying balance unless explicitly advanced
-    const carriesBalance = creditProfile?.carry_balance || userCalibration?.carry_balance;
-    if (carriesBalance && depth === "advanced" && requestedDepth !== "advanced") {
-      depth = "intermediate";
+    // Get credit_state for blocking logic
+    const carriesBalance = creditProfile?.carry_balance || userCalibration?.carry_balance === true;
+    const intent = creditProfile?.intent || "score";
+
+    // Section 6: Blocking Logic - Safety > Help
+    const questionType = classifyQuestion(question);
+    
+    // Block rewards optimization if user carries balance
+    if (questionType === "optimization" && carriesBalance) {
+      const isRewardsQuestion = /rewards?|cashback|points|miles|maximize|best\s*card\s*for/i.test(question);
+      if (isRewardsQuestion) {
+        const response = createBlockedResponse(
+          requestId,
+          depth,
+          "You carry balances. Rewards optimization becomes negative expected value under interest.",
+          ["Pay off all credit card balances", "Build a habit of paying in full each month"],
+          Date.now() - startTime
+        );
+        return new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Section 4: Myth Detection - blocked = true for myths
+    const mythCheck = detectMyth(question);
+    if (mythCheck.detected) {
+      const response: HardAnswerResponse = {
+        schema_version: HARD_SCHEMA_VERSION,
+        request_id: requestId,
+        answer_depth: depth,
+        question_type: "myth",
+        summary: mythCheck.correction || "This is a common misconception.",
+        recommended_action: "Reframe your understanding with the correct information.",
+        steps: [],
+        mechanics: null,
+        edge_cases: null,
+        warnings: [`Myth detected: "${mythCheck.myth}"`],
+        confidence: "high",
+        blocked: true,
+        block_reason: "This question is based on a common credit myth. No optimization advice until misconception is addressed.",
+        myth_check: mythCheck,
+        routing: { model: "myth_detection", latency_ms: Date.now() - startTime, tokens_in: 0, tokens_out: 0, cost_usd: 0 },
+      };
+
+      // Persist myth detection
+      if (userId) {
+        try {
+          await supabase.from("rag_queries").insert({
+            user_id: userId,
+            question: redactPII(question),
+            redacted_question: redactPII(question),
+            answer: mythCheck.correction || "",
+            answer_json: response,
+            redacted_answer: response,
+            answer_schema_version: HARD_SCHEMA_VERSION,
+            answer_depth: depth,
+            myth_flags: [mythCheck.myth],
+            calibration_needed: false,
+            calibration_questions: [],
+            routing: response.routing,
+            confidence: 0.95,
+            model: "myth_detection",
+            latency_ms: Date.now() - startTime,
+          });
+        } catch (logError) {
+          console.error("Failed to log myth query:", logError);
+        }
+      }
+
+      return new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Check if calibration needed
     if (!userCalibration && userId) {
-      // Handle calibration answers if provided
       if (calibration_answers && Object.keys(calibration_answers).length > 0) {
         // Save calibration
         const calibData: any = {
@@ -358,7 +540,7 @@ Deno.serve(async (req) => {
         };
         await supabase.from("user_calibration").upsert(calibData);
 
-        // Also update AI preferences if not set
+        // Update AI preferences if not set
         if (!aiPrefs) {
           const newDepth = calibration_answers.confidence_level === "high" ? "intermediate" : "beginner";
           await supabase.from("user_ai_preferences").upsert({
@@ -380,70 +562,87 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Myth detection
-    const mythResult = detectMyths(question);
-
-    // Generate answer using AI
-    if (!openaiKey) {
-      const response = createErrorResponse(requestId, "CONFIG_ERROR", "AI service not configured", Date.now() - startTime);
+    // Section 7: BNPL + High-Risk Detection - force risk mode
+    const isHighRisk = HIGH_RISK_PATTERNS.some(p => p.test(question));
+    
+    // Generate answer using Lovable AI
+    if (!lovableKey) {
+      const response = createErrorResponse(requestId, depth, "CONFIG_ERROR", "AI service not configured", Date.now() - startTime);
       return new Response(JSON.stringify(response), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Build system prompt based on depth
+    // Build system prompt with depth-specific instructions
     const depthInstructions = {
-      beginner: "Give simple, actionable steps. No jargon. Maximum 6 steps.",
-      intermediate: "Include mechanics and 1-3 edge cases. Explain why each step matters.",
-      advanced: "Include detailed mechanics, 3-7 edge cases, explicit assumptions, and what would change your answer.",
+      beginner: "Give ONLY: 1-2 sentence summary, one recommended action, max 3 simple steps. NO jargon. NO mechanics. NO edge cases.",
+      intermediate: "Include: summary, recommended action, up to 6 steps, 1-2 paragraphs of mechanics. Optional: 1-2 edge cases.",
+      advanced: "Include: summary, recommended action, all steps, detailed mechanics, 3+ edge cases, explicit assumptions and limitations.",
     };
 
-    const riskHeader = carriesBalance && depth === "advanced" 
-      ? "\n\n⚠️ RISK WARNING: You carry balances. Rewards optimization advice may not apply until balances are paid.\n" 
+    const riskWarning = isHighRisk || carriesBalance
+      ? "\n\nWARNING: This involves financial risk. Lead with downsides. Suppress reward framing. Be conservative."
       : "";
 
-    const mythContext = mythResult.flags.length > 0
-      ? `\n\nMYTH DETECTED: ${mythResult.corrections.map(c => c.correction).join(" ")}\n`
-      : "";
+    const systemPrompt = `You are a credit expert AI providing regulated financial explanations.
+${depthInstructions[depth]}${riskWarning}
 
-    const systemPrompt = `You are a credit expert AI. ${depthInstructions[depth]}${riskHeader}${mythContext}
-
-Respond with valid JSON matching this exact structure:
+CRITICAL: Respond with valid JSON matching this EXACT structure:
 {
-  "verdict": "one clear sentence answer",
-  "confidence": "low|medium|high",
-  "one_sentence": "brief summary",
-  "steps": [{"title": "Step 1", "action": "what to do", "rationale": "why"}],
-  "mechanics": [{"title": "How it works", "explanation": "..."}],
-  "edge_cases": [{"title": "Exception", "risk": "low|medium|high", "detail": "..."}],
-  "assumptions": ["assumption 1"],
-  "disclaimers": ["This is general guidance, not financial advice."]
-}`;
+  "summary": "1-2 sentence main answer",
+  "recommended_action": "what to do next",
+  "steps": ["step 1", "step 2"],
+  "mechanics": "how it works" or null,
+  "edge_cases": ["exception 1"] or null,
+  "warnings": ["critical warning"] or null,
+  "confidence": "high" | "medium" | "low"
+}
+
+Rules:
+- No extra fields
+- No markdown
+- No prose outside fields
+- Empty arrays allowed, fabrication forbidden`;
 
     const tokensIn = estimateTokens(systemPrompt + question);
     
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${openaiKey}`,
+        "Authorization": `Bearer ${lovableKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: OPENAI_CHAT_MODEL,
+        model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: question },
         ],
         temperature: 0.3,
-        response_format: { type: "json_object" },
       }),
     });
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
-      console.error("OpenAI error:", aiResponse.status, errText);
-      const response = createErrorResponse(requestId, "AI_ERROR", "AI service error", Date.now() - startTime);
+      console.error("AI error:", aiResponse.status, errText);
+      
+      if (aiResponse.status === 429) {
+        const response = createErrorResponse(requestId, depth, "RATE_LIMITED", "Rate limit exceeded. Please try again later.", Date.now() - startTime);
+        return new Response(JSON.stringify(response), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (aiResponse.status === 402) {
+        const response = createErrorResponse(requestId, depth, "PAYMENT_REQUIRED", "AI credits exhausted. Please add funds.", Date.now() - startTime);
+        return new Response(JSON.stringify(response), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      const response = createErrorResponse(requestId, depth, "AI_ERROR", "AI service error", Date.now() - startTime);
       return new Response(JSON.stringify(response), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -454,78 +653,83 @@ Respond with valid JSON matching this exact structure:
     const rawContent = aiData.choices?.[0]?.message?.content || "{}";
     const tokensOut = estimateTokens(rawContent);
     
+    // Parse JSON from response (handle markdown code blocks)
     let parsed: any;
     try {
-      parsed = JSON.parse(rawContent);
+      let jsonStr = rawContent;
+      // Strip markdown code blocks if present
+      const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1].trim();
+      }
+      parsed = JSON.parse(jsonStr);
     } catch {
-      parsed = { verdict: "Unable to parse response", confidence: "low", one_sentence: rawContent.substring(0, 200), steps: [], mechanics: [], edge_cases: [], assumptions: [] };
+      // Return error response if JSON invalid
+      const response = createErrorResponse(requestId, depth, "INVALID_OUTPUT_SCHEMA", "AI returned invalid JSON", Date.now() - startTime);
+      return new Response(JSON.stringify(response), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const latencyMs = Date.now() - startTime;
     const costUsd = (tokensIn * COST_PER_1K_INPUT + tokensOut * COST_PER_1K_OUTPUT) / 1000;
 
-    // Compose response by depth
-    const composed = composeByDepth(depth, {
-      verdict: parsed.verdict || "",
-      one_sentence: parsed.one_sentence || "",
-      steps: parsed.steps || [],
-      mechanics: parsed.mechanics || [],
-      edge_cases: parsed.edge_cases || [],
-      assumptions: parsed.assumptions || [],
-    });
+    // Apply depth rules to constrain output
+    const constrained = applyDepthRules({
+      summary: parsed.summary,
+      recommended_action: parsed.recommended_action,
+      steps: parsed.steps,
+      mechanics: parsed.mechanics,
+      edge_cases: parsed.edge_cases,
+      warnings: parsed.warnings,
+      confidence: parsed.confidence,
+      blocked: false,
+      block_reason: null,
+    }, depth);
 
-    const finalResponse: AnswerResponse = {
-      schema_version: SCHEMA_VERSION,
+    // Section 5: Risk & Safety Guardrails - add warnings if high risk
+    if (isHighRisk && (!constrained.warnings || constrained.warnings.length === 0)) {
+      constrained.warnings = ["This involves financial products that may have hidden costs or credit impact."];
+    }
+
+    const finalResponse: HardAnswerResponse = {
+      schema_version: HARD_SCHEMA_VERSION,
       request_id: requestId,
       answer_depth: depth,
+      question_type: questionType,
+      ...constrained,
       routing: {
-        mode: "rag",
-        deterministic_topics_hit: mythResult.flags,
-        rag_chunks_count: 0,
-        model: OPENAI_CHAT_MODEL,
+        model: "google/gemini-3-flash-preview",
         latency_ms: latencyMs,
         tokens_in: tokensIn,
         tokens_out: tokensOut,
         cost_usd: costUsd,
       },
-      calibration: { needed: false, questions: [] },
-      myth_detection: mythResult,
-      top_line: {
-        verdict: parsed.verdict || "See steps below",
-        confidence: parsed.confidence || "medium",
-        one_sentence: parsed.one_sentence || "",
-      },
-      ...composed,
-      disclaimers: parsed.disclaimers || ["This is general guidance, not financial advice."],
-      followups: [],
     };
 
     // Persist to database with redaction
     if (userId) {
       const redactedQuestion = redactPII(question);
       const redactedAnswer = JSON.parse(JSON.stringify(finalResponse));
-      // Remove any PII from answer fields
-      if (redactedAnswer.top_line) {
-        redactedAnswer.top_line.verdict = redactPII(redactedAnswer.top_line.verdict);
-        redactedAnswer.top_line.one_sentence = redactPII(redactedAnswer.top_line.one_sentence);
-      }
+      redactedAnswer.summary = redactPII(redactedAnswer.summary);
 
       try {
         await supabase.from("rag_queries").insert({
           user_id: userId,
           question: redactedQuestion,
           redacted_question: redactedQuestion,
-          answer: finalResponse.top_line.verdict,
+          answer: finalResponse.summary,
           answer_json: finalResponse,
           redacted_answer: redactedAnswer,
-          answer_schema_version: SCHEMA_VERSION,
+          answer_schema_version: HARD_SCHEMA_VERSION,
           answer_depth: depth,
-          myth_flags: mythResult.flags,
+          myth_flags: [],
           calibration_needed: false,
           calibration_questions: [],
           routing: finalResponse.routing,
-          confidence: parsed.confidence === "high" ? 0.9 : parsed.confidence === "medium" ? 0.7 : 0.5,
-          model: OPENAI_CHAT_MODEL,
+          confidence: constrained.confidence === "high" ? 0.9 : constrained.confidence === "medium" ? 0.7 : 0.5,
+          model: "google/gemini-3-flash-preview",
           latency_ms: latencyMs,
         });
       } catch (logError) {
@@ -540,7 +744,7 @@ Respond with valid JSON matching this exact structure:
 
   } catch (error) {
     console.error("Ask error:", error);
-    const response = createErrorResponse(requestId, "INTERNAL_ERROR", (error as Error).message || "Unknown error", Date.now() - startTime);
+    const response = createErrorResponse(requestId, depth, "INTERNAL_ERROR", (error as Error).message || "Unknown error", Date.now() - startTime);
     return new Response(JSON.stringify(response), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
