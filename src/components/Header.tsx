@@ -19,6 +19,7 @@ const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/analyze', label: 'Analyzer' },
   { href: '/ask', label: 'Ask' },
+  { href: '/pathway', label: 'Pathway' },
   { href: '/cards', label: 'Cards' },
   { href: '/mission', label: 'Mission' },
 ];

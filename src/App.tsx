@@ -103,7 +103,7 @@ const App = () => (
               {/* User Dashboard (protected) */}
               <Route path="/dashboard" element={<Dashboard />} />
               
-              {/* Finance Diagnostics */}
+              {/* V2 Features - Deferred (hidden from nav but routes active for testing) */}
               <Route path="/diagnostics" element={<Diagnostics />} />
               <Route path="/transactions" element={<Transactions />} />
               

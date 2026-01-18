@@ -352,6 +352,87 @@ function createErrorResponse(
   };
 }
 
+// Rate limiting configuration
+const RATE_LIMITS = {
+  ip: { limit: 30, windowMs: 60 * 1000, bucket: 'ask_ip_min' },
+  ipDaily: { limit: 300, windowMs: 24 * 60 * 60 * 1000, bucket: 'ask_ip_day' },
+  user: { limit: 60, windowMs: 60 * 1000, bucket: 'ask_user_min' },
+  userDaily: { limit: 1000, windowMs: 24 * 60 * 60 * 1000, bucket: 'ask_user_day' },
+};
+
+// Rate limit check function
+async function checkRateLimit(
+  supabase: any,
+  scope: string,
+  scopeType: 'ip' | 'user',
+  config: { limit: number; windowMs: number; bucket: string }
+): Promise<{ allowed: boolean; remaining: number; resetUnix: number }> {
+  const windowStart = new Date(Date.now() - config.windowMs);
+  const windowEnd = new Date(Date.now() + config.windowMs);
+  
+  try {
+    // Get current count
+    const { data: existing } = await supabase
+      .from("rate_limits")
+      .select("count, window_start, updated_at")
+      .eq("bucket", config.bucket)
+      .eq("scope", scope)
+      .gte("window_start", windowStart.toISOString())
+      .single();
+
+    if (existing) {
+      const count = existing.count + 1;
+      if (count > config.limit) {
+        const resetUnix = Math.floor(new Date(existing.window_start).getTime() / 1000) + Math.floor(config.windowMs / 1000);
+        return { allowed: false, remaining: 0, resetUnix };
+      }
+      
+      // Increment counter
+      await supabase
+        .from("rate_limits")
+        .update({ count, updated_at: new Date().toISOString() })
+        .eq("bucket", config.bucket)
+        .eq("scope", scope)
+        .gte("window_start", windowStart.toISOString());
+      
+      const resetUnix = Math.floor(new Date(existing.window_start).getTime() / 1000) + Math.floor(config.windowMs / 1000);
+      return { allowed: true, remaining: config.limit - count, resetUnix };
+    } else {
+      // Create new window
+      await supabase.from("rate_limits").insert({
+        bucket: config.bucket,
+        scope,
+        scope_type: scopeType,
+        count: 1,
+        window_start: new Date().toISOString(),
+        window_size_seconds: Math.floor(config.windowMs / 1000),
+      });
+      
+      return { 
+        allowed: true, 
+        remaining: config.limit - 1, 
+        resetUnix: Math.floor(Date.now() / 1000) + Math.floor(config.windowMs / 1000) 
+      };
+    }
+  } catch (e) {
+    console.error("Rate limit check error:", e);
+    // Fail open but log
+    return { allowed: true, remaining: config.limit, resetUnix: Math.floor(Date.now() / 1000) + 60 };
+  }
+}
+
+// Hash IP for privacy
+function hashIP(ip: string): string {
+  // Simple hash - in production use crypto.subtle
+  let hash = 0;
+  for (let i = 0; i < ip.length; i++) {
+    const char = ip.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return `ip_${Math.abs(hash).toString(16)}`;
+}
+
 // Main handler
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -369,6 +450,12 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Get client IP for rate limiting
+    const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() 
+      || req.headers.get("cf-connecting-ip") 
+      || "unknown";
+    const ipHash = hashIP(clientIP);
+
     // Auth check
     const authHeader = req.headers.get("authorization");
     let userId: string | null = null;
@@ -380,6 +467,47 @@ Deno.serve(async (req) => {
         userId = user?.id || null;
       } catch (e) {
         console.error("Auth error:", e);
+      }
+    }
+
+    // Rate limiting - check both IP and user limits
+    const ipCheck = await checkRateLimit(supabase, ipHash, 'ip', RATE_LIMITS.ip);
+    const ipDailyCheck = await checkRateLimit(supabase, ipHash, 'ip', RATE_LIMITS.ipDaily);
+    
+    if (!ipCheck.allowed || !ipDailyCheck.allowed) {
+      const retryAfter = Math.max(
+        ipCheck.allowed ? 0 : ipCheck.resetUnix - Math.floor(Date.now() / 1000),
+        ipDailyCheck.allowed ? 0 : ipDailyCheck.resetUnix - Math.floor(Date.now() / 1000)
+      );
+      const response = createErrorResponse(
+        requestId, depth, "RATE_LIMITED", 
+        `Too many requests. Please wait ${retryAfter} seconds before trying again.`, 
+        Date.now() - startTime
+      );
+      return new Response(JSON.stringify(response), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(retryAfter) },
+      });
+    }
+
+    if (userId) {
+      const userCheck = await checkRateLimit(supabase, userId, 'user', RATE_LIMITS.user);
+      const userDailyCheck = await checkRateLimit(supabase, userId, 'user', RATE_LIMITS.userDaily);
+      
+      if (!userCheck.allowed || !userDailyCheck.allowed) {
+        const retryAfter = Math.max(
+          userCheck.allowed ? 0 : userCheck.resetUnix - Math.floor(Date.now() / 1000),
+          userDailyCheck.allowed ? 0 : userDailyCheck.resetUnix - Math.floor(Date.now() / 1000)
+        );
+        const response = createErrorResponse(
+          requestId, depth, "RATE_LIMITED", 
+          `Too many requests. Please wait ${retryAfter} seconds.`, 
+          Date.now() - startTime
+        );
+        return new Response(JSON.stringify(response), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(retryAfter) },
+        });
       }
     }
 
