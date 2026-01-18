@@ -16,6 +16,8 @@ import { CalibrationQuestions, CalibrationResult } from '@/components/ask/Calibr
 import { AnswerRenderer } from '@/components/ask/AnswerRenderer';
 import { AnswerDepthToggle } from '@/components/ask/AnswerDepthToggle';
 import { CreditPathwayProgress } from '@/components/ask/CreditPathwayProgress';
+import { NextActionsPanel } from '@/components/ask/NextActionsPanel';
+import { MythDetectionBanner } from '@/components/ask/MythDetectionBanner';
 import { AskAiResponseSchema, type AskAiResponse } from '@/lib/askAiSchema';
 import { AnswerSchema as NewAnswerSchemaValidator, type AnswerResponse as NewAnswerSchema } from '@/lib/ai/answerSchema';
 import {
@@ -968,11 +970,14 @@ export default function Ask() {
                           />
                         ) : message.response ? (
                           <>
-                            {/* Myth Warning */}
-                            {message.response.myth.is_myth && (
-                              <MythWarning 
-                                label={message.response.myth.myth_label} 
-                                correction={message.response.myth.correction} 
+                            {/* Myth Warning Banner - Non-dismissable */}
+                            {message.response.myth.is_myth && message.response.myth.myth_label && message.response.myth.correction && (
+                              <MythDetectionBanner 
+                                myths={[{
+                                  myth: message.response.myth.myth_label,
+                                  correction: message.response.myth.correction
+                                }]}
+                                className="mb-4"
                               />
                             )}
                             
@@ -990,6 +995,18 @@ export default function Ask() {
                               response={message.response} 
                               experienceLevel={experienceLevel} 
                             />
+                            
+                            {/* Next Actions Panel - Surfaces pathway-based actions */}
+                            {message.response.answer.action_items && message.response.answer.action_items.length > 0 && (
+                              <NextActionsPanel
+                                immediateActions={message.response.answer.action_items.slice(0, 2)}
+                                nextMoves={message.response.answer.pitfalls.slice(0, 2).map((p: string) => ({
+                                  label: p,
+                                  priority: 'soon' as const,
+                                }))}
+                                className="mt-4"
+                              />
+                            )}
                             
                             {/* Citations */}
                             <CitationsSection 
